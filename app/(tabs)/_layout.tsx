@@ -135,12 +135,18 @@ function FloatingTabBar({ state, navigation }: any) {
             return (
               <TouchableOpacity
                 key={item.name}
-                style={styles.floatingMenuItemActivePill}
                 onPress={onPress}
                 activeOpacity={0.8}
+                style={styles.activePillTouchable}
               >
-                {item.renderIcon('#34d399')}
-                <Text style={styles.floatingMenuItemActiveText}>{item.label}</Text>
+                <BlurView
+                  intensity={Platform.OS === 'ios' ? 40 : 60}
+                  tint="dark"
+                  style={styles.floatingMenuItemActivePill}
+                >
+                  {item.renderIcon('#34d399')}
+                  <Text style={styles.floatingMenuItemActiveText}>{item.label}</Text>
+                </BlurView>
               </TouchableOpacity>
             );
           }
@@ -221,13 +227,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#8ba7c0',
   },
+  activePillTouchable: {
+    borderRadius: 22,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
   floatingMenuItemActivePill: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 142, 93, 0.22)',
-    borderWidth: 1.5,
-    borderColor: '#0f8e5d',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(15, 142, 93, 0.28)' : 'rgba(15, 142, 93, 0.35)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(52, 211, 153, 0.5)',
+    borderTopColor: 'rgba(110, 231, 183, 0.8)',
     borderRadius: 22,
+    overflow: 'hidden',
     paddingVertical: 5,
     paddingHorizontal: 16,
     minWidth: 70,
@@ -237,5 +253,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 11,
     color: '#34d399',
+    textShadowColor: 'rgba(52, 211, 153, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 });
