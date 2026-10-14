@@ -12,6 +12,7 @@ import {
   Dimensions,
   Modal,
   TextInput,
+  Share,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -129,6 +130,16 @@ export default function HomeScreen() {
       progress: 1,
     });
     setShowNewSealModal(false);
+  };
+
+  const handleShare = async (message: string) => {
+    try {
+      await Share.share({
+        message: `${message}\n\nتطبيق أُنس`,
+      });
+    } catch {
+      // ignore
+    }
   };
 
   // Row 1: Fajr -> Sunrise -> Dhuhr -> Asr
@@ -494,6 +505,94 @@ export default function HomeScreen() {
               <Text style={[styles.activityPillText, { color: '#162e1f' }]}>سورة الكهف</Text>
             </TouchableOpacity>
           </ScrollView>
+        </View>
+
+        {/* ================= 7. Daily Inspirations (آية اليوم، حديث اليوم، دعاء اليوم) ================= */}
+        <View style={styles.dailyInspirationsSection}>
+          {/* Card 1: آية اليوم */}
+          <View style={styles.inspirationCard}>
+            <View style={styles.inspirationCardHeader}>
+              <TouchableOpacity
+                style={styles.inspirationShareBtn}
+                activeOpacity={0.7}
+                onPress={() =>
+                  handleShare(
+                    '﴿ قُلْ يَا عِبَادِيَ الَّذِينَ أَسْرَفُوا عَلَىٰ أَنفُسِهِمْ لَا تَقْنَطُوا مِن رَّحْمَةِ اللَّهِ ۚ إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا ۚ إِنَّهُ هُوَ الْغَفُورُ الرَّحِيمُ ﴾ [الزمر: 53]'
+                  )
+                }
+              >
+                <Ionicons name="share-outline" size={17} color="#94a3b8" />
+              </TouchableOpacity>
+              <View style={[styles.inspirationBadge, styles.ayahBadge]}>
+                <Ionicons name="book-outline" size={14} color="#6ee7b7" />
+                <Text style={[styles.inspirationBadgeText, styles.ayahBadgeText]}>آية اليوم</Text>
+              </View>
+            </View>
+
+            <Text style={styles.ayahContentText}>
+              قُلْ يَا عِبَادِيَ الَّذِينَ أَسْرَفُوا عَلَىٰ أَنفُسِهِمْ لَا تَقْنَطُوا مِن رَّحْمَةِ اللَّهِ ۚ إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا ۚ إِنَّهُ هُوَ الْغَفُورُ الرَّحِيمُ <Text style={styles.ayahNumberBadge}>﴿٥٣﴾</Text>
+            </Text>
+
+            <View style={styles.inspirationFooterRow}>
+              <View style={styles.verseReferencePill}>
+                <Ionicons name="bookmark-outline" size={12} color="#64748b" />
+                <Text style={styles.verseReferenceText}>الزمر: 53</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Card 2: حديث اليوم */}
+          <View style={styles.inspirationCard}>
+            <View style={styles.inspirationCardHeader}>
+              <TouchableOpacity
+                style={styles.inspirationShareBtn}
+                activeOpacity={0.7}
+                onPress={() =>
+                  handleShare(
+                    'قَالَ النَّبِيُّ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ: «يَسِّرُوا وَلَا تُعَسِّرُوا، وَسَكِّنُوا وَلَا تُنَفِّرُوا».'
+                  )
+                }
+              >
+                <Ionicons name="share-outline" size={17} color="#94a3b8" />
+              </TouchableOpacity>
+              <View style={[styles.inspirationBadge, styles.hadithBadge]}>
+                <MaterialCommunityIcons name="book-open-variant" size={14} color="#fde047" />
+                <Text style={[styles.inspirationBadgeText, styles.hadithBadgeText]}>حديث اليوم</Text>
+              </View>
+            </View>
+
+            <Text style={styles.hadithContentText}>
+              قَالَ النَّبِيُّ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ:{' '}
+              <Text style={styles.hadithQuoteText}>
+                «يَسِّرُوا وَلَا تُعَسِّرُوا، وَسَكِّنُوا وَلَا تُنَفِّرُوا».
+              </Text>
+            </Text>
+          </View>
+
+          {/* Card 3: دعاء اليوم */}
+          <View style={styles.inspirationCard}>
+            <View style={styles.inspirationCardHeader}>
+              <TouchableOpacity
+                style={styles.inspirationShareBtn}
+                activeOpacity={0.7}
+                onPress={() =>
+                  handleShare(
+                    'ربِّ أسألك توبةً تجبّ ما قبلها من الذنوب وتصلح ما بعدها من الأعمال.'
+                  )
+                }
+              >
+                <Ionicons name="share-outline" size={17} color="#94a3b8" />
+              </TouchableOpacity>
+              <View style={[styles.inspirationBadge, styles.duaBadge]}>
+                <MaterialCommunityIcons name="hands-pray" size={14} color="#5eead4" />
+                <Text style={[styles.inspirationBadgeText, styles.duaBadgeText]}>دعاء اليوم</Text>
+              </View>
+            </View>
+
+            <Text style={styles.duaContentText}>
+              رب أسألك توبة تجب ما قبلها من الذنوب وتصلح ما بعدها من الأعمال.
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
@@ -1302,5 +1401,123 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 14.5,
     letterSpacing: -0.2,
+  },
+
+  /* 7. Daily Inspirations Section */
+  dailyInspirationsSection: {
+    marginTop: 18,
+    marginBottom: 32,
+    gap: 14,
+  },
+  inspirationCard: {
+    backgroundColor: '#0c1813',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#192b22',
+    padding: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  inspirationCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  inspirationShareBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#14251d',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1e382b',
+  },
+  inspirationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    gap: 6,
+    borderWidth: 1,
+  },
+  ayahBadge: {
+    backgroundColor: '#142e22',
+    borderColor: '#1f4834',
+  },
+  ayahBadgeText: {
+    color: '#a7f3d0',
+  },
+  hadithBadge: {
+    backgroundColor: '#2b2917',
+    borderColor: '#423e20',
+  },
+  hadithBadgeText: {
+    color: '#fef08a',
+  },
+  duaBadge: {
+    backgroundColor: '#142c30',
+    borderColor: '#1e4348',
+  },
+  duaBadgeText: {
+    color: '#99f6e4',
+  },
+  inspirationBadgeText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+  },
+  ayahContentText: {
+    fontFamily: 'Amiri_700Bold',
+    fontSize: 19,
+    lineHeight: 36,
+    color: '#f8fafc',
+    textAlign: 'right',
+    marginBottom: 12,
+  },
+  ayahNumberBadge: {
+    color: '#34d399',
+    fontFamily: 'Amiri_700Bold',
+    fontSize: 19,
+  },
+  inspirationFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  verseReferencePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: '#14251d',
+  },
+  verseReferenceText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  hadithContentText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15.5,
+    lineHeight: 28,
+    color: '#94a3b8',
+    textAlign: 'right',
+  },
+  hadithQuoteText: {
+    fontFamily: 'Cairo_700Bold',
+    color: '#f8fafc',
+  },
+  duaContentText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15.5,
+    lineHeight: 28,
+    color: '#f8fafc',
+    textAlign: 'right',
   },
 });
