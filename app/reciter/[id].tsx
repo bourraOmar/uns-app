@@ -16,6 +16,7 @@ import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { RECITERS_DATA, Reciter } from '@/data/reciters';
 import surahsData from '@/data/surahs.json';
+import AudioPlayerModal from '@/components/AudioPlayerModal';
 
 interface SurahItem {
   id: number;
@@ -45,6 +46,10 @@ export default function ReciterProfileScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(0);
+  const [positionMillis, setPositionMillis] = useState(0);
+  const [durationMillis, setDurationMillis] = useState(0);
+  const [currentSpeed, setCurrentSpeed] = useState(1.0);
+  const [isPlayerModalVisible, setIsPlayerModalVisible] = useState(false);
 
   // Unload sound when unmounting
   useEffect(() => {
@@ -137,16 +142,21 @@ export default function ReciterProfileScreen() {
 
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: audioUri },
-        { shouldPlay: true, progressUpdateIntervalMillis: 400 },
+        { shouldPlay: true, progressUpdateIntervalMillis: 350 },
         (status) => {
           if (status.isLoaded) {
             setIsPlaying(status.isPlaying);
-            if (status.durationMillis && status.positionMillis) {
+            if (status.positionMillis !== undefined) {
+              setPositionMillis(status.positionMillis);
+            }
+            if (status.durationMillis && status.durationMillis > 0) {
+              setDurationMillis(status.durationMillis);
               setPlaybackProgress(status.positionMillis / status.durationMillis);
             }
             if (status.didJustFinish) {
               setIsPlaying(false);
               setPlaybackProgress(0);
+              setPositionMillis(0);
             }
           } else if (status.error) {
             console.warn(`Playback error for ${audioUri}:`, status.error);
@@ -156,6 +166,9 @@ export default function ReciterProfileScreen() {
       );
 
       soundRef.current = newSound;
+      if (currentSpeed !== 1.0) {
+        await newSound.setRateAsync(currentSpeed, true).catch(() => {});
+      }
       await newSound.playAsync();
       setIsPlaying(true);
     } catch (err: any) {
@@ -167,6 +180,44 @@ export default function ReciterProfileScreen() {
       );
     } finally {
       setIsLoadingAudio(false);
+    }
+  };
+
+  // Skip to next surah
+  const handleNextSurah = () => {
+    if (currentSurahId && currentSurahId < 114) {
+      handlePlaySurah(currentSurahId + 1);
+    }
+  };
+
+  // Skip to previous surah
+  const handlePrevSurah = () => {
+    if (currentSurahId && currentSurahId > 1) {
+      handlePlaySurah(currentSurahId - 1);
+    }
+  };
+
+  // Seek / Scrub to a target position in milliseconds
+  const handleSeek = async (millis: number) => {
+    if (soundRef.current) {
+      try {
+        await soundRef.current.setPositionAsync(millis);
+        setPositionMillis(millis);
+      } catch (err) {
+        console.warn('Error seeking:', err);
+      }
+    }
+  };
+
+  // Change playback speed rate
+  const handleSpeedChange = async (speed: number) => {
+    setCurrentSpeed(speed);
+    if (soundRef.current) {
+      try {
+        await soundRef.current.setRateAsync(speed, true);
+      } catch (err) {
+        console.warn('Error setting rate:', err);
+      }
     }
   };
 
@@ -192,6 +243,9 @@ export default function ReciterProfileScreen() {
     setCurrentSurahId(null);
     setIsPlaying(false);
     setPlaybackProgress(0);
+    setPositionMillis(0);
+    setDurationMillis(0);
+    setIsPlayerModalVisible(false);
   };
 
   // Header component with Spotify Cover, Reciter Info, Big Play Button, and Table Columns Header
@@ -248,7 +302,10 @@ export default function ReciterProfileScreen() {
       <TouchableOpacity
         style={[styles.trackRow, isCurrentPlaying && styles.trackRowActive]}
         activeOpacity={0.75}
-        onPress={() => handlePlaySurah(item.id)}
+        onPress={() => {
+          handlePlaySurah(item.id);
+          setIsPlayerModalVisible(true);
+        }}
       >
         {/* Column 4: Verses Count */}
         <Text style={[styles.colVersesText, isCurrentPlaying && styles.textActive]}>
@@ -351,13 +408,17 @@ export default function ReciterProfileScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Surah & Reciter Details in Center */}
-            <View style={styles.miniPlayerInfo}>
+            {/* Surah & Reciter Details in Center - Tapping opens full player modal */}
+            <TouchableOpacity
+              style={styles.miniPlayerInfo}
+              activeOpacity={0.8}
+              onPress={() => setIsPlayerModalVisible(true)}
+            >
               <Text style={styles.miniPlayerSurahTitle}>
                 سورة {currentSurah.name_arabic} ({currentSurah.name_simple})
               </Text>
               <Text style={styles.miniPlayerReciterSubtitle}>{reciter.name}</Text>
-            </View>
+            </TouchableOpacity>
 
             {/* Close / Dismiss on the Right */}
             <TouchableOpacity style={styles.miniPlayerCloseBtn} onPress={handleStopPlaying}>
@@ -366,6 +427,24 @@ export default function ReciterProfileScreen() {
           </View>
         </View>
       )}
+
+      {/* FULL-SCREEN SPOTIFY / IOS PLAYER MODAL (Matching Screenshot) */}
+      <AudioPlayerModal
+        visible={isPlayerModalVisible}
+        onClose={() => setIsPlayerModalVisible(false)}
+        surah={currentSurah || null}
+        reciter={reciter}
+        isPlaying={isPlaying}
+        isLoadingAudio={isLoadingAudio}
+        positionMillis={positionMillis}
+        durationMillis={durationMillis}
+        onTogglePlay={handleToggleMasterPlay}
+        onNext={handleNextSurah}
+        onPrev={handlePrevSurah}
+        onSeek={handleSeek}
+        currentSpeed={currentSpeed}
+        onSpeedChange={handleSpeedChange}
+      />
     </SafeAreaView>
   );
 }
