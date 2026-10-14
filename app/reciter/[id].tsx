@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
-  Animated,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,11 +36,11 @@ export default function ReciterProfileScreen() {
     server?: string;
   }>();
 
-  // Find reciter info from params or static/cached list
+  // Find reciter info
   const reciter = useMemoReciter(params);
 
-  // Audio Playback State
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  // Audio Playback Ref and States
+  const soundRef = useRef<Audio.Sound | null>(null);
   const [currentSurahId, setCurrentSurahId] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
@@ -49,82 +49,124 @@ export default function ReciterProfileScreen() {
   // Unload sound when unmounting
   useEffect(() => {
     return () => {
-      if (sound) {
-        sound.unloadAsync().catch(() => {});
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
       }
     };
-  }, [sound]);
+  }, []);
+
+  // Compute clean, direct CDN URL for a surah
+  const getAudioUrl = (surahId: number): string => {
+    let base = reciter.server;
+
+    // Fallback if missing or pointing to legacy redirect server
+    if (
+      !base ||
+      base.includes('server6.mp3quran.net') ||
+      base.includes('server8.mp3quran.net') ||
+      base.includes('server10.mp3quran.net') ||
+      base.includes('server12.mp3quran.net')
+    ) {
+      const found = RECITERS_DATA.find((r) => r.id === reciter.id || r.name === reciter.name);
+      if (found?.server) {
+        base = found.server;
+      }
+    }
+
+    if (!base) {
+      base = 'https://cdn.mp3quran.net/audio/ibrahim-akhdar/r1/';
+    }
+
+    // Ensure https and trailing slash
+    base = base.replace('http://', 'https://');
+    const cleanBase = base.endsWith('/') ? base : `${base}/`;
+    const padded = String(surahId).padStart(3, '0');
+    return `${cleanBase}${padded}.mp3`;
+  };
 
   // Audio toggle for a specific surah
   const handlePlaySurah = async (surahId: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     // If currently playing this exact surah, toggle play/pause
-    if (currentSurahId === surahId && sound) {
-      if (isPlaying) {
-        await sound.pauseAsync();
-        setIsPlaying(false);
-      } else {
-        await sound.playAsync();
-        setIsPlaying(true);
+    if (currentSurahId === surahId && soundRef.current) {
+      try {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          if (status.isPlaying) {
+            await soundRef.current.pauseAsync();
+            setIsPlaying(false);
+          } else {
+            await soundRef.current.playAsync();
+            setIsPlaying(true);
+          }
+          return;
+        }
+      } catch (err) {
+        console.warn('Error toggling play/pause:', err);
       }
-      return;
     }
 
     // Stop and unload existing sound
-    if (sound) {
+    if (soundRef.current) {
       try {
-        await sound.stopAsync();
-        await sound.unloadAsync();
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
       } catch {}
-      setSound(null);
+      soundRef.current = null;
     }
 
-    // Get server base URL
-    const serverUrl = reciter.server || 'https://server6.mp3quran.net/akdr/';
-    const paddedNum = String(surahId).padStart(3, '0');
-    const audioUri = `${serverUrl.endsWith('/') ? serverUrl : serverUrl + '/'}${paddedNum}.mp3`;
-
+    const audioUri = getAudioUrl(surahId);
     setCurrentSurahId(surahId);
     setIsLoadingAudio(true);
     setIsPlaying(false);
+    setPlaybackProgress(0);
 
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-      });
+      // Safe audio mode setup
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (modeErr) {
+        // Non-fatal on web/older android
+      }
 
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: audioUri },
-        { shouldPlay: true },
-        onPlaybackStatusUpdate
+        { shouldPlay: true, progressUpdateIntervalMillis: 400 },
+        (status) => {
+          if (status.isLoaded) {
+            setIsPlaying(status.isPlaying);
+            if (status.durationMillis && status.positionMillis) {
+              setPlaybackProgress(status.positionMillis / status.durationMillis);
+            }
+            if (status.didJustFinish) {
+              setIsPlaying(false);
+              setPlaybackProgress(0);
+            }
+          } else if (status.error) {
+            console.warn(`Playback error for ${audioUri}:`, status.error);
+            setIsPlaying(false);
+          }
+        }
       );
 
-      setSound(newSound);
+      soundRef.current = newSound;
+      await newSound.playAsync();
       setIsPlaying(true);
-    } catch (err) {
-      console.warn('Failed to play audio:', err);
+    } catch (err: any) {
+      console.warn('Failed to load/play audio:', audioUri, err);
       setIsPlaying(false);
+      Alert.alert(
+        'تعذر تشغيل الصوت',
+        'يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.'
+      );
     } finally {
       setIsLoadingAudio(false);
-    }
-  };
-
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded) {
-      setIsPlaying(status.isPlaying);
-      if (status.durationMillis && status.positionMillis) {
-        setPlaybackProgress(status.positionMillis / status.durationMillis);
-      }
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        setPlaybackProgress(0);
-      }
-    } else if (status.error) {
-      console.warn(`Playback Error: ${status.error}`);
-      setIsPlaying(false);
     }
   };
 
@@ -140,13 +182,13 @@ export default function ReciterProfileScreen() {
 
   // Stop mini-player
   const handleStopPlaying = async () => {
-    if (sound) {
+    if (soundRef.current) {
       try {
-        await sound.stopAsync();
-        await sound.unloadAsync();
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
       } catch {}
+      soundRef.current = null;
     }
-    setSound(null);
     setCurrentSurahId(null);
     setIsPlaying(false);
     setPlaybackProgress(0);
@@ -250,7 +292,7 @@ export default function ReciterProfileScreen() {
 
       {/* TOP NAVIGATION BAR */}
       <View style={styles.topNavBar}>
-        <View style={{ width: 44 }} />
+        <View style={{ width: 40 }} />
 
         {/* Right: Circular Back Button */}
         <TouchableOpacity
@@ -336,29 +378,23 @@ function useMemoReciter(params: {
   server?: string;
 }) {
   const [reciter, setReciter] = useState<Reciter>(() => {
-    const found = RECITERS_DATA.find((r) => r.id === params.id);
+    const found = RECITERS_DATA.find((r) => r.id === params.id || r.name === params.name);
     return {
-      id: params.id || '1',
+      id: params.id || found?.id || '1',
       name: params.name || found?.name || 'إبراهيم الأخضر',
       rewaya: params.rewaya || found?.rewaya || 'حفص عن عاصم - مرتل',
-      server: params.server || found?.server || 'https://server6.mp3quran.net/akdr/',
+      server: params.server || found?.server || 'https://cdn.mp3quran.net/audio/ibrahim-akhdar/r1/',
     };
   });
 
   useEffect(() => {
-    if (params.name) {
-      setReciter({
-        id: params.id || '1',
-        name: params.name,
-        rewaya: params.rewaya || 'حفص عن عاصم - مرتل',
-        server: params.server || 'https://server6.mp3quran.net/akdr/',
-      });
-    } else {
-      const found = RECITERS_DATA.find((r) => r.id === params.id);
-      if (found) {
-        setReciter(found);
-      }
-    }
+    const found = RECITERS_DATA.find((r) => r.id === params.id || r.name === params.name);
+    setReciter({
+      id: params.id || found?.id || '1',
+      name: params.name || found?.name || 'إبراهيم الأخضر',
+      rewaya: params.rewaya || found?.rewaya || 'حفص عن عاصم - مرتل',
+      server: params.server || found?.server || 'https://cdn.mp3quran.net/audio/ibrahim-akhdar/r1/',
+    });
   }, [params.id, params.name, params.rewaya, params.server]);
 
   return reciter;

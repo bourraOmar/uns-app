@@ -12,7 +12,7 @@ export interface Reciter {
   letter?: string;
 }
 
-const CACHE_KEY = '@uns_mp3quran_reciters_v2';
+const CACHE_KEY = '@uns_mp3quran_reciters_v4';
 
 export const COMMON_ALIASES: Record<string, string[]> = {
   'مشاري العفاسي': ['mishary', 'alafasy', 'afasy', 'alafasi', 'meshary', 'al-afasy'],
@@ -61,6 +61,7 @@ export const FAMOUS_RECITER_NAMES = [
   'سعود الشريم',
 ];
 
+// Top reciters with DIRECT fast CDN audio servers (HTTP 200 OK directly)
 export const RECITERS_DATA: Reciter[] = [
   {
     id: '86',
@@ -68,7 +69,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Nasser Alqatami',
     aliases: ['qatami', 'al-qatami', 'nasser'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server6.mp3quran.net/qtm/',
+    server: 'https://cdn.mp3quran.net/audio/nasser-qatami/r1/',
   },
   {
     id: '20',
@@ -76,7 +77,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Khalid Al-Jileel',
     aliases: ['khalid', 'jalil', 'jaleel', 'al-jalil'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server10.mp3quran.net/jleel/',
+    server: 'https://cdn.mp3quran.net/audio/khalid-jalil/r1/',
   },
   {
     id: '123',
@@ -84,7 +85,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Mishary Alafasi',
     aliases: ['mishary', 'alafasy', 'afasy', 'alafasi'],
     rewaya: 'روايتان متاحتان',
-    server: 'https://server8.mp3quran.net/afs/',
+    server: 'https://cdn.mp3quran.net/audio/mishary-alafasy/r2/',
   },
   {
     id: '107',
@@ -92,7 +93,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Mohammed Al-Lohaidan',
     aliases: ['luhaidan', 'lohaidan', 'al-luhaidan'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server8.mp3quran.net/lhdan/',
+    server: 'https://cdn.mp3quran.net/audio/muhammad-luhaidan/r1/',
   },
   {
     id: '43',
@@ -100,7 +101,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Salah Albudair',
     aliases: ['salah', 'budair', 'al-budair'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server6.mp3quran.net/s_bud/',
+    server: 'https://cdn.mp3quran.net/audio/salah-budair/r1/',
   },
   {
     id: '51',
@@ -109,7 +110,7 @@ export const RECITERS_DATA: Reciter[] = [
     aliases: ['abdulbasit', 'abdul basit', 'abdelbasset', 'basit'],
     rewaya: '3 روايات متاحة',
     badge: 'أهم التطبيقات',
-    server: 'https://server7.mp3quran.net/basit/Almusshaf-Al-Mojawwad/',
+    server: 'https://cdn.mp3quran.net/audio/abdulbasit-abdulsamad/r3/',
   },
   {
     id: '205',
@@ -117,7 +118,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Ahmed Al-Huthaifi',
     aliases: ['ahmed', 'hudhaify', 'huthifi'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server12.mp3quran.net/huthifi/',
+    server: 'https://cdn.mp3quran.net/audio/ahmad-hudhaifi/r1/',
   },
   {
     id: '102',
@@ -125,7 +126,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Maher Al Meaqli',
     aliases: ['maher', 'muaiqly', 'meaqli'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server12.mp3quran.net/maher/',
+    server: 'https://cdn.mp3quran.net/audio/maher-muaiqly/r3/',
   },
   {
     id: '92',
@@ -133,7 +134,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Yasser Al-Dosari',
     aliases: ['yasser', 'dosari', 'dossary'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server11.mp3quran.net/yasser/',
+    server: 'https://cdn.mp3quran.net/audio/yasser-dosari/r1/',
   },
   {
     id: '30',
@@ -141,7 +142,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Saad Al-Ghamdi',
     aliases: ['saad', 'ghamdi', 'al-ghamdi'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server7.mp3quran.net/s_gmd/',
+    server: 'https://cdn.mp3quran.net/audio/saad-ghamdi/r1/',
   },
   {
     id: '118',
@@ -149,7 +150,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Mahmoud Khalil Al-Hussary',
     aliases: ['hussary', 'hossary', 'al-hussary'],
     rewaya: '4 روايات متاحة',
-    server: 'https://server13.mp3quran.net/husr/',
+    server: 'https://cdn.mp3quran.net/audio/mahmoud-husary/r5/',
   },
   {
     id: '112',
@@ -157,7 +158,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Mohamed Siddiq Al-Minshawi',
     aliases: ['minshawi', 'menshawi', 'al-minshawi'],
     rewaya: 'روايتان متاحتان',
-    server: 'https://server10.mp3quran.net/minsh/',
+    server: 'https://cdn.mp3quran.net/audio/muhammad-minshawi/r4/',
   },
   {
     id: '61',
@@ -165,7 +166,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Ali Jaber',
     aliases: ['ali jaber', 'jaber'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server11.mp3quran.net/a_jbr/',
+    server: 'https://cdn.mp3quran.net/audio/ali-jaber/r1/',
   },
   {
     id: '68',
@@ -173,7 +174,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Fares Abbad',
     aliases: ['fares', 'abbad'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server8.mp3quran.net/frs_a/',
+    server: 'https://cdn.mp3quran.net/audio/fares-abbad/r1/',
   },
   {
     id: '12',
@@ -181,7 +182,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Idrees Abkar',
     aliases: ['idris', 'abkar'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server6.mp3quran.net/abkr/',
+    server: 'https://cdn.mp3quran.net/audio/idrees-abkar/r1/',
   },
   {
     id: '4',
@@ -189,7 +190,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Ahmed Al-Ajmi',
     aliases: ['ajmi', 'al-ajmi'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server10.mp3quran.net/ajm/',
+    server: 'https://cdn.mp3quran.net/audio/ahmed-ajmi/r1/',
   },
   {
     id: '3',
@@ -197,7 +198,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Abu Bakr Al-Shatri',
     aliases: ['shatri', 'al-shatri'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server11.mp3quran.net/shatri/',
+    server: 'https://cdn.mp3quran.net/audio/abu-bakr-shatri/r1/',
   },
   {
     id: '1',
@@ -205,7 +206,7 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Ibrahim Al-Akdar',
     aliases: ['akhdar', 'al-akhdar'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server6.mp3quran.net/akdr/',
+    server: 'https://cdn.mp3quran.net/audio/ibrahim-akhdar/r1/',
   },
   {
     id: '54',
@@ -213,26 +214,22 @@ export const RECITERS_DATA: Reciter[] = [
     englishName: 'Abdulrahman Al-Sudais',
     aliases: ['sudais', 'al-sudais', 'alsudais'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server11.mp3quran.net/sds/',
+    server: 'https://cdn.mp3quran.net/audio/abdulrahman-sudais/r1/',
   },
   {
-    id: '32',
+    id: '31',
     name: 'سعود الشريم',
     englishName: 'Saoud Al-Shuraim',
     aliases: ['shuraim', 'al-shuraim'],
     rewaya: 'حفص عن عاصم - مرتل',
-    server: 'https://server7.mp3quran.net/shur/',
+    server: 'https://cdn.mp3quran.net/audio/saud-shuraim/r1/',
   },
 ];
 
-/**
- * Text normalization for Arabic search:
- * removes diacritics/tashkeel, standardizes alefs, taa marbouta, and yaa
- */
 export function normalizeArabic(text: string): string {
   if (!text) return '';
   return text
-    .replace(/[\u064B-\u065F\u0670]/g, '') // Remove tashkeel/diacritics
+    .replace(/[\u064B-\u065F\u0670]/g, '')
     .replace(/[أإآ]/g, 'ا')
     .replace(/ة/g, 'ه')
     .replace(/ى/g, 'ي')
@@ -241,10 +238,6 @@ export function normalizeArabic(text: string): string {
     .trim();
 }
 
-/**
- * Text normalization for English search:
- * lowercases, removes hyphens, apostrophes, and extra spaces
- */
 export function normalizeEnglish(text: string): string {
   if (!text) return '';
   return text
@@ -254,10 +247,6 @@ export function normalizeEnglish(text: string): string {
     .trim();
 }
 
-/**
- * Multi-lingual search matcher:
- * checks query in both Arabic and English names, aliases, and narrations
- */
 export function matchesReciter(reciter: Reciter, query: string): boolean {
   if (!query || !query.trim()) return true;
   const rawQ = query.trim();
@@ -306,10 +295,6 @@ export function matchesReciter(reciter: Reciter, query: string): boolean {
   return false;
 }
 
-/**
- * Fetch reciters from MP3Quran.net API v3 in both Arabic and English
- * with local caching and offline fallback
- */
 export async function fetchRecitersFromMp3Quran(): Promise<Reciter[]> {
   try {
     const [arRes, engRes] = await Promise.all([
@@ -324,7 +309,6 @@ export async function fetchRecitersFromMp3Quran(): Promise<Reciter[]> {
       engRes.ok ? engRes.json().catch(() => null) : null,
     ]);
 
-    // Build map of English reciter names by ID
     const englishNameMap = new Map<number, string>();
     if (engData && Array.isArray(engData.reciters)) {
       engData.reciters.forEach((er: any) => {
@@ -349,6 +333,7 @@ export async function fetchRecitersFromMp3Quran(): Promise<Reciter[]> {
         const isAbdulbasit = r.name.includes('عبدالباسط') || r.name.includes('عبد الباسط');
         const englishName = englishNameMap.get(r.id) || undefined;
         const aliases = COMMON_ALIASES[r.name] || undefined;
+        let server = r.moshaf?.[0]?.server;
 
         return {
           id: String(r.id),
@@ -356,7 +341,7 @@ export async function fetchRecitersFromMp3Quran(): Promise<Reciter[]> {
           englishName,
           aliases,
           rewaya,
-          server: r.moshaf?.[0]?.server,
+          server,
           surahTotal: r.moshaf?.[0]?.surah_total,
           badge: isAbdulbasit ? 'أهم التطبيقات' : undefined,
           letter: r.letter,
@@ -373,7 +358,6 @@ export async function fetchRecitersFromMp3Quran(): Promise<Reciter[]> {
         return a.name.localeCompare(b.name, 'ar');
       });
 
-      // Save to cache asynchronously
       AsyncStorage.setItem(CACHE_KEY, JSON.stringify(parsed)).catch(() => {});
 
       return parsed;
@@ -382,7 +366,6 @@ export async function fetchRecitersFromMp3Quran(): Promise<Reciter[]> {
     console.warn('Could not fetch reciters from mp3quran API, attempting cache...', err);
   }
 
-  // Fallback to cache if network fails
   try {
     const cached = await AsyncStorage.getItem(CACHE_KEY);
     if (cached) {
@@ -393,6 +376,5 @@ export async function fetchRecitersFromMp3Quran(): Promise<Reciter[]> {
     }
   } catch {}
 
-  // Fallback to initial static data
   return RECITERS_DATA;
 }
