@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,14 +6,94 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
+  Pressable,
   SafeAreaView,
   StatusBar,
   Image,
   ScrollView,
+  Animated,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Svg, { Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import surahsData from '../../data/surahs.json';
+
+// --- CUSTOM SVG ICONS MATCHING SCREENSHOT EXACTLY ---
+
+// 1. Square Open Book Icon (Used for Mushaf both in circle button and menu pill)
+function MushafSquareBookIcon({ size = 22, color = '#f8fafc' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Left Page (Square Profile with Top/Bottom/Left borders) */}
+      <Path
+        d="M4 6.5H10.5C11.5 6.5 12 7.2 12 8V18.5C11.5 17.8 10.5 17.2 9.5 17.2H4V6.5Z"
+        stroke={color}
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      {/* Right Page (Square Profile with Top/Bottom/Right borders) */}
+      <Path
+        d="M20 6.5H13.5C12.5 6.5 12 7.2 12 8V18.5C12.5 17.8 13.5 17.2 14.5 17.2H20V6.5Z"
+        stroke={color}
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+// 2. Open Book with Radiating Rays Icon (Used for المُشغّل / Player)
+function PlayerBookRaysIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* 3 Radiating Light Rays */}
+      <Path d="M12 2.5V5.5" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+      <Path d="M6 4.5L8.5 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+      <Path d="M18 4.5L15.5 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+      {/* Open Book */}
+      <Path
+        d="M4.5 10.5H10.5C11.5 10.5 12 11.2 12 12V19.5C11.5 18.8 10.5 18.3 9.5 18.3H4.5V10.5Z"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M19.5 10.5H13.5C12.5 10.5 12 11.2 12 12V19.5C12.5 18.8 13.5 18.3 14.5 18.3H19.5V10.5Z"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+// 3. Mosque / Gate Facade Icon (Used for الخدمات / Services)
+function ServicesMosqueIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Outer Arch */}
+      <Path
+        d="M4 21V12C4 10 6 7 12 7C18 7 20 10 20 12V21"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Inner Door Arch */}
+      <Path
+        d="M8.5 21V15C8.5 13.5 10 12.5 12 12.5C14 12.5 15.5 13.5 15.5 15V21"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      {/* Spire / Dome Finial */}
+      <Path d="M12 3V7" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      {/* Ground Base */}
+      <Path d="M2.5 21H21.5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </Svg>
+  );
+}
 
 interface SurahItem {
   id: number;
@@ -69,6 +149,27 @@ export default function QuranScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeJuz, setActiveJuz] = useState<number | null>(null);
+
+  // Floating Menu Bar state & animation
+  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
+  const menuAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (showFloatingMenu) {
+      Animated.spring(menuAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 65,
+      }).start();
+    } else {
+      Animated.timing(menuAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showFloatingMenu]);
 
   // Filtered Surahs based on search query
   const filteredSurahs = useMemo(() => {
@@ -305,23 +406,136 @@ export default function QuranScreen() {
         />
       </View>
 
-      {/* FLOATING ACTION BUTTONS AT BOTTOM */}
-      <View style={styles.floatingActionsContainer} pointerEvents="box-none">
-        {/* Floating Search Action (Bottom Left) */}
-        <TouchableOpacity
-          style={styles.floatingSearchButton}
-          activeOpacity={0.85}
-          onPress={() => setShowSearch(!showSearch)}
-        >
-          <Ionicons name="search" size={20} color="#34d399" />
-        </TouchableOpacity>
+      {/* FLOATING ACTIONS / MENU AT BOTTOM */}
+      {showFloatingMenu ? (
+        <>
+          {/* Backdrop to dismiss menu when tapping outside */}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowFloatingMenu(false)}
+          />
 
-        {/* Floating Mushaf Reader Action (Bottom Right) */}
-        <TouchableOpacity style={styles.floatingMushafButton} activeOpacity={0.85}>
-          <Text style={styles.floatingMushafText}>المصحف</Text>
-          <Ionicons name="book" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
-        </TouchableOpacity>
-      </View>
+          {/* Expanded Floating Menu Bar matching screenshot */}
+          <Animated.View
+            style={[
+              styles.floatingMenuBar,
+              {
+                opacity: menuAnim,
+                transform: [
+                  {
+                    scale: menuAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.88, 1],
+                    }),
+                  },
+                  {
+                    translateY: menuAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [15, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {/* 1. الخدمات (Services / Duas / Qibla - Far Left) */}
+            <TouchableOpacity
+              style={styles.floatingMenuItem}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowFloatingMenu(false);
+                router.push('/duas' as any);
+              }}
+              activeOpacity={0.7}
+            >
+              <ServicesMosqueIcon size={21} color="#cbd5e1" />
+              <Text style={styles.floatingMenuItemText}>الخدمات</Text>
+            </TouchableOpacity>
+
+            {/* 2. الأذكار (Adhkar / Quotes) */}
+            <TouchableOpacity
+              style={styles.floatingMenuItem}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowFloatingMenu(false);
+                router.push('/adhkar' as any);
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="format-quote-close" size={22} color="#cbd5e1" />
+              <Text style={styles.floatingMenuItemText}>الأذكار</Text>
+            </TouchableOpacity>
+
+            {/* 3. المصحف (Active Tab with highlighted oval capsule) */}
+            <TouchableOpacity
+              style={styles.floatingMenuItemActivePill}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowFloatingMenu(false);
+              }}
+              activeOpacity={0.8}
+            >
+              <MushafSquareBookIcon size={21} color="#ffffff" />
+              <Text style={styles.floatingMenuItemActiveText}>المصحف</Text>
+            </TouchableOpacity>
+
+            {/* 4. المُشغّل (Player / Reciters) */}
+            <TouchableOpacity
+              style={styles.floatingMenuItem}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowFloatingMenu(false);
+                router.push('/reciters' as any);
+              }}
+              activeOpacity={0.7}
+            >
+              <PlayerBookRaysIcon size={21} color="#cbd5e1" />
+              <Text style={styles.floatingMenuItemText}>المُشغّل</Text>
+            </TouchableOpacity>
+
+            {/* 5. الرئيسية (Home - Far Right) */}
+            <TouchableOpacity
+              style={styles.floatingMenuItem}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowFloatingMenu(false);
+                router.replace('/');
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="home-outline" size={20} color="#cbd5e1" />
+              <Text style={styles.floatingMenuItemText}>الرئيسية</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </>
+      ) : (
+        /* Collapsed Floating Circular Buttons (Search on Left, Book on Right) matching screenshot */
+        <View style={styles.floatingActionsContainer} pointerEvents="box-none">
+          {/* Floating Search Button (Bottom Left) */}
+          <TouchableOpacity
+            style={styles.floatingCircleButton}
+            activeOpacity={0.85}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowSearch(!showSearch);
+            }}
+          >
+            <Ionicons name="search" size={22} color="#f8fafc" />
+          </TouchableOpacity>
+
+          {/* Floating Book Button (Bottom Right) -> Toggles Floating Menu Bar */}
+          <TouchableOpacity
+            style={styles.floatingCircleButton}
+            activeOpacity={0.85}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowFloatingMenu(true);
+            }}
+          >
+            <MushafSquareBookIcon size={22} color="#f8fafc" />
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -540,7 +754,7 @@ const styles = StyleSheet.create({
   surahListContent: {
     paddingLeft: 12,
     paddingRight: 16,
-    paddingBottom: 90,
+    paddingBottom: 96,
   },
 
   /* SURAH CARD */
@@ -636,7 +850,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  /* FLOATING ACTIONS AT BOTTOM */
+  /* FLOATING CIRCULAR BUTTONS (Collapsed State) */
   floatingActionsContainer: {
     position: 'absolute',
     bottom: 24,
@@ -646,37 +860,71 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  floatingSearchButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#1e293b',
-    borderWidth: 1.5,
-    borderColor: '#34d399',
+  floatingCircleButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(30, 41, 59, 0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 6,
-    elevation: 5,
-  },
-  floatingMushafButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0f8e5d',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    height: 48,
-    shadowColor: '#0f8e5d',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
     elevation: 6,
   },
-  floatingMushafText: {
+
+  /* FLOATING MENU BAR (Expanded State) */
+  floatingMenuBar: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(26, 38, 30, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  floatingMenuItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    minWidth: 54,
+    gap: 3,
+  },
+  floatingMenuItemText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#cbd5e1',
+  },
+  floatingMenuItemActivePill: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 142, 93, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.35)',
+    borderRadius: 22,
+    paddingVertical: 5,
+    paddingHorizontal: 16,
+    minWidth: 70,
+    gap: 2,
+  },
+  floatingMenuItemActiveText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 11,
     color: '#ffffff',
   },
 });
