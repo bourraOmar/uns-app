@@ -15,66 +15,59 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import Svg, { Circle, Path } from 'react-native-svg';
-
-// Custom icons matching user design exactly
-function TasbihBeadsIcon({ size = 20, color = '#ffffff' }: { size?: number; color?: string }) {
-  const radius = 6.5;
-  const center = 10;
-  const count = 12;
+// Custom icons using pure React Native components (no external SVG dependency)
+function TasbihBeadsIcon({ size = 22, color = '#ffffff' }: { size?: number; color?: string }) {
+  const radius = (size - 6) / 2;
+  const center = size / 2;
+  const count = 10;
   const beads = [];
   for (let i = 0; i < count; i++) {
     const angle = (i * 2 * Math.PI) / count - Math.PI / 2;
-    const cx = center + radius * Math.cos(angle);
-    const cy = center + radius * Math.sin(angle);
-    beads.push(<Circle key={i} cx={cx} cy={cy} r={1.25} fill="none" stroke={color} strokeWidth={1.2} />);
+    const left = center + radius * Math.cos(angle) - 1.5;
+    const top = center + radius * Math.sin(angle) - 1.5;
+    beads.push(
+      <View
+        key={i}
+        style={{
+          position: 'absolute',
+          left,
+          top,
+          width: 3.5,
+          height: 3.5,
+          borderRadius: 2,
+          borderWidth: 1,
+          borderColor: color,
+          backgroundColor: 'transparent',
+        }}
+      />
+    );
   }
   return (
-    <Svg width={size} height={size} viewBox="0 0 22 22">
+    <View style={{ width: size, height: size, position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
       {beads}
-      <Path
-        d="M 10 16.5 L 10 18.5 M 8.5 21 L 10 18.5 L 11.5 21"
-        stroke={color}
-        strokeWidth={1.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          width: 1.5,
+          height: 4.5,
+          backgroundColor: color,
+          borderRadius: 0.75,
+        }}
       />
-    </Svg>
+    </View>
   );
 }
 
 function QuranStandIcon({ size = 20, color = '#483852' }: { size?: number; color?: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 6C9.5 4.5 5 4.5 2 6.5V16C5 14 9.5 14 12 15.5C14.5 14 19 14 22 16V6.5C19 4.5 14.5 4.5 12 6Z"
-        stroke={color}
-        strokeWidth={1.7}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path d="M12 6V15.5" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-      <Path
-        d="M5 18L19 22M19 18L5 22"
-        stroke={color}
-        strokeWidth={1.7}
-        strokeLinecap="round"
-      />
-    </Svg>
+    <MaterialCommunityIcons name="book-open-page-variant-outline" size={size} color={color} />
   );
 }
 
 function MorningSunIcon({ size = 20, color = '#483852' }: { size?: number; color?: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="4.5" stroke={color} strokeWidth={1.7} />
-      <Path
-        d="M12 2V5M12 19V22M2 12H5M19 12H22M4.93 4.93L7.05 7.05M16.95 16.95L19.07 19.07M4.93 19.07L7.05 16.95M16.95 7.05L19.07 4.93"
-        stroke={color}
-        strokeWidth={1.7}
-        strokeLinecap="round"
-      />
-    </Svg>
+    <Ionicons name="sunny-outline" size={size} color={color} />
   );
 }
 
