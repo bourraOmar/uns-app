@@ -1,7 +1,7 @@
-import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 
@@ -117,7 +117,11 @@ function FloatingTabBar({ state, navigation }: any) {
 
   return (
     <View style={styles.floatingBarContainer} pointerEvents="box-none">
-      <View style={styles.floatingMenuBar}>
+      <BlurView
+        intensity={Platform.OS === 'ios' ? 75 : 90}
+        tint="dark"
+        style={styles.floatingMenuBar}
+      >
         {TAB_ITEMS.map((item) => {
           const isFocused = currentRoute?.name === item.name;
 
@@ -154,7 +158,7 @@ function FloatingTabBar({ state, navigation }: any) {
             </TouchableOpacity>
           );
         })}
-      </View>
+      </BlurView>
     </View>
   );
 }
@@ -185,23 +189,25 @@ const styles = StyleSheet.create({
     right: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    elevation: 12,
   },
   floatingMenuBar: {
     width: '100%',
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(30, 41, 59, 0.96)',
+    overflow: 'hidden',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.55)' : 'rgba(30, 41, 59, 0.85)',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderTopColor: 'rgba(255, 255, 255, 0.28)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 10,
   },
   floatingMenuItem: {
     alignItems: 'center',

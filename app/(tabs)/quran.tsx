@@ -12,8 +12,10 @@ import {
   Image,
   ScrollView,
   Animated,
+  Platform,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
@@ -581,10 +583,10 @@ export default function QuranScreen() {
             onPress={() => setShowFloatingMenu(false)}
           />
 
-          {/* Expanded Floating Menu Bar matching screenshot */}
+          {/* Expanded Floating Menu Bar matching screenshot with iOS glass effect */}
           <Animated.View
             style={[
-              styles.floatingMenuBar,
+              styles.floatingMenuAnimContainer,
               {
                 opacity: menuAnim,
                 transform: [
@@ -604,74 +606,80 @@ export default function QuranScreen() {
               },
             ]}
           >
-            {/* 1. الخدمات (Services / Duas / Qibla - Far Left) */}
-            <TouchableOpacity
-              style={styles.floatingMenuItem}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowFloatingMenu(false);
-                router.push('/duas' as any);
-              }}
-              activeOpacity={0.7}
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 75 : 90}
+              tint="dark"
+              style={styles.floatingMenuBar}
             >
-              <ServicesMosqueIcon size={21} color="#8ba7c0" />
-              <Text style={styles.floatingMenuItemText}>الخدمات</Text>
-            </TouchableOpacity>
+              {/* 1. الخدمات (Services / Duas / Qibla - Far Left) */}
+              <TouchableOpacity
+                style={styles.floatingMenuItem}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowFloatingMenu(false);
+                  router.push('/duas' as any);
+                }}
+                activeOpacity={0.7}
+              >
+                <ServicesMosqueIcon size={21} color="#8ba7c0" />
+                <Text style={styles.floatingMenuItemText}>الخدمات</Text>
+              </TouchableOpacity>
 
-            {/* 2. الأذكار (Adhkar / Quotes) */}
-            <TouchableOpacity
-              style={styles.floatingMenuItem}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowFloatingMenu(false);
-                router.push('/adhkar' as any);
-              }}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name="format-quote-close" size={22} color="#8ba7c0" />
-              <Text style={styles.floatingMenuItemText}>الأذكار</Text>
-            </TouchableOpacity>
+              {/* 2. الأذكار (Adhkar / Quotes) */}
+              <TouchableOpacity
+                style={styles.floatingMenuItem}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowFloatingMenu(false);
+                  router.push('/adhkar' as any);
+                }}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="format-quote-close" size={22} color="#8ba7c0" />
+                <Text style={styles.floatingMenuItemText}>الأذكار</Text>
+              </TouchableOpacity>
 
-            {/* 3. المصحف (Active Tab with highlighted oval capsule) */}
-            <TouchableOpacity
-              style={styles.floatingMenuItemActivePill}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowFloatingMenu(false);
-              }}
-              activeOpacity={0.8}
-            >
-              <MushafSquareBookIcon size={21} color="#34d399" />
-              <Text style={styles.floatingMenuItemActiveText}>المصحف</Text>
-            </TouchableOpacity>
+              {/* 3. المصحف (Active Tab with highlighted oval capsule) */}
+              <TouchableOpacity
+                style={styles.floatingMenuItemActivePill}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowFloatingMenu(false);
+                }}
+                activeOpacity={0.8}
+              >
+                <MushafSquareBookIcon size={21} color="#34d399" />
+                <Text style={styles.floatingMenuItemActiveText}>المصحف</Text>
+              </TouchableOpacity>
 
-            {/* 4. المُشغّل (Player / Reciters) */}
-            <TouchableOpacity
-              style={styles.floatingMenuItem}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowFloatingMenu(false);
-                router.push('/reciters' as any);
-              }}
-              activeOpacity={0.7}
-            >
-              <PlayerBookRaysIcon size={21} color="#8ba7c0" />
-              <Text style={styles.floatingMenuItemText}>المُشغّل</Text>
-            </TouchableOpacity>
+              {/* 4. المُشغّل (Player / Reciters) */}
+              <TouchableOpacity
+                style={styles.floatingMenuItem}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowFloatingMenu(false);
+                  router.push('/reciters' as any);
+                }}
+                activeOpacity={0.7}
+              >
+                <PlayerBookRaysIcon size={21} color="#8ba7c0" />
+                <Text style={styles.floatingMenuItemText}>المُشغّل</Text>
+              </TouchableOpacity>
 
-            {/* 5. الرئيسية (Home - Far Right) */}
-            <TouchableOpacity
-              style={styles.floatingMenuItem}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowFloatingMenu(false);
-                router.replace('/');
-              }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="home-outline" size={20} color="#8ba7c0" />
-              <Text style={styles.floatingMenuItemText}>الرئيسية</Text>
-            </TouchableOpacity>
+              {/* 5. الرئيسية (Home - Far Right) */}
+              <TouchableOpacity
+                style={styles.floatingMenuItem}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowFloatingMenu(false);
+                  router.replace('/');
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="home-outline" size={20} color="#8ba7c0" />
+                <Text style={styles.floatingMenuItemText}>الرئيسية</Text>
+              </TouchableOpacity>
+            </BlurView>
           </Animated.View>
         </>
       ) : (
@@ -1176,26 +1184,31 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
 
-  /* FLOATING MENU BAR (Expanded State) */
-  floatingMenuBar: {
+  /* FLOATING MENU BAR (Expanded State with iOS Glass Effect) */
+  floatingMenuAnimContainer: {
     position: 'absolute',
     bottom: 24,
     left: 16,
     right: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    elevation: 12,
+  },
+  floatingMenuBar: {
+    width: '100%',
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(30, 41, 59, 0.96)',
+    overflow: 'hidden',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.55)' : 'rgba(30, 41, 59, 0.85)',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderTopColor: 'rgba(255, 255, 255, 0.28)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 10,
   },
   floatingMenuItem: {
     alignItems: 'center',
