@@ -457,9 +457,9 @@ export default function QuranScreen() {
             {/* Right: Circular Calligraphy Emblem */}
             <View style={styles.khatmahCalligraphyWrapper}>
               <Image
-                source={require('../../assets/images/quran-calligraphy.png')}
+                source={require('../../assets/images/quran_circle_emblem.png')}
                 style={styles.khatmahCalligraphyImage}
-                resizeMode="contain"
+                resizeMode="cover"
               />
             </View>
           </TouchableOpacity>
@@ -888,19 +888,17 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   khatmahCalligraphyWrapper: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#263d32',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.25)',
   },
   khatmahCalligraphyImage: {
-    width: 36,
-    height: 36,
-    tintColor: '#a7f3d0',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   newKhatmahTitle: {
     fontFamily: 'Cairo_700Bold',
