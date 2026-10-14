@@ -109,9 +109,8 @@ const TAB_ITEMS = [
 function FloatingTabBar({ state, navigation }: any) {
   const currentRoute = state.routes[state.index];
 
-  // ONLY show the floating menu bar on the Home page ('index').
-  // When entering any inner page, hide the bottom menu bar completely.
-  if (currentRoute?.name !== 'index') {
+  // Hide on secondary screens like qibla
+  if (currentRoute?.name === 'qibla') {
     return null;
   }
 
