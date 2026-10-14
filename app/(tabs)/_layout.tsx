@@ -1,125 +1,236 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, StyleSheet, Platform } from 'react-native';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Svg, { Path } from 'react-native-svg';
 
-export default function TabLayout() {
-  const homeTabBarStyle = {
-    backgroundColor: '#1e293b',
-    borderTopColor: '#334155',
-    borderTopWidth: 1,
-    height: Platform.OS === 'ios' ? 76 : 64,
-    paddingBottom: Platform.OS === 'ios' ? 18 : 8,
-    paddingTop: 8,
-    position: 'absolute' as const,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    elevation: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  };
+// --- CUSTOM SVG ICONS MATCHING SCREENSHOT EXACTLY ---
+
+// 1. Square Open Book Icon (Used for المصحف)
+function MushafSquareBookIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 6.5H10.5C11.5 6.5 12 7.2 12 8V18.5C11.5 17.8 10.5 17.2 9.5 17.2H4V6.5Z"
+        stroke={color}
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M20 6.5H13.5C12.5 6.5 12 7.2 12 8V18.5C12.5 17.8 13.5 17.2 14.5 17.2H20V6.5Z"
+        stroke={color}
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+// 2. Open Book with Radiating Rays Icon (Used for المُشغّل / Player)
+function PlayerBookRaysIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 2.5V5.5" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+      <Path d="M6 4.5L8.5 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+      <Path d="M18 4.5L15.5 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+      <Path
+        d="M4.5 10.5H10.5C11.5 10.5 12 11.2 12 12V19.5C11.5 18.8 10.5 18.3 9.5 18.3H4.5V10.5Z"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M19.5 10.5H13.5C12.5 10.5 12 11.2 12 12V19.5C12.5 18.8 13.5 18.3 14.5 18.3H19.5V10.5Z"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+// 3. Mosque / Gate Facade Icon (Used for الخدمات / Services)
+function ServicesMosqueIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 21V12C4 10 6 7 12 7C18 7 20 10 20 12V21"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8.5 21V15C8.5 13.5 10 12.5 12 12.5C14 12.5 15.5 13.5 15.5 15V21"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <Path d="M12 3V7" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Path d="M2.5 21H21.5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// Menu items matching screenshot from left to right:
+// الخدمات (Far Left) -> الأذكار -> المصحف -> المُشغّل -> الرئيسية (Far Right)
+const TAB_ITEMS = [
+  {
+    name: 'duas',
+    label: 'الخدمات',
+    renderIcon: (color: string) => <ServicesMosqueIcon size={21} color={color} />,
+  },
+  {
+    name: 'adhkar',
+    label: 'الأذكار',
+    renderIcon: (color: string) => (
+      <MaterialCommunityIcons name="format-quote-close" size={22} color={color} />
+    ),
+  },
+  {
+    name: 'quran',
+    label: 'المصحف',
+    renderIcon: (color: string) => <MushafSquareBookIcon size={21} color={color} />,
+  },
+  {
+    name: 'reciters',
+    label: 'المُشغّل',
+    renderIcon: (color: string) => <PlayerBookRaysIcon size={21} color={color} />,
+  },
+  {
+    name: 'index',
+    label: 'الرئيسية',
+    renderIcon: (color: string) => <Ionicons name="home-outline" size={20} color={color} />,
+  },
+];
+
+// Custom Floating Tab Bar Component
+function FloatingTabBar({ state, navigation }: any) {
+  const currentRoute = state.routes[state.index];
+
+  // ONLY show the floating menu bar on the Home page ('index').
+  // When entering any inner page, hide the bottom menu bar completely.
+  if (currentRoute?.name !== 'index') {
+    return null;
+  }
 
   return (
+    <View style={styles.floatingBarContainer} pointerEvents="box-none">
+      <View style={styles.floatingMenuBar}>
+        {TAB_ITEMS.map((item) => {
+          const isFocused = currentRoute?.name === item.name;
+
+          const onPress = () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            if (!isFocused) {
+              navigation.navigate(item.name);
+            }
+          };
+
+          if (isFocused) {
+            return (
+              <TouchableOpacity
+                key={item.name}
+                style={styles.floatingMenuItemActivePill}
+                onPress={onPress}
+                activeOpacity={0.8}
+              >
+                {item.renderIcon('#ffffff')}
+                <Text style={styles.floatingMenuItemActiveText}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          }
+
+          return (
+            <TouchableOpacity
+              key={item.name}
+              style={styles.floatingMenuItem}
+              onPress={onPress}
+              activeOpacity={0.7}
+            >
+              {item.renderIcon('#cbd5e1')}
+              <Text style={styles.floatingMenuItemText}>{item.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+export default function TabLayout() {
+  return (
     <Tabs
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: '#0f8e5d',
-        tabBarInactiveTintColor: '#8ba7c0',
-        tabBarStyle: { display: 'none' }, // By default hidden on any screen
         headerShown: false,
-      }}>
-      {/* Tab 5: Duas */}
-      <Tabs.Screen
-        name="duas"
-        options={{
-          title: 'الأدعية',
-          tabBarStyle: { display: 'none' },
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <FontAwesome5 name="praying-hands" size={20} color={color} />
-            </View>
-          ),
-        }}
-      />
-
-      {/* Tab 4: Adhkar & Tasbih */}
-      <Tabs.Screen
-        name="adhkar"
-        options={{
-          title: 'الأذكار',
-          tabBarStyle: { display: 'none' },
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <MaterialCommunityIcons name="counter" size={24} color={color} />
-            </View>
-          ),
-        }}
-      />
-
-      {/* Tab 3: Reciters */}
-      <Tabs.Screen
-        name="reciters"
-        options={{
-          title: 'القراء',
-          tabBarStyle: { display: 'none' },
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <MaterialCommunityIcons name="account-voice" size={24} color={color} />
-            </View>
-          ),
-        }}
-      />
-
-      {/* Tab 2: Quran */}
-      <Tabs.Screen
-        name="quran"
-        options={{
-          title: 'المصحف',
-          tabBarStyle: { display: 'none' },
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Ionicons name="book-outline" size={22} color={color} />
-            </View>
-          ),
-        }}
-      />
-
-      {/* Tab 1: Home (Main screen) - ONLY page where menu bar is visible */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'الرئيسية',
-          tabBarStyle: homeTabBarStyle,
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Ionicons name="home-outline" size={22} color={color} />
-            </View>
-          ),
-        }}
-      />
-
-      {/* Hide secondary screens */}
-      <Tabs.Screen
-        name="qibla"
-        options={{
-          href: null,
-          tabBarStyle: { display: 'none' },
-        }}
-      />
+      }}
+    >
+      <Tabs.Screen name="duas" options={{ title: 'الأدعية' }} />
+      <Tabs.Screen name="adhkar" options={{ title: 'الأذكار' }} />
+      <Tabs.Screen name="reciters" options={{ title: 'القراء' }} />
+      <Tabs.Screen name="quran" options={{ title: 'المصحف' }} />
+      <Tabs.Screen name="index" options={{ title: 'الرئيسية' }} />
+      <Tabs.Screen name="qibla" options={{ href: null }} />
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
-  iconContainer: {
-    width: 44,
-    height: 44,
+  floatingBarContainer: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 28 : 20,
+    left: 16,
+    right: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 22,
   },
-  activeIconContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  floatingMenuBar: {
+    width: '100%',
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(26, 38, 30, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  floatingMenuItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    minWidth: 54,
+    gap: 3,
+  },
+  floatingMenuItemText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#cbd5e1',
+  },
+  floatingMenuItemActivePill: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 142, 93, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.35)',
+    borderRadius: 22,
+    paddingVertical: 5,
+    paddingHorizontal: 16,
+    minWidth: 70,
+    gap: 2,
+  },
+  floatingMenuItemActiveText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11,
+    color: '#ffffff',
   },
 });
