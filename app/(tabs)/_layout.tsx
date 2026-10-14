@@ -109,8 +109,8 @@ const TAB_ITEMS = [
 function FloatingTabBar({ state, navigation }: any) {
   const currentRoute = state.routes[state.index];
 
-  // Hide on secondary screens like qibla
-  if (currentRoute?.name === 'qibla') {
+  // Hide on screens that have their own custom floating action bar (like reciters and qibla)
+  if (currentRoute?.name === 'qibla' || currentRoute?.name === 'reciters') {
     return null;
   }
 
