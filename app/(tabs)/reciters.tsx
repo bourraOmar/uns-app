@@ -204,6 +204,15 @@ export default function RecitersScreen() {
       activeOpacity={0.75}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push({
+          pathname: '/reciter/[id]',
+          params: {
+            id: item.id,
+            name: item.name,
+            rewaya: item.rewaya,
+            server: item.server || '',
+          },
+        } as any);
       }}
     >
       {/* 1. Left side: Chevron arrow '<' pointing left */}
