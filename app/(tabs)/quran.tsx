@@ -614,7 +614,7 @@ export default function QuranScreen() {
               }}
               activeOpacity={0.7}
             >
-              <ServicesMosqueIcon size={21} color="#cbd5e1" />
+              <ServicesMosqueIcon size={21} color="#8ba7c0" />
               <Text style={styles.floatingMenuItemText}>الخدمات</Text>
             </TouchableOpacity>
 
@@ -628,7 +628,7 @@ export default function QuranScreen() {
               }}
               activeOpacity={0.7}
             >
-              <MaterialCommunityIcons name="format-quote-close" size={22} color="#cbd5e1" />
+              <MaterialCommunityIcons name="format-quote-close" size={22} color="#8ba7c0" />
               <Text style={styles.floatingMenuItemText}>الأذكار</Text>
             </TouchableOpacity>
 
@@ -641,7 +641,7 @@ export default function QuranScreen() {
               }}
               activeOpacity={0.8}
             >
-              <MushafSquareBookIcon size={21} color="#ffffff" />
+              <MushafSquareBookIcon size={21} color="#34d399" />
               <Text style={styles.floatingMenuItemActiveText}>المصحف</Text>
             </TouchableOpacity>
 
@@ -655,7 +655,7 @@ export default function QuranScreen() {
               }}
               activeOpacity={0.7}
             >
-              <PlayerBookRaysIcon size={21} color="#cbd5e1" />
+              <PlayerBookRaysIcon size={21} color="#8ba7c0" />
               <Text style={styles.floatingMenuItemText}>المُشغّل</Text>
             </TouchableOpacity>
 
@@ -669,7 +669,7 @@ export default function QuranScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Ionicons name="home-outline" size={20} color="#cbd5e1" />
+              <Ionicons name="home-outline" size={20} color="#8ba7c0" />
               <Text style={styles.floatingMenuItemText}>الرئيسية</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -1164,9 +1164,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(30, 41, 59, 0.92)',
+    backgroundColor: 'rgba(30, 41, 59, 0.94)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1184,17 +1184,17 @@ const styles = StyleSheet.create({
     right: 16,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(26, 38, 30, 0.95)',
+    backgroundColor: 'rgba(30, 41, 59, 0.96)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderColor: '#334155',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
     elevation: 10,
   },
   floatingMenuItem: {
@@ -1208,14 +1208,14 @@ const styles = StyleSheet.create({
   floatingMenuItemText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#cbd5e1',
+    color: '#8ba7c0',
   },
   floatingMenuItemActivePill: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 142, 93, 0.35)',
-    borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.35)',
+    backgroundColor: 'rgba(15, 142, 93, 0.22)',
+    borderWidth: 1.5,
+    borderColor: '#0f8e5d',
     borderRadius: 22,
     paddingVertical: 5,
     paddingHorizontal: 16,
@@ -1225,6 +1225,6 @@ const styles = StyleSheet.create({
   floatingMenuItemActiveText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 11,
-    color: '#ffffff',
+    color: '#34d399',
   },
 });

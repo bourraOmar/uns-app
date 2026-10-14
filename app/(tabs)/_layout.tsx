@@ -136,7 +136,7 @@ function FloatingTabBar({ state, navigation }: any) {
                 onPress={onPress}
                 activeOpacity={0.8}
               >
-                {item.renderIcon('#ffffff')}
+                {item.renderIcon('#34d399')}
                 <Text style={styles.floatingMenuItemActiveText}>{item.label}</Text>
               </TouchableOpacity>
             );
@@ -149,7 +149,7 @@ function FloatingTabBar({ state, navigation }: any) {
               onPress={onPress}
               activeOpacity={0.7}
             >
-              {item.renderIcon('#cbd5e1')}
+              {item.renderIcon('#8ba7c0')}
               <Text style={styles.floatingMenuItemText}>{item.label}</Text>
             </TouchableOpacity>
           );
@@ -190,17 +190,17 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(26, 38, 30, 0.95)',
+    backgroundColor: 'rgba(30, 41, 59, 0.96)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderColor: '#334155',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
     elevation: 10,
   },
   floatingMenuItem: {
@@ -214,14 +214,14 @@ const styles = StyleSheet.create({
   floatingMenuItemText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#cbd5e1',
+    color: '#8ba7c0',
   },
   floatingMenuItemActivePill: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 142, 93, 0.35)',
-    borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.35)',
+    backgroundColor: 'rgba(15, 142, 93, 0.22)',
+    borderWidth: 1.5,
+    borderColor: '#0f8e5d',
     borderRadius: 22,
     paddingVertical: 5,
     paddingHorizontal: 16,
@@ -231,6 +231,6 @@ const styles = StyleSheet.create({
   floatingMenuItemActiveText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 11,
-    color: '#ffffff',
+    color: '#34d399',
   },
 });
