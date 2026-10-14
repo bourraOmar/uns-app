@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@expo-google-fonts/amiri": "^0.4.1",
+    "@expo-google-fonts/aref-ruqaa-ink": "^0.4.0",
     "@expo-google-fonts/cairo": "^0.4.2",
     "@expo-google-fonts/rakkas": "^0.4.1",
     "@expo/vector-icons": "^15.0.2",

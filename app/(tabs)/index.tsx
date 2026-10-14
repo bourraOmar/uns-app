@@ -269,7 +269,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -279,13 +279,13 @@ export default function HomeScreen() {
           {/* Left Action Icons */}
           <View style={styles.headerActionIcons}>
             <TouchableOpacity style={styles.profileIconButton} activeOpacity={0.7}>
-              <Ionicons name="person" size={18} color="#ffffff" />
+              <Ionicons name="person" size={18} color="#4ade80" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.7}>
-              <Ionicons name="bookmark" size={18} color="#ffffff" />
+              <Ionicons name="bookmark" size={18} color="#8ba7c0" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.7}>
-              <Ionicons name="search" size={18} color="#ffffff" />
+              <Ionicons name="search" size={18} color="#8ba7c0" />
             </TouchableOpacity>
           </View>
 
@@ -347,7 +347,7 @@ export default function HomeScreen() {
         {/* Header: Location on Left, "أوقات الصلاة" on Right */}
         <View style={styles.prayerSectionHeader}>
           <View style={styles.locationTagRow}>
-            <Ionicons name="location-outline" size={16} color="#34d399" />
+            <Ionicons name="location-outline" size={16} color="#0f8e5d" />
             <Text style={styles.locationCityText}>{locationCity}</Text>
           </View>
           <Text style={styles.prayerSectionTitle}>أوقات الصلاة</Text>
@@ -369,7 +369,7 @@ export default function HomeScreen() {
         {/* ================= 4. Daily Apps Section ================= */}
         <View style={styles.sectionTitleRow}>
           <TouchableOpacity style={styles.customizeButton} activeOpacity={0.7}>
-            <Ionicons name="pencil-outline" size={14} color="#83958c" />
+            <Ionicons name="pencil-outline" size={14} color="#8ba7c0" />
             <Text style={styles.customizeText}>تخصيص</Text>
           </TouchableOpacity>
           <Text style={styles.sectionHeaderTitle}>تطبيقاتك اليومية</Text>
@@ -382,10 +382,10 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             onPress={() => router.push('/adhkar' as any)}
           >
-            <View style={[styles.quickAppCircle, { backgroundColor: '#1d2720' }]}>
+            <View style={[styles.quickAppCircle, { backgroundColor: 'rgba(15, 142, 93, 0.15)' }]}>
               <Image
                 source={DAILY_APP_ICONS.tasbih}
-                style={[styles.quickAppIconImg, { tintColor: '#6ee7b7' }]}
+                style={[styles.quickAppIconImg, { tintColor: '#34d399' }]}
                 resizeMode="contain"
               />
             </View>
@@ -398,10 +398,10 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             onPress={() => router.push('/qibla' as any)}
           >
-            <View style={[styles.quickAppCircle, { backgroundColor: '#281c2d' }]}>
+            <View style={[styles.quickAppCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
               <Image
                 source={DAILY_APP_ICONS.qibla}
-                style={[styles.quickAppIconImg, styles.qiblaIconBig, { tintColor: '#d8b4fe' }]}
+                style={[styles.quickAppIconImg, styles.qiblaIconBig, { tintColor: '#c084fc' }]}
                 resizeMode="contain"
               />
             </View>
@@ -414,10 +414,10 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             onPress={() => router.push('/adhkar' as any)}
           >
-            <View style={[styles.quickAppCircle, { backgroundColor: '#1b261f' }]}>
+            <View style={[styles.quickAppCircle, { backgroundColor: 'rgba(15, 142, 93, 0.15)' }]}>
               <Image
                 source={DAILY_APP_ICONS.salat}
-                style={[styles.quickAppIconImg, { tintColor: '#6ee7b7' }]}
+                style={[styles.quickAppIconImg, { tintColor: '#34d399' }]}
                 resizeMode="contain"
               />
             </View>
@@ -430,10 +430,10 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             onPress={() => router.push('/reciters' as any)}
           >
-            <View style={[styles.quickAppCircle, { backgroundColor: '#2e191d' }]}>
+            <View style={[styles.quickAppCircle, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
               <Image
                 source={DAILY_APP_ICONS.tv}
-                style={[styles.quickAppIconImg, { tintColor: '#fca5a5' }]}
+                style={[styles.quickAppIconImg, { tintColor: '#f87171' }]}
                 resizeMode="contain"
               />
             </View>
@@ -463,7 +463,7 @@ export default function HomeScreen() {
               activeOpacity={0.88}
               onPress={() => router.push('/quran' as any)}
             >
-              <Ionicons name="chevron-back" size={20} color="#7e968b" style={styles.sealChevron} />
+              <Ionicons name="chevron-back" size={20} color="#8ba7c0" style={styles.sealChevron} />
 
               <View style={styles.sealTextCol}>
                 <Text style={styles.sealMainTitle}>متابعة المصحف من حيث توقفت</Text>
@@ -491,7 +491,7 @@ export default function HomeScreen() {
               onPress={() => setShowNewSealModal(true)}
             >
               <View style={styles.sealPlusBox}>
-                <Ionicons name="add" size={24} color="#7e968b" />
+                <Ionicons name="add" size={24} color="#8ba7c0" />
               </View>
 
               <View style={styles.sealTextColCenter}>
@@ -675,7 +675,7 @@ export default function HomeScreen() {
                 style={styles.modalCloseBtn}
                 onPress={() => setShowNewSealModal(false)}
               >
-                <Ionicons name="close" size={20} color="#83958c" />
+                <Ionicons name="close" size={20} color="#94a3b8" />
               </TouchableOpacity>
               <View style={styles.modalTitleRow}>
                 <Text style={styles.modalTitle}>بدء ختمة جديدة</Text>
@@ -695,7 +695,7 @@ export default function HomeScreen() {
                 value={newSealName}
                 onChangeText={setNewSealName}
                 placeholder="مثال: ختمة رجب المبارك"
-                placeholderTextColor="#576d63"
+                placeholderTextColor="#64748b"
                 textAlign="right"
               />
 
@@ -738,7 +738,7 @@ export default function HomeScreen() {
                   <Text style={styles.startingPointSub}>من أول سورة الفاتحة (الصفحة 1)</Text>
                 </View>
                 <View style={styles.startingPointIconCircle}>
-                  <Ionicons name="book-outline" size={18} color="#6ee7b7" />
+                  <Ionicons name="book-outline" size={18} color="#34d399" />
                 </View>
               </View>
 
@@ -748,13 +748,13 @@ export default function HomeScreen() {
                   style={[styles.checkboxCircle, reminderEnabled && styles.checkboxCircleActive]}
                   onPress={() => setReminderEnabled(!reminderEnabled)}
                 >
-                  {reminderEnabled && <Ionicons name="checkmark" size={14} color="#0c1a16" />}
+                  {reminderEnabled && <Ionicons name="checkmark" size={14} color="#ffffff" />}
                 </TouchableOpacity>
                 <View style={styles.reminderTextCol}>
                   <Text style={styles.reminderTitle}>تفعيل التذكير اليومي للورد</Text>
                   <Text style={styles.reminderSub}>تنبيهك يومياً لمتابعة ورد الختمة</Text>
                 </View>
-                <Ionicons name="notifications-outline" size={20} color="#6ee7b7" />
+                <Ionicons name="notifications-outline" size={20} color="#34d399" />
               </View>
 
               {/* Action Buttons */}
@@ -783,7 +783,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0c1a16', // Dark emerald pine matching design
+    backgroundColor: '#0f172a', // Website dark slate navy (slate-900)
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
   screenMainTitle: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 32,
-    color: '#a7f3d0',
+    color: '#f8fafc',
   },
   headerActionIcons: {
     flexDirection: 'row',
@@ -809,18 +809,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   headerIconButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#152b24',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileIconButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#1b4332',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(15, 142, 93, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 142, 93, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -836,14 +840,18 @@ const styles = StyleSheet.create({
   /* Calendar Card on the Left */
   calendarCard: {
     width: 160,
-    backgroundColor: '#11221c',
+    backgroundColor: '#1e293b',
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#18332a',
+    borderColor: '#334155',
     paddingVertical: 14,
     paddingHorizontal: 14,
     justifyContent: 'space-between',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
   },
   calendarDayTitle: {
     fontFamily: 'Rakkas_400Regular',
@@ -856,7 +864,7 @@ const styles = StyleSheet.create({
   calendarDivider: {
     width: '100%',
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#334155',
     marginVertical: 10,
   },
   calendarColumnsRow: {
@@ -872,18 +880,18 @@ const styles = StyleSheet.create({
   calendarColLabel: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#83958c',
+    color: '#8ba7c0',
     marginBottom: 2,
   },
   calendarColNumber: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 22,
-    color: '#ffffff',
+    color: '#f8fafc',
   },
   calendarColYear: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#65776e',
+    color: '#64748b',
   },
 
   /* Greeting Section on the Right */
@@ -902,26 +910,30 @@ const styles = StyleSheet.create({
   greetingTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 23,
-    color: '#cbd5e1',
+    color: '#f8fafc',
     textAlign: 'right',
   },
   rosaryIcon: {
     fontSize: 20,
   },
   actionPillButton: {
-    backgroundColor: '#11221c',
+    backgroundColor: '#1e293b',
     borderRadius: 28,
     borderWidth: 1,
-    borderColor: '#1b382e',
+    borderColor: '#334155',
     paddingVertical: 13,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
   },
   actionPillText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
+    fontSize: 15.5,
     color: '#ffffff',
   },
   prayerCountdownRow: {
@@ -930,7 +942,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   limeBadge: {
-    backgroundColor: '#84cc16',
+    backgroundColor: '#65a30d',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -940,7 +952,7 @@ const styles = StyleSheet.create({
   limeBadgeText: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 12,
-    color: '#1a2e05',
+    color: '#ffffff',
   },
   prayerLabelWithIcon: {
     flexDirection: 'row',
@@ -956,7 +968,9 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#152b24',
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -971,7 +985,7 @@ const styles = StyleSheet.create({
   prayerSectionTitle: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 24,
-    color: '#a7f3d0',
+    color: '#f8fafc',
   },
   locationTagRow: {
     flexDirection: 'row',
@@ -981,7 +995,7 @@ const styles = StyleSheet.create({
   locationCityText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
-    color: '#83958c',
+    color: '#94a3b8',
   },
   prayerGrid: {
     gap: 12,
@@ -993,25 +1007,29 @@ const styles = StyleSheet.create({
   },
   prayerCardNormal: {
     flex: 1,
-    backgroundColor: '#11221c',
+    backgroundColor: '#1e293b',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#18332a',
+    borderColor: '#334155',
     paddingVertical: 14,
     paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
   },
   prayerCardName: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
-    color: '#cbd5e1',
+    color: '#8ba7c0',
     marginTop: 6,
   },
   prayerCardTime: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#83958c',
+    color: '#f8fafc',
     marginTop: 2,
   },
   prayerIconImg: {
@@ -1022,8 +1040,10 @@ const styles = StyleSheet.create({
   /* Wide Highlighted Card (Mint green) */
   prayerCardHighlight: {
     flex: 2,
-    backgroundColor: '#cbf3dc',
+    backgroundColor: '#cbf4dc',
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 142, 93, 0.3)',
     paddingVertical: 12,
     paddingHorizontal: 14,
     flexDirection: 'row',
@@ -1037,13 +1057,13 @@ const styles = StyleSheet.create({
   countdownNotice: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 12,
-    color: '#064e3b',
+    color: '#065f46',
     marginBottom: 4,
   },
   countdownDigits: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 19,
-    color: '#16a34a',
+    color: '#065f46',
     letterSpacing: 0.5,
   },
   highlightInfoCol: {
@@ -1053,13 +1073,13 @@ const styles = StyleSheet.create({
   highlightNameText: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 14,
-    color: '#064e3b',
+    color: '#065f46',
     marginTop: 2,
   },
   highlightTimeText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 11,
-    color: '#064e3b',
+    color: '#065f46',
     marginTop: 1,
   },
 
@@ -1073,7 +1093,7 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 20,
-    color: '#ffffff',
+    color: '#f8fafc',
   },
   customizeButton: {
     flexDirection: 'row',
@@ -1083,7 +1103,7 @@ const styles = StyleSheet.create({
   customizeText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 12,
-    color: '#94a3b8',
+    color: '#8ba7c0',
   },
   quickAppsRow: {
     flexDirection: 'row-reverse',
@@ -1101,6 +1121,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   quickAppIconImg: {
     width: 28,
@@ -1113,13 +1135,13 @@ const styles = StyleSheet.create({
   quickAppTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 12,
-    color: '#cbd5e1',
+    color: '#f8fafc',
     textAlign: 'center',
   },
   quickAppSubTitle: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 10,
-    color: '#83958c',
+    color: '#8ba7c0',
     textAlign: 'center',
     marginTop: -2,
   },
@@ -1137,10 +1159,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#12221b',
+    backgroundColor: '#1e293b',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#183327',
+    borderColor: '#334155',
     paddingVertical: 14,
     paddingHorizontal: 16,
     shadowColor: '#000',
@@ -1153,7 +1175,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#354d3e',
+    backgroundColor: 'rgba(74, 107, 140, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1170,13 +1192,13 @@ const styles = StyleSheet.create({
   sealMainTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14.5,
-    color: '#a7f3d0',
+    color: '#f8fafc',
     textAlign: 'right',
   },
   sealSubTitle: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
-    color: '#829a8e',
+    color: '#94a3b8',
     textAlign: 'right',
     marginTop: 2,
     marginBottom: 6,
@@ -1185,14 +1207,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 4.5,
     borderRadius: 3,
-    backgroundColor: '#203328',
+    backgroundColor: '#0f172a',
     overflow: 'hidden',
     flexDirection: 'row-reverse',
   },
   sealProgressFill: {
     height: '100%',
     borderRadius: 3,
-    backgroundColor: '#7ea875',
+    backgroundColor: '#0f8e5d',
   },
   sealChevron: {
     marginLeft: 2,
@@ -1211,7 +1233,7 @@ const styles = StyleSheet.create({
   sealMainTitleCenter: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 15.5,
-    color: '#c4eed7',
+    color: '#f8fafc',
     textAlign: 'right',
   },
   sealPaginationDots: {
@@ -1225,26 +1247,26 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#1d382d',
+    backgroundColor: '#334155',
   },
   sealDotActive: {
     width: 18,
-    backgroundColor: '#6ee7b7',
+    backgroundColor: '#0f8e5d',
   },
 
   /* Modal: New Quran Seal */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#10221c',
+    backgroundColor: '#1e293b',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 22,
     borderWidth: 1,
-    borderColor: '#1e3c30',
+    borderColor: '#334155',
     maxHeight: '85%',
   },
   modalHeader: {
@@ -1254,7 +1276,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#193328',
+    borderBottomColor: '#334155',
   },
   modalTitleRow: {
     flexDirection: 'row-reverse',
@@ -1264,7 +1286,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 18,
-    color: '#ffffff',
+    color: '#f8fafc',
   },
   modalTitleIcon: {
     width: 32,
@@ -1275,26 +1297,28 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#162b23',
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalFieldLabel: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
-    color: '#a7f3d0',
+    color: '#f8fafc',
     textAlign: 'right',
     marginBottom: 8,
     marginTop: 12,
   },
   modalInput: {
-    backgroundColor: '#0c1a15',
+    backgroundColor: '#0f172a',
     borderWidth: 1,
-    borderColor: '#193328',
+    borderColor: '#334155',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: '#ffffff',
+    color: '#f8fafc',
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 14,
   },
@@ -1307,40 +1331,40 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 6,
     borderRadius: 14,
-    backgroundColor: '#0c1a15',
+    backgroundColor: '#0f172a',
     borderWidth: 1,
-    borderColor: '#193328',
+    borderColor: '#334155',
     alignItems: 'center',
   },
   durationChipActive: {
-    borderColor: '#6ee7b7',
-    backgroundColor: '#163629',
+    borderColor: '#0f8e5d',
+    backgroundColor: 'rgba(15, 142, 93, 0.2)',
   },
   durationChipText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 12,
-    color: '#829a8e',
+    color: '#8ba7c0',
   },
   durationChipTextActive: {
-    color: '#6ee7b7',
+    color: '#4ade80',
   },
   durationChipSub: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 9,
-    color: '#556a60',
+    color: '#64748b',
     marginTop: 2,
     textAlign: 'center',
   },
   durationChipSubActive: {
-    color: '#a7f3d0',
+    color: '#86efac',
   },
   startingPointBox: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    backgroundColor: '#0c1a15',
+    backgroundColor: '#0f172a',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#193328',
+    borderColor: '#334155',
     padding: 14,
     marginTop: 14,
   },
@@ -1352,29 +1376,31 @@ const styles = StyleSheet.create({
   startingPointTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
-    color: '#ffffff',
+    color: '#f8fafc',
   },
   startingPointSub: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#829a8e',
+    color: '#8ba7c0',
     marginTop: 2,
   },
   startingPointIconCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#163629',
+    backgroundColor: 'rgba(15, 142, 93, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 142, 93, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   reminderRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    backgroundColor: '#0c1a15',
+    backgroundColor: '#0f172a',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#193328',
+    borderColor: '#334155',
     padding: 14,
     marginTop: 12,
     marginBottom: 20,
@@ -1384,13 +1410,13 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#324a3e',
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxCircleActive: {
-    backgroundColor: '#6ee7b7',
-    borderColor: '#6ee7b7',
+    backgroundColor: '#0f8e5d',
+    borderColor: '#0f8e5d',
   },
   reminderTextCol: {
     flex: 1,
@@ -1401,26 +1427,30 @@ const styles = StyleSheet.create({
   reminderTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
-    color: '#ffffff',
+    color: '#f8fafc',
   },
   reminderSub: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#829a8e',
+    color: '#8ba7c0',
     marginTop: 2,
   },
   modalPrimaryBtn: {
-    backgroundColor: '#6ee7b7',
+    backgroundColor: '#4a6b8c',
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
+    shadowColor: '#4a6b8c',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   modalPrimaryBtnText: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 15,
-    color: '#0a1612',
+    color: '#ffffff',
   },
   modalCancelBtn: {
     paddingVertical: 10,
@@ -1429,7 +1459,7 @@ const styles = StyleSheet.create({
   modalCancelBtnText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
-    color: '#83958c',
+    color: '#8ba7c0',
   },
 
   /* 6. Recent Activities Section */
@@ -1440,7 +1470,7 @@ const styles = StyleSheet.create({
   recentActivitiesHeaderTitle: {
     fontFamily: 'Cairo_800ExtraBold',
     fontSize: 18,
-    color: '#a7f3d0',
+    color: '#f8fafc',
     textAlign: 'right',
     marginBottom: 14,
   },
@@ -1474,10 +1504,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   compactInspirationCard: {
-    backgroundColor: '#272927',
+    backgroundColor: '#1e293b',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#323632',
+    borderColor: '#334155',
     paddingHorizontal: 12,
     paddingVertical: 12,
     shadowColor: '#000',
@@ -1504,7 +1534,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Amiri_700Bold',
     fontSize: 14.5,
     lineHeight: 25,
-    color: '#ffffff',
+    color: '#f8fafc',
     textAlign: 'right',
   },
   ayahBadgeInline: {
@@ -1516,14 +1546,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 12.5,
     lineHeight: 20,
-    color: '#ffffff',
+    color: '#f8fafc',
     textAlign: 'right',
   },
   duaTextInline: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 12.5,
     lineHeight: 20,
-    color: '#ffffff',
+    color: '#f8fafc',
     textAlign: 'right',
   },
   cardBottomRow: {
@@ -1535,7 +1565,7 @@ const styles = StyleSheet.create({
   referenceTextSimple: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#64748b',
+    color: '#94a3b8',
     textAlign: 'left',
   },
   /* Handcrafted 3D Folded Bookmark Ribbon */
