@@ -179,8 +179,18 @@ export default function QuranScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Right Title */}
-        <Text style={styles.headerTitle}>المصحف</Text>
+        {/* Right Title + Back Button */}
+        <View style={styles.headerTitleRight}>
+          <Text style={styles.headerTitle}>المصحف</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-forward" size={20} color="#f8fafc" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* SEARCH BAR (Toggled or inline) */}
@@ -331,10 +341,25 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
   },
+  headerTitleRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   headerTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 26,
     color: '#f8fafc',
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerActionsLeft: {
     flexDirection: 'row',

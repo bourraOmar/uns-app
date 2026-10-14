@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Magnetometer } from 'expo-sensors';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -18,6 +19,7 @@ const KAABA_LAT = 21.4225;
 const KAABA_LNG = 39.8262;
 
 export default function QiblaScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
@@ -117,6 +119,14 @@ export default function QiblaScreen() {
         <View style={styles.content}>
           {/* Header Info */}
           <View style={styles.headerBox}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="chevron-forward" size={22} color={colors.text} />
+            </TouchableOpacity>
             <Text style={[styles.title, { color: colors.text }]}>بوصلة الكعبة المشرفة</Text>
             <View style={styles.locationRow}>
               <Ionicons name="location" size={16} color={colors.tint} />
@@ -226,6 +236,21 @@ const styles = StyleSheet.create({
   headerBox: {
     alignItems: 'center',
     marginBottom: 30,
+    width: '100%',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    right: 0,
+    top: -2,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(51, 65, 85, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   title: {
     fontSize: 22,
