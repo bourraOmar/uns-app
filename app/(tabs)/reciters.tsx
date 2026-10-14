@@ -12,6 +12,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,9 +20,13 @@ import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
-import { RECITERS_DATA, Reciter } from '@/data/reciters';
+import {
+  RECITERS_DATA,
+  Reciter,
+  fetchRecitersFromMp3Quran,
+} from '@/data/reciters';
 
-// --- CUSTOM SVG ICONS MATCHING DESIGN ---
+// --- CUSTOM SVG ICONS ---
 
 // 1. Square Open Book Icon (Used for المصحف)
 function MushafSquareBookIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
@@ -95,6 +100,10 @@ export default function RecitersScreen() {
   const router = useRouter();
   const searchInputRef = useRef<TextInput>(null);
 
+  // Reciters State: start with initial local data, then populate from MP3Quran API
+  const [reciters, setReciters] = useState<Reciter[]>(RECITERS_DATA);
+  const [isLoadingApi, setIsLoadingApi] = useState(false);
+
   const [search, setSearch] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
@@ -103,6 +112,25 @@ export default function RecitersScreen() {
   // Floating menu bar animation
   const [showFloatingMenu, setShowFloatingMenu] = useState(false);
   const menuAnim = useRef(new Animated.Value(0)).current;
+
+  // Fetch full reciters directory from MP3Quran.net on mount
+  useEffect(() => {
+    loadReciters();
+  }, []);
+
+  const loadReciters = async () => {
+    setIsLoadingApi(true);
+    try {
+      const data = await fetchRecitersFromMp3Quran();
+      if (data && data.length > 0) {
+        setReciters(data);
+      }
+    } catch (e) {
+      console.warn('Error loading reciters:', e);
+    } finally {
+      setIsLoadingApi(false);
+    }
+  };
 
   useEffect(() => {
     if (showFloatingMenu) {
@@ -139,7 +167,7 @@ export default function RecitersScreen() {
 
   // Filter reciters based on search and selected narration filter
   const filteredReciters = useMemo(() => {
-    return RECITERS_DATA.filter((r) => {
+    return reciters.filter((r) => {
       // Filter type check
       if (filter === 'hafs' && !r.rewaya.includes('حفص')) return false;
       if (filter === 'multiple' && !r.rewaya.includes('روايا')) return false;
@@ -149,7 +177,7 @@ export default function RecitersScreen() {
       const q = search.trim().toLowerCase();
       return r.name.toLowerCase().includes(q) || r.rewaya.toLowerCase().includes(q);
     });
-  }, [search, filter]);
+  }, [reciters, search, filter]);
 
   const filterLabel = useMemo(() => {
     switch (filter) {
@@ -162,14 +190,14 @@ export default function RecitersScreen() {
     }
   }, [filter]);
 
-  // Card Render matching screenshot:
+  // Card Render matching the app's website dark slate + emerald color theme:
   // Far Left: Chevron '<'
   // Middle: Reciter Name + Riwayah Info (with document icon on the right of the text)
-  // Far Right: Circular Microphone Badge
+  // Far Right: Circular Microphone Badge in emerald tint
   const renderReciterCard = ({ item }: { item: Reciter }) => (
     <TouchableOpacity
       style={styles.reciterCard}
-      activeOpacity={0.8}
+      activeOpacity={0.75}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }}
@@ -188,13 +216,13 @@ export default function RecitersScreen() {
             </>
           )}
           <Text style={styles.rewayaText}>{item.rewaya}</Text>
-          <Ionicons name="document-text-outline" size={13} color="#85998a" />
+          <Ionicons name="document-text-outline" size={13} color="#94a3b8" />
         </View>
       </View>
 
-      {/* 3. Right side: Circular microphone badge */}
+      {/* 3. Right side: Circular microphone badge in app brand emerald */}
       <View style={styles.micCircleBadge}>
-        <Ionicons name="mic" size={24} color="#34d399" />
+        <Ionicons name="mic" size={22} color="#34d399" />
       </View>
     </TouchableOpacity>
   );
@@ -227,7 +255,7 @@ export default function RecitersScreen() {
             router.back();
           }}
         >
-          <Ionicons name="chevron-forward" size={20} color="#ffffff" />
+          <Ionicons name="chevron-forward" size={20} color="#f8fafc" />
         </TouchableOpacity>
       </View>
 
@@ -247,7 +275,7 @@ export default function RecitersScreen() {
                 filter === 'all' && styles.filterMenuItemTextActive,
               ]}
             >
-              الكل
+              الكل ({reciters.length})
             </Text>
             {filter === 'all' && <Ionicons name="checkmark" size={16} color="#34d399" />}
           </TouchableOpacity>
@@ -290,9 +318,14 @@ export default function RecitersScreen() {
         </View>
       )}
 
-      {/* SCREEN TITLE: "القُرّاء" (Large Bold Right-Aligned Title) */}
+      {/* SCREEN TITLE: "القُرّاء" with optional count */}
       <View style={styles.titleContainer}>
-        <Text style={styles.screenTitle}>القُرّاء</Text>
+        <View style={styles.titleRow}>
+          {isLoadingApi && (
+            <ActivityIndicator size="small" color="#34d399" style={styles.loadingSpinner} />
+          )}
+          <Text style={styles.screenTitle}>القُرّاء</Text>
+        </View>
       </View>
 
       {/* MAIN CONTENT AREA */}
@@ -314,7 +347,7 @@ export default function RecitersScreen() {
           /* EMPTY STATE MATCHING SCREENSHOT EXACTLY */
           <View style={styles.emptyContainer}>
             <View style={styles.emptyCircleIcon}>
-              <Ionicons name="close" size={26} color="#ffffff" />
+              <Ionicons name="close" size={26} color="#f8fafc" />
             </View>
             <Text style={styles.emptyTitle}>لا توجد نتائج لما تبحث عنه!</Text>
             <Text style={styles.emptySubtitle}>
@@ -441,7 +474,7 @@ export default function RecitersScreen() {
           /* Bottom Row: Either Search Input Capsule (Active) or Circular Search Button */
           <View style={styles.bottomBarRow} pointerEvents="box-none">
             {isSearchActive ? (
-              /* Expanded Bottom Search Capsule Bar matching screenshot */
+              /* Expanded Bottom Search Capsule Bar */
               <View style={styles.bottomSearchCapsule}>
                 {/* Clear / Close X Button on the Left */}
                 <TouchableOpacity
@@ -455,14 +488,14 @@ export default function RecitersScreen() {
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="close" size={14} color="#cbd5e1" />
+                  <Ionicons name="close" size={14} color="#f8fafc" />
                 </TouchableOpacity>
 
                 {/* Search Text Input in the Center */}
                 <TextInput
                   ref={searchInputRef}
                   style={styles.bottomSearchInput}
-                  placeholder="ابحث عن اسم القارئ..."
+                  placeholder="ابحث عن اسم القارئ أو الرواية..."
                   placeholderTextColor="#64748b"
                   value={search}
                   onChangeText={setSearch}
@@ -480,7 +513,7 @@ export default function RecitersScreen() {
                 activeOpacity={0.85}
                 onPress={handleOpenSearch}
               >
-                <Ionicons name="search" size={22} color="#ffffff" />
+                <Ionicons name="search" size={22} color="#f8fafc" />
               </TouchableOpacity>
             )}
 
@@ -496,7 +529,7 @@ export default function RecitersScreen() {
                 setShowFloatingMenu(true);
               }}
             >
-              <PlayerBookRaysIcon size={22} color="#ffffff" />
+              <PlayerBookRaysIcon size={22} color="#f8fafc" />
             </TouchableOpacity>
           </View>
         )}
@@ -508,7 +541,7 @@ export default function RecitersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f1712',
+    backgroundColor: '#0f172a', // Website dark slate navy (slate-900)
   },
   contentWrapper: {
     flex: 1,
@@ -527,19 +560,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#1a231d',
+    backgroundColor: '#1e293b',
     borderWidth: 1,
-    borderColor: '#27362b',
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
   },
   filterPillButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a231d',
+    backgroundColor: '#1e293b',
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#27362b',
+    borderColor: '#334155',
     paddingHorizontal: 16,
     paddingVertical: 9,
     gap: 8,
@@ -547,7 +580,7 @@ const styles = StyleSheet.create({
   filterPillText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 14,
-    color: '#ffffff',
+    color: '#f8fafc',
   },
 
   /* FILTER DROPDOWN MENU */
@@ -555,10 +588,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 6,
     marginBottom: 8,
-    backgroundColor: '#162119',
+    backgroundColor: '#1e293b',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#27362b',
+    borderColor: '#334155',
     overflow: 'hidden',
   },
   filterMenuItem: {
@@ -568,10 +601,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: '#334155',
   },
   filterMenuItemActive: {
-    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
   },
   filterMenuItemText: {
     fontFamily: 'Cairo_600SemiBold',
@@ -590,10 +623,18 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     alignItems: 'flex-end',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingSpinner: {
+    marginRight: 4,
+  },
   screenTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 30,
-    color: '#c6eed5',
+    fontSize: 28,
+    color: '#f8fafc',
     textAlign: 'right',
   },
 
@@ -607,12 +648,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#151e18',
-    borderRadius: 22,
+    backgroundColor: '#1e293b', // Slate 800 card matching website
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#334155', // Slate 700 border
     paddingHorizontal: 16,
     paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   chevronIcon: {
     marginRight: 6,
@@ -624,8 +670,8 @@ const styles = StyleSheet.create({
   },
   reciterName: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 17,
-    color: '#ffffff',
+    fontSize: 16,
+    color: '#f8fafc',
     textAlign: 'right',
   },
   rewayaRow: {
@@ -646,22 +692,22 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   badgeText: {
-    fontFamily: 'Cairo_500Medium',
-    fontSize: 12,
-    color: '#a7f3d0',
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#34d399',
   },
   micCircleBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
     borderWidth: 1.5,
-    borderColor: 'rgba(52, 211, 153, 0.3)',
+    borderColor: 'rgba(52, 211, 153, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  /* EMPTY STATE (No Search Results Matching Screenshot) */
+  /* EMPTY STATE */
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
@@ -673,9 +719,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#1b251e',
+    backgroundColor: '#1e293b',
     borderWidth: 1,
-    borderColor: '#2b392e',
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -683,14 +729,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 19,
-    color: '#ffffff',
+    color: '#f8fafc',
     textAlign: 'center',
     marginBottom: 8,
   },
   emptySubtitle: {
     fontFamily: 'Cairo_500Medium',
     fontSize: 13,
-    color: '#85998a',
+    color: '#94a3b8',
     textAlign: 'center',
     lineHeight: 22,
     maxWidth: 320,
@@ -710,9 +756,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#18231b',
+    backgroundColor: '#1e293b',
     borderWidth: 1,
-    borderColor: '#2b3b2f',
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -722,14 +768,14 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  /* EXPANDED BOTTOM SEARCH CAPSULE (Matching Screenshot media_1792000395275_1acabd1e.jpg) */
+  /* EXPANDED BOTTOM SEARCH CAPSULE */
   bottomSearchCapsule: {
     flex: 1,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#18231b',
+    backgroundColor: '#1e293b',
     borderWidth: 1,
-    borderColor: '#2b3b2f',
+    borderColor: '#334155',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
@@ -743,8 +789,8 @@ const styles = StyleSheet.create({
   bottomSearchInput: {
     flex: 1,
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 15,
-    color: '#ffffff',
+    fontSize: 14,
+    color: '#f8fafc',
     textAlign: 'right',
     paddingHorizontal: 8,
   },
@@ -777,7 +823,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     overflow: 'hidden',
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(21, 30, 24, 0.55)' : 'rgba(21, 30, 24, 0.88)',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.55)' : 'rgba(30, 41, 59, 0.85)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.14)',
     borderTopColor: 'rgba(255, 255, 255, 0.28)',
