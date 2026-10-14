@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,8 +8,9 @@ import {
   Dimensions,
   Platform,
   ActivityIndicator,
-  PanResponder,
   GestureResponderEvent,
+  Image,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -65,6 +66,17 @@ export default function AudioPlayerModal({
   const router = useRouter();
   const [isFavorited, setIsFavorited] = useState(false);
   const [scrubbingPosition, setScrubbingPosition] = useState<number | null>(null);
+  const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
+  const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clean up sleep timer on unmount
+  useEffect(() => {
+    return () => {
+      if (sleepTimerRef.current) {
+        clearTimeout(sleepTimerRef.current);
+      }
+    };
+  }, []);
 
   // Format milliseconds to mm:ss or hh:mm:ss
   const formatTime = (millis: number) => {
@@ -85,6 +97,50 @@ export default function AudioPlayerModal({
     const currentIndex = SPEED_OPTIONS.indexOf(currentSpeed);
     const nextIndex = (currentIndex + 1) % SPEED_OPTIONS.length;
     onSpeedChange(SPEED_OPTIONS[nextIndex]);
+  };
+
+  // Cycle sleep timer: Off -> 15m -> 30m -> 60m -> Off
+  const handleCycleSleepTimer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (sleepTimerRef.current) {
+      clearTimeout(sleepTimerRef.current);
+      sleepTimerRef.current = null;
+    }
+
+    if (sleepTimerMinutes === null) {
+      setSleepTimerMinutes(15);
+      sleepTimerRef.current = setTimeout(() => {
+        if (isPlaying) onTogglePlay();
+        setSleepTimerMinutes(null);
+      }, 15 * 60 * 1000);
+    } else if (sleepTimerMinutes === 15) {
+      setSleepTimerMinutes(30);
+      sleepTimerRef.current = setTimeout(() => {
+        if (isPlaying) onTogglePlay();
+        setSleepTimerMinutes(null);
+      }, 30 * 60 * 1000);
+    } else if (sleepTimerMinutes === 30) {
+      setSleepTimerMinutes(60);
+      sleepTimerRef.current = setTimeout(() => {
+        if (isPlaying) onTogglePlay();
+        setSleepTimerMinutes(null);
+      }, 60 * 60 * 1000);
+    } else {
+      setSleepTimerMinutes(null);
+    }
+  };
+
+  // Share Surah recitation
+  const handleShare = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!surah) return;
+    try {
+      await Share.share({
+        message: `سورة ${surah.name_arabic} - ${surah.name_simple}\nبصوت القارئ: ${reciter.englishName || reciter.name}`,
+      });
+    } catch (error) {
+      console.log('Share error:', error);
+    }
   };
 
   // Jump to Quran Mushaf reading page for the current surah
@@ -238,11 +294,20 @@ export default function AudioPlayerModal({
             <TouchableOpacity
               style={styles.sleepButton}
               activeOpacity={0.7}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
+              onPress={handleCycleSleepTimer}
             >
-              <MaterialCommunityIcons name="sleep" size={22} color="#94a3b8" />
+              <Image
+                source={require('@/assets/icons/player_sleep.png')}
+                style={{
+                  width: 20,
+                  height: 20,
+                  tintColor: sleepTimerMinutes !== null ? '#34d399' : '#94a3b8',
+                }}
+                resizeMode="contain"
+              />
+              {sleepTimerMinutes !== null && (
+                <Text style={styles.sleepTimerBadgeText}>{sleepTimerMinutes}m</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -290,15 +355,17 @@ export default function AudioPlayerModal({
               <Text style={styles.qafLetterText}>ق</Text>
             </TouchableOpacity>
 
-            {/* AirPlay / Cast Audio Icon */}
+            {/* Share Audio Icon */}
             <TouchableOpacity
               style={styles.utilityIconButton}
               activeOpacity={0.7}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
+              onPress={handleShare}
             >
-              <MaterialCommunityIcons name="cast-audio" size={23} color="#94a3b8" />
+              <Image
+                source={require('@/assets/icons/player_share.png')}
+                style={{ width: 22, height: 22, tintColor: '#94a3b8' }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
 
             {/* Queue / Tracks List Icon */}
@@ -473,6 +540,12 @@ const styles = StyleSheet.create({
     width: 36,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sleepTimerBadgeText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 9,
+    color: '#34d399',
+    marginTop: 1,
   },
 
   /* PROGRESS BAR & TIMERS */
