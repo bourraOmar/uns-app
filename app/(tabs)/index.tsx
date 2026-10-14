@@ -112,24 +112,24 @@ function InspirationRibbonBadge({ type }: RibbonBadgeProps) {
   const config = {
     ayah: {
       title: 'آية اليوم',
-      bgColor: '#44563f',
+      bgColor: '#41553c',
       foldColor: '#2b3927',
-      textColor: '#e4f4e7',
-      icon: <FontAwesome5 name="quran" size={16} color="#dcfce7" />,
+      textColor: '#dcfce7',
+      icon: <FontAwesome5 name="quran" size={13} color="#dcfce7" />,
     },
     hadith: {
       title: 'حديث اليوم',
-      bgColor: '#524b2f',
-      foldColor: '#36311d',
+      bgColor: '#524c30',
+      foldColor: '#383320',
       textColor: '#fef9c3',
-      icon: <FontAwesome5 name="mosque" size={15} color="#fef08a" />,
+      icon: <FontAwesome5 name="mosque" size={12} color="#fef08a" />,
     },
     dua: {
       title: 'دعاء اليوم',
-      bgColor: '#3b4452',
-      foldColor: '#242b35',
+      bgColor: '#3b4350',
+      foldColor: '#272c35',
       textColor: '#e0f2fe',
-      icon: <FontAwesome5 name="pray" size={15} color="#bae6fd" />,
+      icon: <FontAwesome5 name="pray" size={13} color="#bae6fd" />,
     },
   }[type];
 
@@ -569,10 +569,11 @@ export default function HomeScreen() {
         {/* ================= 7. Daily Inspirations (آية اليوم، حديث اليوم، دعاء اليوم) ================= */}
         <View style={styles.dailyInspirationsSection}>
           {/* Card 1: آية اليوم */}
-          <View style={styles.inspirationCard}>
-            <View style={styles.inspirationCardHeader}>
+          <View style={styles.compactInspirationCard}>
+            <View style={styles.cardMainRow}>
+              {/* Left: Share Icon */}
               <TouchableOpacity
-                style={styles.inspirationShareBtn}
+                style={styles.cleanShareBtn}
                 activeOpacity={0.7}
                 onPress={() =>
                   handleShare(
@@ -580,28 +581,33 @@ export default function HomeScreen() {
                   )
                 }
               >
-                <Ionicons name="share-outline" size={17} color="#94a3b8" />
+                <Ionicons name="share-outline" size={17} color="#86efac" />
               </TouchableOpacity>
+
+              {/* Center: Verse Text */}
+              <View style={styles.cardCenterCol}>
+                <Text style={styles.ayahTextInline}>
+                  قُلْ يَا عِبَادِيَ الَّذِينَ أَسْرَفُوا عَلَىٰ أَنفُسِهِمْ لَا تَقْنَطُوا مِن رَّحْمَةِ اللَّهِ ۚ إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا ۚ إِنَّهُ هُوَ الْغَفُورُ الرَّحِيمُ{' '}
+                  <Text style={styles.ayahBadgeInline}>﴿٥٣﴾</Text>
+                </Text>
+              </View>
+
+              {/* Right: Ribbon Badge */}
               <InspirationRibbonBadge type="ayah" />
             </View>
 
-            <Text style={styles.ayahContentText}>
-              قُلْ يَا عِبَادِيَ الَّذِينَ أَسْرَفُوا عَلَىٰ أَنفُسِهِمْ لَا تَقْنَطُوا مِن رَّحْمَةِ اللَّهِ ۚ إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا ۚ إِنَّهُ هُوَ الْغَفُورُ الرَّحِيمُ <Text style={styles.ayahNumberBadge}>﴿٥٣﴾</Text>
-            </Text>
-
-            <View style={styles.inspirationFooterRow}>
-              <View style={styles.verseReferencePill}>
-                <Ionicons name="bookmark-outline" size={12} color="#64748b" />
-                <Text style={styles.verseReferenceText}>الزمر: 53</Text>
-              </View>
+            {/* Bottom Row: Reference */}
+            <View style={styles.cardBottomRow}>
+              <Text style={styles.referenceTextSimple}>الزمر: 53</Text>
             </View>
           </View>
 
           {/* Card 2: حديث اليوم */}
-          <View style={styles.inspirationCard}>
-            <View style={styles.inspirationCardHeader}>
+          <View style={styles.compactInspirationCard}>
+            <View style={styles.cardMainRow}>
+              {/* Left: Share Icon */}
               <TouchableOpacity
-                style={styles.inspirationShareBtn}
+                style={styles.cleanShareBtn}
                 activeOpacity={0.7}
                 onPress={() =>
                   handleShare(
@@ -609,39 +615,47 @@ export default function HomeScreen() {
                   )
                 }
               >
-                <Ionicons name="share-outline" size={17} color="#94a3b8" />
+                <Ionicons name="share-outline" size={17} color="#86efac" />
               </TouchableOpacity>
+
+              {/* Center: Hadith Text */}
+              <View style={styles.cardCenterCol}>
+                <Text style={styles.hadithTextInline}>
+                  قَالَ النَّبِيُّ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ: «يَسِّرُوا وَلَا تُعَسِّرُوا، وَسَكِّنُوا وَلَا تُنَفِّرُوا».
+                </Text>
+              </View>
+
+              {/* Right: Ribbon Badge */}
               <InspirationRibbonBadge type="hadith" />
             </View>
-
-            <Text style={styles.hadithContentText}>
-              قَالَ النَّبِيُّ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ:{' '}
-              <Text style={styles.hadithQuoteText}>
-                «يَسِّرُوا وَلَا تُعَسِّرُوا، وَسَكِّنُوا وَلَا تُنَفِّرُوا».
-              </Text>
-            </Text>
           </View>
 
           {/* Card 3: دعاء اليوم */}
-          <View style={styles.inspirationCard}>
-            <View style={styles.inspirationCardHeader}>
+          <View style={styles.compactInspirationCard}>
+            <View style={styles.cardMainRow}>
+              {/* Left: Share Icon */}
               <TouchableOpacity
-                style={styles.inspirationShareBtn}
+                style={styles.cleanShareBtn}
                 activeOpacity={0.7}
                 onPress={() =>
                   handleShare(
-                    'ربِّ أسألك توبةً تجبّ ما قبلها من الذنوب وتصلح ما بعدها من الأعمال.'
+                    'رب أسألك توبة تجب ما قبلها من الذنوب وتصلح ما بعدها من الأعمال.'
                   )
                 }
               >
-                <Ionicons name="share-outline" size={17} color="#94a3b8" />
+                <Ionicons name="share-outline" size={17} color="#86efac" />
               </TouchableOpacity>
+
+              {/* Center: Dua Text */}
+              <View style={styles.cardCenterCol}>
+                <Text style={styles.duaTextInline}>
+                  رب أسألك توبة تجب ما قبلها من الذنوب وتصلح ما بعدها من الأعمال.
+                </Text>
+              </View>
+
+              {/* Right: Ribbon Badge */}
               <InspirationRibbonBadge type="dua" />
             </View>
-
-            <Text style={styles.duaContentText}>
-              رب أسألك توبة تجب ما قبلها من الذنوب وتصلح ما بعدها من الأعمال.
-            </Text>
           </View>
         </View>
       </ScrollView>
@@ -1457,61 +1471,100 @@ const styles = StyleSheet.create({
   dailyInspirationsSection: {
     marginTop: 18,
     marginBottom: 32,
-    gap: 14,
+    gap: 10,
   },
-  inspirationCard: {
-    backgroundColor: '#1b221d',
-    borderRadius: 22,
+  compactInspirationCard: {
+    backgroundColor: '#272927',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#26342a',
-    padding: 16,
+    borderColor: '#323632',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  inspirationCardHeader: {
+  cardMainRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    gap: 8,
   },
-  inspirationShareBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#16221b',
-    justifyContent: 'center',
+  cleanShareBtn: {
+    paddingTop: 1,
+    paddingHorizontal: 2,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#24352b',
-    marginTop: 2,
+    justifyContent: 'center',
+  },
+  cardCenterCol: {
+    flex: 1,
+    paddingTop: 1,
+  },
+  ayahTextInline: {
+    fontFamily: 'Amiri_700Bold',
+    fontSize: 14.5,
+    lineHeight: 25,
+    color: '#ffffff',
+    textAlign: 'right',
+  },
+  ayahBadgeInline: {
+    color: '#86efac',
+    fontFamily: 'Amiri_700Bold',
+    fontSize: 14.5,
+  },
+  hadithTextInline: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12.5,
+    lineHeight: 20,
+    color: '#ffffff',
+    textAlign: 'right',
+  },
+  duaTextInline: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12.5,
+    lineHeight: 20,
+    color: '#ffffff',
+    textAlign: 'right',
+  },
+  cardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginTop: 4,
+    paddingLeft: 2,
+  },
+  referenceTextSimple: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#64748b',
+    textAlign: 'left',
   },
   /* Handcrafted 3D Folded Bookmark Ribbon */
   ribbonWrapper: {
     alignItems: 'flex-end',
+    width: 66,
   },
   ribbonTopBanner: {
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: 4,
+    width: 66,
+    height: 19,
+    borderRadius: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 86,
   },
   ribbonTitleText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 12.5,
+    fontSize: 10.5,
     textAlign: 'center',
+    lineHeight: 14,
   },
   ribbonHangingContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingLeft: 18,
+    width: 66,
+    paddingLeft: 14,
   },
   ribbonTabSquare: {
-    width: 32,
-    height: 32,
+    width: 24,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomLeftRadius: 3,
@@ -1521,58 +1574,8 @@ const styles = StyleSheet.create({
     width: 0,
     height: 0,
     borderStyle: 'solid',
-    borderTopWidth: 26,
-    borderRightWidth: 32,
+    borderTopWidth: 18,
+    borderRightWidth: 24,
     borderRightColor: 'transparent',
-  },
-  ayahContentText: {
-    fontFamily: 'Amiri_700Bold',
-    fontSize: 19,
-    lineHeight: 36,
-    color: '#f8fafc',
-    textAlign: 'right',
-    marginBottom: 12,
-  },
-  ayahNumberBadge: {
-    color: '#34d399',
-    fontFamily: 'Amiri_700Bold',
-    fontSize: 19,
-  },
-  inspirationFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-  },
-  verseReferencePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: '#14251d',
-  },
-  verseReferenceText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
-    color: '#94a3b8',
-  },
-  hadithContentText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15.5,
-    lineHeight: 28,
-    color: '#94a3b8',
-    textAlign: 'right',
-  },
-  hadithQuoteText: {
-    fontFamily: 'Cairo_700Bold',
-    color: '#f8fafc',
-  },
-  duaContentText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15.5,
-    lineHeight: 28,
-    color: '#f8fafc',
-    textAlign: 'right',
   },
 });
