@@ -24,6 +24,7 @@ import {
   RECITERS_DATA,
   Reciter,
   fetchRecitersFromMp3Quran,
+  matchesReciter,
 } from '@/data/reciters';
 
 // --- CUSTOM SVG ICONS ---
@@ -165,17 +166,20 @@ export default function RecitersScreen() {
     Keyboard.dismiss();
   };
 
-  // Filter reciters based on search and selected narration filter
+  // Detect if current query is in English for dynamic text alignment
+  const isEnglishQuery = useMemo(() => {
+    return /^[a-zA-Z0-9\s-_'.,]+$/.test(search.trim());
+  }, [search]);
+
+  // Filter reciters based on bilingual search and selected narration filter
   const filteredReciters = useMemo(() => {
     return reciters.filter((r) => {
       // Filter type check
       if (filter === 'hafs' && !r.rewaya.includes('حفص')) return false;
       if (filter === 'multiple' && !r.rewaya.includes('روايا')) return false;
 
-      // Search query check
-      if (!search.trim()) return true;
-      const q = search.trim().toLowerCase();
-      return r.name.toLowerCase().includes(q) || r.rewaya.toLowerCase().includes(q);
+      // Bilingual search query check (supports Arabic & English)
+      return matchesReciter(r, search);
     });
   }, [reciters, search, filter]);
 
@@ -491,15 +495,17 @@ export default function RecitersScreen() {
                   <Ionicons name="close" size={14} color="#f8fafc" />
                 </TouchableOpacity>
 
-                {/* Search Text Input in the Center */}
+                {/* Search Text Input in the Center (supports Arabic & English) */}
                 <TextInput
                   ref={searchInputRef}
                   style={styles.bottomSearchInput}
-                  placeholder="ابحث عن اسم القارئ أو الرواية..."
+                  placeholder="ابحث باسم القارئ (عربي / English)..."
                   placeholderTextColor="#64748b"
                   value={search}
                   onChangeText={setSearch}
-                  textAlign="right"
+                  textAlign={isEnglishQuery ? 'left' : 'right'}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                   returnKeyType="search"
                 />
 
