@@ -4,267 +4,308 @@ import {
   Text,
   View,
   ScrollView,
+  TextInput,
   TouchableOpacity,
   SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
 import azkarData from '@/data/azkar.json';
 
-const TASBIH_PRESETS = [
-  'سُبْحَانَ اللَّهِ',
-  'الْحَمْدُ لِلَّهِ',
-  'لَا إِلَٰهَ إِلَّا اللَّهُ',
-  'اللَّهُ أَكْبَرُ',
-  'أَسْتَغْفِرُ اللَّهَ',
-  'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ',
-  'اللَّهُمَّ صَلِّ عَلَىٰ مُحَمَّدٍ',
+interface AdhkarCategoryItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  iconName: string;
+  categoryKey: string;
+  count: number;
+}
+
+const ADHKAR_CATEGORIES: AdhkarCategoryItem[] = [
+  {
+    id: 'tasbih',
+    title: 'المسبحة الإلكترونية',
+    subtitle: 'عداد ذكي • المس أي مكان في الشاشة للتسبيح بسهولة',
+    iconName: 'time-outline',
+    categoryKey: 'تسابيح',
+    count: 33,
+  },
+  {
+    id: 'morning',
+    title: 'أذكار الصباح',
+    subtitle: '25 ذكراً • أذكار الصباح كاملة ومحصنة للبدء باليوم',
+    iconName: 'sunny-outline',
+    categoryKey: 'أذكار الصباح',
+    count: 25,
+  },
+  {
+    id: 'evening',
+    title: 'أذكار المساء',
+    subtitle: '25 ذكراً • أذكار المساء للتحصين والسكينة والراحة',
+    iconName: 'moon-outline',
+    categoryKey: 'أذكار المساء',
+    count: 25,
+  },
+  {
+    id: 'after_prayer',
+    title: 'أذكار الصلاة',
+    subtitle: '9 أذكار • أذكار ما بعد السلام من الصلاة المفروضة',
+    iconName: 'file-tray-outline',
+    categoryKey: 'أذكار بعد السلام من الصلاة المفروضة',
+    count: 9,
+  },
+  {
+    id: 'sleep',
+    title: 'أذكار النوم',
+    subtitle: '10 أذكار • أذكار النوم للتحصين والاطمئنان قبل النوم',
+    iconName: 'bed-outline',
+    categoryKey: 'أذكار النوم',
+    count: 10,
+  },
+  {
+    id: 'wake_up',
+    title: 'أذكار الاستيقاظ',
+    subtitle: '3 أذكار • أذكار الاستيقاظ من النوم',
+    iconName: 'alarm-outline',
+    categoryKey: 'أذكار الاستيقاظ',
+    count: 3,
+  },
 ];
 
+type FilterType = 'all' | 'morning_evening' | 'tasbih' | 'other';
+
 export default function AdhkarScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const router = useRouter();
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'adhkar' | 'tasbih'>('adhkar');
-  const [selectedCategory, setSelectedCategory] = useState<string>('أذكار الصباح');
+  // Tasbih state inside expanded tasbih
+  const [tasbihValue, setTasbihValue] = useState(0);
 
-  // Tasbih state
-  const [tasbihCount, setTasbihCount] = useState(0);
-  const [selectedZikr, setSelectedZikr] = useState(TASBIH_PRESETS[0]);
-  const [targetCount, setTargetCount] = useState(33);
-
-  // Adhkar progress state
-  const [adhkarCounts, setAdhkarCounts] = useState<Record<string, number>>({});
+  // Adhkar counting state
+  const [dhikrCounts, setDhikrCounts] = useState<Record<string, number>>({});
 
   const handleTasbihPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const next = tasbihCount + 1;
-    setTasbihCount(next);
-    if (next % targetCount === 0) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    setTasbihValue((prev) => prev + 1);
   };
 
-  const resetTasbih = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setTasbihCount(0);
-  };
-
-  const handleDhikrCardPress = (id: string, maxCount: number) => {
+  const handleDhikrCount = (uniqueKey: string, max: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const current = adhkarCounts[id] || 0;
-    if (current < maxCount) {
-      setAdhkarCounts((prev) => ({ ...prev, [id]: current + 1 }));
-      if (current + 1 === maxCount) {
+    const curr = dhikrCounts[uniqueKey] || 0;
+    if (curr < max) {
+      setDhikrCounts((prev) => ({ ...prev, [uniqueKey]: curr + 1 }));
+      if (curr + 1 === max) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     }
   };
 
-  const currentAzkarList = (azkarData as any)[selectedCategory] || [];
+  const filteredCategories = ADHKAR_CATEGORIES.filter((cat) => {
+    if (filter === 'morning_evening') {
+      if (cat.id !== 'morning' && cat.id !== 'evening') return false;
+    }
+    if (filter === 'tasbih') {
+      if (cat.id !== 'tasbih') return false;
+    }
+
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return cat.title.toLowerCase().includes(q) || cat.subtitle.toLowerCase().includes(q);
+  });
+
+  const getAzkarItemsForCategory = (catKey: string): any[] => {
+    const raw = (azkarData as any)[catKey];
+    if (!raw) return [];
+    if (Array.isArray(raw)) {
+      return raw.flat(Infinity);
+    }
+    return [];
+  };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Top Segmented Switcher */}
-      <View style={[styles.segmentedWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <TouchableOpacity
-          style={[
-            styles.segmentBtn,
-            activeTab === 'tasbih' && { backgroundColor: colors.tint },
-          ]}
-          onPress={() => setActiveTab('tasbih')}
-        >
-          <Text
-            style={[
-              styles.segmentText,
-              { color: activeTab === 'tasbih' ? '#ffffff' : colors.tabIconDefault },
-            ]}
-          >
-            السبحة الذكية
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.segmentBtn,
-            activeTab === 'adhkar' && { backgroundColor: colors.tint },
-          ]}
-          onPress={() => setActiveTab('adhkar')}
-        >
-          <Text
-            style={[
-              styles.segmentText,
-              { color: activeTab === 'adhkar' ? '#ffffff' : colors.tabIconDefault },
-            ]}
-          >
-            الأذكار اليومية
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {activeTab === 'tasbih' ? (
-        /* ================= TASBIH TAB ================= */
-        <ScrollView contentContainerStyle={styles.tasbihContent} showsVerticalScrollIndicator={false}>
-          {/* Zikr Preset Horizontal Chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsScroll}>
-            {TASBIH_PRESETS.map((z) => (
-              <TouchableOpacity
-                key={z}
-                style={[
-                  styles.presetChip,
-                  {
-                    backgroundColor: selectedZikr === z ? colors.tint : colors.card,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => {
-                  setSelectedZikr(z);
-                  setTasbihCount(0);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.presetChipText,
-                    { color: selectedZikr === z ? '#ffffff' : colors.text },
-                  ]}
-                >
-                  {z}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Current Zikr Display */}
-          <Text style={[styles.currentZikrText, { color: colors.text }]}>{selectedZikr}</Text>
-
-          {/* Big Interactive Tasbih Button */}
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top Header */}
+        <View style={styles.header}>
           <TouchableOpacity
-            style={[styles.tasbihButton, { backgroundColor: colors.card, borderColor: colors.tint }]}
-            activeOpacity={0.85}
-            onPress={handleTasbihPress}
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
           >
-            <View style={[styles.tasbihInnerGlow, { backgroundColor: `${colors.tint}12` }]}>
-              <Text style={[styles.tasbihBigNumber, { color: colors.tint }]}>{tasbihCount}</Text>
-              <Text style={[styles.tasbihTargetSub, { color: colors.tabIconDefault }]}>
-                الهدف: {targetCount} • اضغط هنا
-              </Text>
-            </View>
+            <Ionicons name="chevron-forward" size={22} color="#ffffff" />
+          </TouchableOpacity>
+          <View style={styles.headerTitles}>
+            <Text style={styles.headerTitle}>قسم الأذكار</Text>
+            <Text style={styles.headerSubtitle}>أدعية وأذكار اليوم والليلة والمسبحة الذكية</Text>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color="#64748b" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="...ابحث عن ذكر أو تسبيح (صباح، استغفار، نوم)"
+            placeholderTextColor="#64748b"
+            value={search}
+            onChangeText={setSearch}
+            textAlign="right"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color="#64748b" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filter Horizontal Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsScroll}
+        >
+          <TouchableOpacity
+            style={[styles.filterChip, filter === 'all' && styles.filterChipActive]}
+            onPress={() => setFilter('all')}
+          >
+            <Text style={[styles.filterChipText, filter === 'all' && styles.filterChipTextActive]}>
+              الكل (7)
+            </Text>
           </TouchableOpacity>
 
-          {/* Target & Reset Controls */}
-          <View style={styles.tasbihControls}>
-            <TouchableOpacity
-              style={[styles.controlBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={resetTasbih}
-            >
-              <Ionicons name="refresh" size={18} color={colors.tabIconDefault} />
-              <Text style={[styles.controlBtnText, { color: colors.tabIconDefault }]}>تصفير</Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterChip, filter === 'morning_evening' && styles.filterChipActive]}
+            onPress={() => setFilter('morning_evening')}
+          >
+            <Text style={[styles.filterChipText, filter === 'morning_evening' && styles.filterChipTextActive]}>
+              الصباح والمساء 🌼
+            </Text>
+          </TouchableOpacity>
 
-            <View style={styles.targetsRow}>
-              {[33, 100].map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[
-                    styles.targetBtn,
-                    {
-                      backgroundColor: targetCount === t ? colors.tint : colors.card,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  onPress={() => setTargetCount(t)}
-                >
-                  <Text
-                    style={[
-                      styles.targetBtnText,
-                      { color: targetCount === t ? '#ffffff' : colors.text },
-                    ]}
-                  >
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+          <TouchableOpacity
+            style={[styles.filterChip, filter === 'tasbih' && styles.filterChipActive]}
+            onPress={() => setFilter('tasbih')}
+          >
+            <Text style={[styles.filterChipText, filter === 'tasbih' && styles.filterChipTextActive]}>
+              المسبحة والتسابيح 📿
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
-      ) : (
-        /* ================= ADHKAR TAB ================= */
-        <View style={{ flex: 1 }}>
-          {/* Category Selector */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-            {Object.keys(azkarData).map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.categoryChip,
-                  {
-                    backgroundColor: selectedCategory === cat ? colors.tint : colors.card,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setSelectedCategory(cat)}
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    { color: selectedCategory === cat ? '#ffffff' : colors.text },
-                  ]}
-                >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
 
-          {/* Adhkar Cards List */}
-          <ScrollView contentContainerStyle={styles.adhkarList} showsVerticalScrollIndicator={false}>
-            {currentAzkarList.map((item: any, idx: number) => {
-              const current = adhkarCounts[`${selectedCategory}_${idx}`] || 0;
-              const max = parseInt(item.count || '1', 10);
-              const isCompleted = current >= max;
+        {/* Adhkar Categories List */}
+        <View style={styles.categoriesList}>
+          {filteredCategories.map((item) => {
+            const isExpanded = expandedId === item.id;
+            const itemsList = getAzkarItemsForCategory(item.categoryKey);
 
-              return (
+            return (
+              <View key={item.id} style={styles.categoryCard}>
                 <TouchableOpacity
-                  key={idx}
-                  style={[
-                    styles.adhkarCard,
-                    {
-                      backgroundColor: isCompleted ? `${colors.tint}08` : colors.card,
-                      borderColor: isCompleted ? '#10b981' : colors.border,
-                    },
-                  ]}
+                  style={styles.cardHeader}
                   activeOpacity={0.8}
-                  onPress={() => handleDhikrCardPress(`${selectedCategory}_${idx}`, max)}
+                  onPress={() => setExpandedId(isExpanded ? null : item.id)}
                 >
-                  <Text style={[styles.dhikrText, { color: colors.text }]}>{item.content}</Text>
-                  {item.description ? (
-                    <Text style={[styles.dhikrDesc, { color: colors.tabIconDefault }]}>
-                      {item.description}
-                    </Text>
-                  ) : null}
+                  <Ionicons
+                    name={isExpanded ? 'chevron-down' : 'chevron-back'}
+                    size={20}
+                    color="#64748b"
+                  />
 
-                  <View style={styles.dhikrFooter}>
-                    <View
-                      style={[
-                        styles.counterBadge,
-                        { backgroundColor: isCompleted ? '#10b981' : colors.tint },
-                      ]}
-                    >
-                      <Text style={styles.counterBadgeText}>
-                        {current} / {max}
-                      </Text>
-                    </View>
-                    <Text style={[styles.dhikrTapHint, { color: colors.tabIconDefault }]}>
-                      {isCompleted ? 'تم بحمد الله ✓' : 'انقر للعد'}
-                    </Text>
+                  <View style={styles.cardDetails}>
+                    <Text style={styles.categoryTitle}>{item.title}</Text>
+                    <Text style={styles.categorySubtitle}>{item.subtitle}</Text>
+                  </View>
+
+                  <View style={styles.iconCircle}>
+                    <Ionicons name={item.iconName as any} size={22} color="#94a3b8" />
                   </View>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+
+                {/* Expanded Details */}
+                {isExpanded && (
+                  <View style={styles.expandedWrapper}>
+                    {item.id === 'tasbih' ? (
+                      /* Interactive Tasbih Counter */
+                      <View style={styles.tasbihInteractiveArea}>
+                        <TouchableOpacity
+                          style={styles.bigTasbihButton}
+                          activeOpacity={0.8}
+                          onPress={handleTasbihPress}
+                        >
+                          <Text style={styles.tasbihCountNum}>{tasbihValue}</Text>
+                          <Text style={styles.tasbihTapHint}>المس للتسبيح</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.tasbihResetBtn}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            setTasbihValue(0);
+                          }}
+                        >
+                          <Ionicons name="refresh" size={16} color="#94a3b8" />
+                          <Text style={styles.tasbihResetText}>تصفير العداد</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      /* List of Adhkar items */
+                      <View style={styles.azkarItemsList}>
+                        {itemsList.map((azkar, idx) => {
+                          const key = `${item.id}_${idx}`;
+                          const target = parseInt(azkar.count || '1', 10);
+                          const current = dhikrCounts[key] || 0;
+                          const done = current >= target;
+
+                          return (
+                            <TouchableOpacity
+                              key={idx}
+                              style={[
+                                styles.azkarItemBox,
+                                done && styles.azkarItemBoxDone,
+                              ]}
+                              activeOpacity={0.85}
+                              onPress={() => handleDhikrCount(key, target)}
+                            >
+                              <Text style={styles.azkarContentText}>
+                                {azkar.content?.replace(/\\n/g, '').replace(/', '/g, '').trim()}
+                              </Text>
+                              {azkar.description ? (
+                                <Text style={styles.azkarDescText}>{azkar.description}</Text>
+                              ) : null}
+                              <View style={styles.azkarItemFooter}>
+                                <View
+                                  style={[
+                                    styles.countBadge,
+                                    done && styles.countBadgeDone,
+                                  ]}
+                                >
+                                  <Text style={styles.countBadgeText}>
+                                    {current} / {target}
+                                  </Text>
+                                </View>
+                                <Text style={styles.azkarFooterHint}>
+                                  {done ? 'تم بحمد الله ✓' : 'اضغط للتكرار'}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </View>
-      )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -272,182 +313,233 @@ export default function AdhkarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0d1527',
   },
-  segmentedWrapper: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 12,
-    marginBottom: 16,
-    borderRadius: 16,
-    padding: 4,
-    borderWidth: 1,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  tasbihContent: {
-    alignItems: 'center',
+  scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingTop: 16,
+    paddingBottom: 90,
   },
-  presetsScroll: {
-    flexDirection: 'row-reverse',
-    gap: 8,
-    paddingVertical: 8,
-    marginBottom: 20,
-  },
-  presetChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  presetChipText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  currentZikrText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 16,
-  },
-  tasbihButton: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    borderWidth: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 24,
-    shadowColor: '#4a6b8c',
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  tasbihInnerGlow: {
-    width: 190,
-    height: 190,
-    borderRadius: 95,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tasbihBigNumber: {
-    fontSize: 54,
-    fontWeight: '900',
-    fontVariant: ['tabular-nums'],
-  },
-  tasbihTargetSub: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  tasbihControls: {
-    flexDirection: 'row-reverse',
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 20,
-    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  controlBtn: {
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#162238',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  headerTitles: {
+    flex: 1,
+    alignItems: 'flex-end',
+    marginRight: 8,
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#ffffff',
+    textAlign: 'right',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#94a3b8',
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  searchBar: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  controlBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  targetsRow: {
-    flexDirection: 'row-reverse',
-    gap: 8,
-  },
-  targetBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  targetBtnText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  categoryScroll: {
-    flexDirection: 'row-reverse',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  categoryChipText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  adhkarList: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-    gap: 12,
-  },
-  adhkarCard: {
-    padding: 18,
+    backgroundColor: '#162238',
     borderRadius: 20,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: '#1e293b',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    gap: 10,
   },
-  dhikrText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#ffffff',
+    textAlign: 'right',
+  },
+  chipsScroll: {
+    flexDirection: 'row-reverse',
+    gap: 8,
+    paddingBottom: 16,
+  },
+  filterChip: {
+    backgroundColor: '#162238',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  filterChipActive: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#94a3b8',
+  },
+  filterChipTextActive: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+  categoriesList: {
+    gap: 12,
+  },
+  categoryCard: {
+    backgroundColor: '#162238',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 18,
+  },
+  cardDetails: {
+    flex: 1,
+    alignItems: 'flex-end',
+    marginRight: 16,
+  },
+  categoryTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#ffffff',
+    textAlign: 'right',
+    marginBottom: 4,
+  },
+  categorySubtitle: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textAlign: 'right',
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#101a2e',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expandedWrapper: {
+    paddingHorizontal: 18,
+    paddingBottom: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+  },
+  tasbihInteractiveArea: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  bigTasbihButton: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 3,
+    borderColor: '#10b981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  tasbihCountNum: {
+    fontSize: 42,
+    fontWeight: '900',
+    color: '#10b981',
+  },
+  tasbihTapHint: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontWeight: '700',
+  },
+  tasbihResetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#101a2e',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  tasbihResetText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  azkarItemsList: {
+    gap: 12,
+    paddingTop: 12,
+  },
+  azkarItemBox: {
+    backgroundColor: '#101a2e',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  azkarItemBoxDone: {
+    borderColor: '#10b981',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+  },
+  azkarContentText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#ffffff',
     textAlign: 'right',
     lineHeight: 26,
   },
-  dhikrDesc: {
+  azkarDescText: {
     fontSize: 12,
+    color: '#94a3b8',
     textAlign: 'right',
     marginTop: 8,
     lineHeight: 18,
   },
-  dhikrFooter: {
+  azkarItemFooter: {
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 12,
+    marginTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    borderTopColor: '#1e293b',
   },
-  counterBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+  countBadge: {
+    backgroundColor: '#162238',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
-  counterBadgeText: {
+  countBadgeDone: {
+    backgroundColor: '#10b981',
+  },
+  countBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
     color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
-  dhikrTapHint: {
-    fontSize: 12,
+  azkarFooterHint: {
+    fontSize: 11,
+    color: '#64748b',
     fontWeight: '600',
   },
 });

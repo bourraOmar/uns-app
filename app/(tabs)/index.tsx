@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,273 +7,506 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  ActivityIndicator,
+  Image,
+  ImageSourcePropType,
+  Dimensions,
+  Modal,
+  TextInput,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import * as Location from 'expo-location';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
 
-interface PrayerTimings {
-  Fajr: string;
-  Sunrise: string;
-  Dhuhr: string;
-  Asr: string;
-  Maghrib: string;
-  Isha: string;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH - 44;
+
+const SEAL_DURATIONS = [
+  { days: 30, label: '30 يوماً', sub: 'جزء يومياً (20 ص)' },
+  { days: 60, label: '60 يوماً', sub: 'نصف جزء (10 ص)' },
+  { days: 15, label: '15 يوماً', sub: 'جزأين (40 ص)' },
+];
+
+const PRAYER_ICONS = {
+  fajrShines: require('@/assets/icons/fajr_shines.png'),
+  sunOutline: require('@/assets/icons/sun_outline.png'),
+  sunSolid: require('@/assets/icons/sun_solid.png'),
+  sunriseRays: require('@/assets/icons/sunrise_rays.png'),
+  sunriseSimple: require('@/assets/icons/sunrise_simple.png'),
+  moonStars: require('@/assets/icons/moon_stars.png'),
+};
+
+const DAILY_APP_ICONS = {
+  tasbih: require('@/assets/icons/app_tasbih.png'),
+  qibla: require('@/assets/icons/app_qibla.png'),
+  salat: require('@/assets/icons/app_salat.png'),
+  tv: require('@/assets/icons/app_tv.png'),
+};
+
+interface PrayerItem {
+  id: string;
+  name: string;
+  time: string;
+  icon: ImageSourcePropType;
 }
 
 export default function HomeScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
 
-  const [locationName, setLocationName] = useState('مكة المكرمة');
-  const [timings, setTimings] = useState<PrayerTimings>({
-    Fajr: '05:08',
-    Sunrise: '06:24',
-    Dhuhr: '12:12',
-    Asr: '15:35',
-    Maghrib: '18:01',
-    Isha: '19:31',
+  const [locationCity] = useState('آسفي، المغرب');
+  const [activePrayerId, setActivePrayerId] = useState('Asr'); // Active prayer (e.g. Asr)
+  const [countdown] = useState('01:52:05');
+
+  // Quran Seal (Khatmah) State
+  const [currentKhatmah, setCurrentKhatmah] = useState({
+    surahName: 'الأنفال',
+    page: 177,
+    progress: 29, // 177 / 604
   });
-  const [loading, setLoading] = useState(false);
-  const [nextPrayer, setNextPrayer] = useState<{ name: string; time: string; remaining: string }>({
-    name: 'المغرب',
-    time: '18:01',
-    remaining: '01:25:40',
-  });
-  const [lastRead, setLastRead] = useState({ surahName: 'الكهف', surahId: 18, page: 293 });
+  const [activeSealIndex, setActiveSealIndex] = useState(0);
+  const [showNewSealModal, setShowNewSealModal] = useState(false);
+  const [newSealName, setNewSealName] = useState('ختمة القرآن الكريم');
+  const [selectedDuration, setSelectedDuration] = useState(30);
+  const [reminderEnabled, setReminderEnabled] = useState(true);
 
-  useEffect(() => {
-    loadLocationAndPrayers();
-    loadLastRead();
-  }, []);
-
-  const loadLastRead = async () => {
-    try {
-      const saved = await AsyncStorage.getItem('last_read_quran');
-      if (saved) {
-        setLastRead(JSON.parse(saved));
-      }
-    } catch {
-      // Ignore
-    }
+  const handleStartNewSeal = () => {
+    setCurrentKhatmah({
+      surahName: 'الفاتحة',
+      page: 1,
+      progress: 1,
+    });
+    setShowNewSealModal(false);
   };
 
-  const loadLocationAndPrayers = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const loc = await Location.getCurrentPositionAsync({});
-        const [geo] = await Location.reverseGeocodeAsync({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
-        if (geo?.city || geo?.region) {
-          setLocationName(geo.city || geo.region || 'موقعك الحالي');
-        }
-        fetchPrayerTimes(loc.coords.latitude, loc.coords.longitude);
-      } else {
-        fetchPrayerTimes(21.4225, 39.8262); // Makkah default
-      }
-    } catch {
-      fetchPrayerTimes(21.4225, 39.8262);
-    }
-  };
-
-  const fetchPrayerTimes = async (lat: number, lng: number) => {
-    try {
-      setLoading(true);
-      const date = new Date();
-      const res = await fetch(`https://api.aladhan.com/v1/timings/${Math.floor(date.getTime() / 1000)}?latitude=${lat}&longitude=${lng}&method=4`);
-      const json = await res.json();
-      if (json.data?.timings) {
-        setTimings(json.data.timings);
-      }
-    } catch {
-      // fallback offline times
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const prayersList = [
-    { key: 'Fajr', name: 'الفجر', time: timings.Fajr, icon: 'cloudy-night-outline' },
-    { key: 'Sunrise', name: 'الشروق', time: timings.Sunrise, icon: 'sunny-outline' },
-    { key: 'Dhuhr', name: 'الظهر', time: timings.Dhuhr, icon: 'sunny' },
-    { key: 'Asr', name: 'العصر', time: timings.Asr, icon: 'partly-sunny-outline' },
-    { key: 'Maghrib', name: 'المغرب', time: timings.Maghrib, icon: 'sunset-outline' },
-    { key: 'Isha', name: 'العشاء', time: timings.Isha, icon: 'moon-outline' },
+  // Row 1: Fajr -> Sunrise -> Dhuhr -> Asr
+  const row1Prayers: PrayerItem[] = [
+    { id: 'Fajr', name: 'الفجر', time: '5:17 ص', icon: PRAYER_ICONS.fajrShines },
+    { id: 'Sunrise', name: 'الشروق', time: '6:38 ص', icon: PRAYER_ICONS.sunriseRays },
+    { id: 'Dhuhr', name: 'الظهر', time: '12:24 م', icon: PRAYER_ICONS.sunSolid },
+    { id: 'Asr', name: 'العصر', time: '3:39 م', icon: PRAYER_ICONS.sunOutline },
   ];
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+  // Row 2: Maghrib -> Isha -> Midnight
+  const row2Prayers: PrayerItem[] = [
+    { id: 'Maghrib', name: 'المغرب', time: '6:08 م', icon: PRAYER_ICONS.sunriseRays },
+    { id: 'Isha', name: 'العشاء', time: '7:25 م', icon: PRAYER_ICONS.moonStars },
+    { id: 'Midnight', name: 'منتصف الليل', time: '11:43 م', icon: PRAYER_ICONS.fajrShines },
+  ];
 
-        {/* Top Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.text }]}>السلام عليكم ورحمة الله</Text>
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={16} color={colors.tint} />
-              <Text style={[styles.locationText, { color: colors.tabIconDefault }]}>{locationName}</Text>
-            </View>
-          </View>
-          <View style={[styles.logoBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.logoText, { color: colors.tint }]}>أُنس</Text>
-          </View>
-        </View>
+  const renderPrayerCard = (p: PrayerItem) => {
+    const isActive = p.id === activePrayerId;
 
-        {/* Next Prayer Highlight Card */}
-        <View style={[styles.heroCard, { backgroundColor: colors.tint }]}>
-          <View style={styles.heroCardHeader}>
-            <View>
-              <Text style={styles.heroCardSubtitle}>الصلاة القادمة</Text>
-              <Text style={styles.heroCardTitle}>{nextPrayer.name}</Text>
-            </View>
-            <View style={styles.heroTimeBadge}>
-              <Ionicons name="time-outline" size={18} color="#ffffff" />
-              <Text style={styles.heroTimeText}>{nextPrayer.time}</Text>
-            </View>
-          </View>
-          <View style={styles.heroCountdownContainer}>
-            <Text style={styles.heroCountdownLabel}>متبقي على الأذان</Text>
-            <Text style={styles.heroCountdownTimer}>{nextPrayer.remaining}</Text>
-          </View>
-        </View>
-
-        {/* Prayer Times Row */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>مواقيت الصلاة اليوم</Text>
-          {loading && <ActivityIndicator size="small" color={colors.tint} />}
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.prayersScroll}>
-          {prayersList.map((p) => (
-            <View
-              key={p.key}
-              style={[
-                styles.prayerItem,
-                {
-                  backgroundColor: p.name === nextPrayer.name ? colors.tint : colors.card,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <Ionicons
-                name={p.icon as any}
-                size={22}
-                color={p.name === nextPrayer.name ? '#ffffff' : colors.tint}
-              />
-              <Text
-                style={[
-                  styles.prayerName,
-                  { color: p.name === nextPrayer.name ? '#ffffff' : colors.text },
-                ]}
-              >
-                {p.name}
-              </Text>
-              <Text
-                style={[
-                  styles.prayerTime,
-                  { color: p.name === nextPrayer.name ? '#ffffff' : colors.tabIconDefault },
-                ]}
-              >
-                {p.time}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* Last Read Quran Card */}
+    if (isActive) {
+      // Wide Highlight Card (Mint Green)
+      return (
         <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-          activeOpacity={0.8}
-          onPress={() => router.push('/quran' as any)}
+          key={p.id}
+          style={styles.prayerCardHighlight}
+          activeOpacity={0.85}
+          onPress={() => setActivePrayerId(p.id)}
         >
-          <View style={styles.cardHeader}>
-            <View style={[styles.cardIconBox, { backgroundColor: `${colors.tint}20` }]}>
-              <Ionicons name="bookmark" size={20} color={colors.tint} />
-            </View>
-            <View style={styles.cardHeaderText}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>متابعة الورد القرآني</Text>
-              <Text style={[styles.cardSubtitle, { color: colors.tabIconDefault }]}>
-                سورة {lastRead.surahName} • صفحة {lastRead.page}
-              </Text>
-            </View>
-            <Ionicons name="chevron-back" size={20} color={colors.tabIconDefault} />
+          {/* Left Column: Countdown */}
+          <View style={styles.highlightCountdownCol}>
+            <Text style={styles.countdownNotice}>تبقى على الأذان</Text>
+            <Text style={styles.countdownDigits}>{countdown}</Text>
+          </View>
+
+          {/* Right Column: Icon on Top, Name + Time below */}
+          <View style={styles.highlightInfoCol}>
+            <Image
+              source={p.icon}
+              style={[styles.prayerIconImg, { tintColor: '#15803d' }]}
+              resizeMode="contain"
+            />
+            <Text style={styles.highlightNameText}>{p.name}</Text>
+            <Text style={styles.highlightTimeText}>{p.time}</Text>
           </View>
         </TouchableOpacity>
+      );
+    }
 
-        {/* Quick Tools Grid */}
-        <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24, marginBottom: 12 }]}>
-          الخدمات والأدوات
-        </Text>
+    // Normal Dark Card
+    return (
+      <TouchableOpacity
+        key={p.id}
+        style={styles.prayerCardNormal}
+        activeOpacity={0.8}
+        onPress={() => setActivePrayerId(p.id)}
+      >
+        <Image
+          source={p.icon}
+          style={[styles.prayerIconImg, { tintColor: '#94a3b8' }]}
+          resizeMode="contain"
+        />
+        <Text style={styles.prayerCardName}>{p.name}</Text>
+        <Text style={styles.prayerCardTime}>{p.time}</Text>
+      </TouchableOpacity>
+    );
+  };
 
-        <View style={styles.toolsGrid}>
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ================= 1. Top Header ================= */}
+        <View style={styles.topHeader}>
+          {/* Left Action Icons */}
+          <View style={styles.headerActionIcons}>
+            <TouchableOpacity style={styles.profileIconButton} activeOpacity={0.7}>
+              <Ionicons name="person" size={18} color="#ffffff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.7}>
+              <Ionicons name="bookmark" size={18} color="#ffffff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.7}>
+              <Ionicons name="search" size={18} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Right Main Title */}
+          <Text style={styles.screenMainTitle}>الرئيسية</Text>
+        </View>
+
+        {/* ================= 2. Hero Section ================= */}
+        <View style={styles.heroSectionRow}>
+          {/* Left: Calendar Card */}
+          <View style={styles.calendarCard}>
+            <Text style={styles.calendarDayTitle}>الإِثْنَيْنُ</Text>
+            <View style={styles.calendarDivider} />
+            <View style={styles.calendarColumnsRow}>
+              <View style={styles.calendarCol}>
+                <Text style={styles.calendarColLabel}>جمادى الأولى</Text>
+                <Text style={styles.calendarColNumber}>1</Text>
+                <Text style={styles.calendarColYear}>1448</Text>
+              </View>
+              <View style={styles.calendarCol}>
+                <Text style={styles.calendarColLabel}>أكتوبر</Text>
+                <Text style={styles.calendarColNumber}>12</Text>
+                <Text style={styles.calendarColYear}>2026</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Right: Greetings and Action */}
+          <View style={styles.greetingSection}>
+            <View style={styles.greetingTitleRow}>
+              <Text style={styles.rosaryIcon}>📿</Text>
+              <Text style={styles.greetingTitle}>وقت مبارك</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.actionPillButton}
+              activeOpacity={0.8}
+              onPress={() => router.push('/adhkar' as any)}
+            >
+              <Text style={styles.actionPillText}>لتسبح الله</Text>
+            </TouchableOpacity>
+
+            <View style={styles.prayerCountdownRow}>
+              <View style={styles.limeBadge}>
+                <Text style={styles.limeBadgeText}>ساعة و52 د</Text>
+              </View>
+
+              <View style={styles.prayerLabelWithIcon}>
+                <Text style={styles.prayerLabelText}>: صلاة العصر بعد</Text>
+                <View style={styles.mosqueIconCircle}>
+                  <MaterialCommunityIcons name="mosque" size={15} color="#84cc16" />
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ================= 3. Prayer Times Section ================= */}
+        {/* Header: Location on Left, "أوقات الصلاة" on Right */}
+        <View style={styles.prayerSectionHeader}>
+          <View style={styles.locationTagRow}>
+            <Ionicons name="location-outline" size={16} color="#34d399" />
+            <Text style={styles.locationCityText}>{locationCity}</Text>
+          </View>
+          <Text style={styles.prayerSectionTitle}>أوقات الصلاة</Text>
+        </View>
+
+        {/* Prayer Times Grid */}
+        <View style={styles.prayerGrid}>
+          {/* Row 1: Fajr (Right) -> Sunrise -> Dhuhr -> Asr (Left) */}
+          <View style={styles.prayerRow}>
+            {row1Prayers.map((p) => renderPrayerCard(p))}
+          </View>
+
+          {/* Row 2: Maghrib (Right) -> Isha -> Midnight (Left) */}
+          <View style={styles.prayerRow}>
+            {row2Prayers.map((p) => renderPrayerCard(p))}
+          </View>
+        </View>
+
+        {/* ================= 4. Daily Apps Section ================= */}
+        <View style={styles.sectionTitleRow}>
+          <TouchableOpacity style={styles.customizeButton} activeOpacity={0.7}>
+            <Ionicons name="pencil-outline" size={14} color="#83958c" />
+            <Text style={styles.customizeText}>تخصيص</Text>
+          </TouchableOpacity>
+          <Text style={styles.sectionHeaderTitle}>تطبيقاتك اليومية</Text>
+        </View>
+
+        <View style={styles.quickAppsRow}>
+          {/* App 1 (Right): Tasbih */}
           <TouchableOpacity
-            style={[styles.toolCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={styles.quickAppItem}
             activeOpacity={0.8}
             onPress={() => router.push('/adhkar' as any)}
           >
-            <View style={[styles.toolIconBox, { backgroundColor: '#10b98120' }]}>
-              <Ionicons name="sparkles" size={24} color="#10b981" />
+            <View style={[styles.quickAppCircle, { backgroundColor: '#1d2720' }]}>
+              <Image
+                source={DAILY_APP_ICONS.tasbih}
+                style={[styles.quickAppIconImg, { tintColor: '#6ee7b7' }]}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={[styles.toolTitle, { color: colors.text }]}>الأذكار اليومية</Text>
-            <Text style={[styles.toolDesc, { color: colors.tabIconDefault }]}>حصن المسلم كاملاً</Text>
+            <Text style={styles.quickAppTitle}>المسبحة</Text>
           </TouchableOpacity>
 
+          {/* App 2: Qibla */}
           <TouchableOpacity
-            style={[styles.toolCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={styles.quickAppItem}
             activeOpacity={0.8}
             onPress={() => router.push('/qibla' as any)}
           >
-            <View style={[styles.toolIconBox, { backgroundColor: '#8b5cf620' }]}>
-              <Ionicons name="compass" size={24} color="#8b5cf6" />
+            <View style={[styles.quickAppCircle, { backgroundColor: '#281c2d' }]}>
+              <Image
+                source={DAILY_APP_ICONS.qibla}
+                style={[styles.quickAppIconImg, styles.qiblaIconBig, { tintColor: '#d8b4fe' }]}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={[styles.toolTitle, { color: colors.text }]}>بوصلة القبلة</Text>
-            <Text style={[styles.toolDesc, { color: colors.tabIconDefault }]}>مستشعر دقيق مباشر</Text>
+            <Text style={styles.quickAppTitle}>اتجاه القبلة</Text>
           </TouchableOpacity>
 
+          {/* App 3: Post Prayer Adhkar */}
           <TouchableOpacity
-            style={[styles.toolCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={styles.quickAppItem}
             activeOpacity={0.8}
             onPress={() => router.push('/adhkar' as any)}
           >
-            <View style={[styles.toolIconBox, { backgroundColor: '#f59e0b20' }]}>
-              <Ionicons name="finger-print" size={24} color="#f59e0b" />
+            <View style={[styles.quickAppCircle, { backgroundColor: '#1b261f' }]}>
+              <Image
+                source={DAILY_APP_ICONS.salat}
+                style={[styles.quickAppIconImg, { tintColor: '#6ee7b7' }]}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={[styles.toolTitle, { color: colors.text }]}>السبحة الذكية</Text>
-            <Text style={[styles.toolDesc, { color: colors.tabIconDefault }]}>مع اهتزاز حقيقي</Text>
+            <Text style={styles.quickAppTitle}>أذكار بعد الصلاة</Text>
           </TouchableOpacity>
 
+          {/* App 4 (Left): Live Stream */}
           <TouchableOpacity
-            style={[styles.toolCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={styles.quickAppItem}
             activeOpacity={0.8}
-            onPress={() => router.push('/quran' as any)}
+            onPress={() => router.push('/reciters' as any)}
           >
-            <View style={[styles.toolIconBox, { backgroundColor: `${colors.tint}20` }]}>
-              <Ionicons name="radio" size={24} color={colors.tint} />
+            <View style={[styles.quickAppCircle, { backgroundColor: '#2e191d' }]}>
+              <Image
+                source={DAILY_APP_ICONS.tv}
+                style={[styles.quickAppIconImg, { tintColor: '#fca5a5' }]}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={[styles.toolTitle, { color: colors.text }]}>إذاعة القرآن</Text>
-            <Text style={[styles.toolDesc, { color: colors.tabIconDefault }]}>بث مباشر 24/7</Text>
+            <Text style={styles.quickAppTitle}>البث المباشر</Text>
+            <Text style={styles.quickAppSubTitle}>للقرآن الكريم</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Daily Verse Inspiration Card */}
-        <View style={[styles.verseCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.verseBismillah, { color: colors.tint }]}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
-          <Text style={[styles.verseText, { color: colors.text }]}>
-            "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ"
-          </Text>
-          <Text style={[styles.verseRef, { color: colors.tabIconDefault }]}>سورة الرعد • آية 28</Text>
-        </View>
+        {/* ================= 5. Quran Seal / Khatmah Carousel Section ================= */}
+        <View style={styles.sealCarouselWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sealScrollContent}
+            snapToInterval={CARD_WIDTH + 12}
+            decelerationRate="fast"
+            onScroll={(e) => {
+              const x = e.nativeEvent.contentOffset.x;
+              const idx = Math.round(x / (CARD_WIDTH + 12));
+              setActiveSealIndex(idx);
+            }}
+            scrollEventThrottle={16}
+          >
+            {/* Card 1: Resume Quran Reading (Khatmah Progress) */}
+            <TouchableOpacity
+              style={[styles.sealCard, { width: CARD_WIDTH }]}
+              activeOpacity={0.88}
+              onPress={() => router.push('/quran' as any)}
+            >
+              <Ionicons name="chevron-back" size={20} color="#7e968b" style={styles.sealChevron} />
 
+              <View style={styles.sealTextCol}>
+                <Text style={styles.sealMainTitle}>متابعة المصحف من حيث توقفت</Text>
+                <Text style={styles.sealSubTitle}>
+                  {currentKhatmah.surahName} - الصفحة {currentKhatmah.page}
+                </Text>
+                <View style={styles.sealProgressTrack}>
+                  <View style={[styles.sealProgressFill, { width: `${currentKhatmah.progress}%` }]} />
+                </View>
+              </View>
+
+              <View style={styles.sealBadgeCircle}>
+                <Image
+                  source={require('@/assets/images/quran-calligraphy.png')}
+                  style={styles.sealBadgeImg}
+                  resizeMode="cover"
+                />
+              </View>
+            </TouchableOpacity>
+
+            {/* Card 2: Start a New Quran Seal (Khatmah) */}
+            <TouchableOpacity
+              style={[styles.sealCard, { width: CARD_WIDTH }]}
+              activeOpacity={0.88}
+              onPress={() => setShowNewSealModal(true)}
+            >
+              <View style={styles.sealPlusBox}>
+                <Ionicons name="add" size={24} color="#7e968b" />
+              </View>
+
+              <View style={styles.sealTextColCenter}>
+                <Text style={styles.sealMainTitleCenter}>ابدأ بـ ختمة جديدة</Text>
+              </View>
+
+              <View style={styles.sealBadgeCircle}>
+                <Image
+                  source={require('@/assets/images/quran-calligraphy.png')}
+                  style={styles.sealBadgeImg}
+                  resizeMode="cover"
+                />
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* Pagination Dots */}
+          <View style={styles.sealPaginationDots}>
+            <View style={[styles.sealDot, activeSealIndex === 0 && styles.sealDotActive]} />
+            <View style={[styles.sealDot, activeSealIndex === 1 && styles.sealDotActive]} />
+          </View>
+        </View>
       </ScrollView>
+
+      {/* ================= Modal: New Quran Seal (ختمة جديدة) ================= */}
+      <Modal
+        visible={showNewSealModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowNewSealModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setShowNewSealModal(false)}
+              >
+                <Ionicons name="close" size={20} color="#83958c" />
+              </TouchableOpacity>
+              <View style={styles.modalTitleRow}>
+                <Text style={styles.modalTitle}>بدء ختمة جديدة</Text>
+                <Image
+                  source={require('@/assets/images/quran-calligraphy.png')}
+                  style={styles.modalTitleIcon}
+                  resizeMode="cover"
+                />
+              </View>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Field 1: Khatmah Name */}
+              <Text style={styles.modalFieldLabel}>اسم الختمة</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={newSealName}
+                onChangeText={setNewSealName}
+                placeholder="مثال: ختمة رجب المبارك"
+                placeholderTextColor="#576d63"
+                textAlign="right"
+              />
+
+              {/* Field 2: Target Duration */}
+              <Text style={styles.modalFieldLabel}>مدة الختمة المحددة</Text>
+              <View style={styles.durationChipsRow}>
+                {SEAL_DURATIONS.map((d) => (
+                  <TouchableOpacity
+                    key={d.days}
+                    style={[
+                      styles.durationChip,
+                      selectedDuration === d.days && styles.durationChipActive,
+                    ]}
+                    onPress={() => setSelectedDuration(d.days)}
+                  >
+                    <Text
+                      style={[
+                        styles.durationChipText,
+                        selectedDuration === d.days && styles.durationChipTextActive,
+                      ]}
+                    >
+                      {d.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.durationChipSub,
+                        selectedDuration === d.days && styles.durationChipSubActive,
+                      ]}
+                    >
+                      {d.sub}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Field 3: Starting Point Info */}
+              <View style={styles.startingPointBox}>
+                <View style={styles.startingPointTextCol}>
+                  <Text style={styles.startingPointTitle}>نقطة البداية</Text>
+                  <Text style={styles.startingPointSub}>من أول سورة الفاتحة (الصفحة 1)</Text>
+                </View>
+                <View style={styles.startingPointIconCircle}>
+                  <Ionicons name="book-outline" size={18} color="#6ee7b7" />
+                </View>
+              </View>
+
+              {/* Field 4: Daily Reminder Toggle */}
+              <View style={styles.reminderRow}>
+                <TouchableOpacity
+                  style={[styles.checkboxCircle, reminderEnabled && styles.checkboxCircleActive]}
+                  onPress={() => setReminderEnabled(!reminderEnabled)}
+                >
+                  {reminderEnabled && <Ionicons name="checkmark" size={14} color="#0c1a16" />}
+                </TouchableOpacity>
+                <View style={styles.reminderTextCol}>
+                  <Text style={styles.reminderTitle}>تفعيل التذكير اليومي للورد</Text>
+                  <Text style={styles.reminderSub}>تنبيهك يومياً لمتابعة ورد الختمة</Text>
+                </View>
+                <Ionicons name="notifications-outline" size={20} color="#6ee7b7" />
+              </View>
+
+              {/* Action Buttons */}
+              <TouchableOpacity
+                style={styles.modalPrimaryBtn}
+                activeOpacity={0.85}
+                onPress={handleStartNewSeal}
+              >
+                <Text style={styles.modalPrimaryBtnText}>ابدأ الختمة الآن</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowNewSealModal(false)}
+              >
+                <Text style={styles.modalCancelBtnText}>إلغاء</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -281,233 +514,652 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0c1a16', // Dark emerald pine matching design
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 32,
+    paddingBottom: 95,
   },
-  header: {
-    flexDirection: 'row-reverse',
+
+  /* 1. Header */
+  topHeader: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  greeting: {
-    fontSize: 20,
-    fontWeight: '800',
+  screenMainTitle: {
+    fontFamily: 'Cairo_800ExtraBold',
+    fontSize: 32,
+    color: '#a7f3d0',
+  },
+  headerActionIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerIconButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#152b24',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileIconButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#1b4332',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* 2. Hero Section */
+  heroSectionRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 14,
+    marginBottom: 28,
+  },
+
+  /* Calendar Card on the Left */
+  calendarCard: {
+    width: 160,
+    backgroundColor: '#11221c',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#18332a',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  calendarDayTitle: {
+    fontFamily: 'Rakkas_400Regular',
+    fontSize: 36,
+    lineHeight: 46,
+    color: '#a7f3d0',
+    textAlign: 'center',
+    paddingTop: 2,
+  },
+  calendarDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginVertical: 10,
+  },
+  calendarColumnsRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 2,
+  },
+  calendarCol: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  calendarColLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#83958c',
+    marginBottom: 2,
+  },
+  calendarColNumber: {
+    fontFamily: 'Cairo_800ExtraBold',
+    fontSize: 22,
+    color: '#ffffff',
+  },
+  calendarColYear: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#65776e',
+  },
+
+  /* Greeting Section on the Right */
+  greetingSection: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  greetingTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginBottom: 10,
+  },
+  greetingTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 23,
+    color: '#cbd5e1',
     textAlign: 'right',
   },
-  locationRow: {
+  rosaryIcon: {
+    fontSize: 20,
+  },
+  actionPillButton: {
+    backgroundColor: '#11221c',
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: '#1b382e',
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  actionPillText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: '#ffffff',
+  },
+  prayerCountdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  limeBadge: {
+    backgroundColor: '#84cc16',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  limeBadgeText: {
+    fontFamily: 'Cairo_800ExtraBold',
+    fontSize: 12,
+    color: '#1a2e05',
+  },
+  prayerLabelWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  prayerLabelText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  mosqueIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#152b24',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* 3. Prayer Times Section */
+  prayerSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  prayerSectionTitle: {
+    fontFamily: 'Cairo_800ExtraBold',
+    fontSize: 24,
+    color: '#a7f3d0',
+  },
+  locationTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  locationCityText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: '#83958c',
+  },
+  prayerGrid: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  prayerRow: {
     flexDirection: 'row-reverse',
+    gap: 10,
+  },
+  prayerCardNormal: {
+    flex: 1,
+    backgroundColor: '#11221c',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#18332a',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  prayerCardName: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#cbd5e1',
+    marginTop: 6,
+  },
+  prayerCardTime: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#83958c',
+    marginTop: 2,
+  },
+  prayerIconImg: {
+    width: 24,
+    height: 24,
+  },
+
+  /* Wide Highlighted Card (Mint green) */
+  prayerCardHighlight: {
+    flex: 2,
+    backgroundColor: '#cbf3dc',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  highlightCountdownCol: {
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  countdownNotice: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: '#064e3b',
+    marginBottom: 4,
+  },
+  countdownDigits: {
+    fontFamily: 'Cairo_800ExtraBold',
+    fontSize: 19,
+    color: '#16a34a',
+    letterSpacing: 0.5,
+  },
+  highlightInfoCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  highlightNameText: {
+    fontFamily: 'Cairo_800ExtraBold',
+    fontSize: 14,
+    color: '#064e3b',
+    marginTop: 2,
+  },
+  highlightTimeText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11,
+    color: '#064e3b',
+    marginTop: 1,
+  },
+
+  /* 4. Daily Apps Section */
+  sectionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionHeaderTitle: {
+    fontFamily: 'Cairo_800ExtraBold',
+    fontSize: 20,
+    color: '#ffffff',
+  },
+  customizeButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4,
   },
-  locationText: {
-    fontSize: 13,
-    fontWeight: '500',
+  customizeText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: '#94a3b8',
   },
-  logoBadge: {
+  quickAppsRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  quickAppItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  quickAppCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickAppIconImg: {
+    width: 28,
+    height: 28,
+  },
+  qiblaIconBig: {
+    width: 35,
+    height: 35,
+  },
+  quickAppTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: '#cbd5e1',
+    textAlign: 'center',
+  },
+  quickAppSubTitle: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10,
+    color: '#83958c',
+    textAlign: 'center',
+    marginTop: -2,
+  },
+
+  /* 5. Quran Seal / Khatmah Carousel Section */
+  sealCarouselWrapper: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  sealScrollContent: {
+    paddingHorizontal: 0,
+    gap: 12,
+  },
+  sealCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#12221b',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#183327',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  sealBadgeCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#354d3e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
   },
-  logoText: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  sealBadgeImg: {
+    width: 48,
+    height: 48,
   },
-  heroCard: {
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#4a6b8c',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  heroCardHeader: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  heroCardSubtitle: {
-    color: '#e2e8f0',
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'right',
-  },
-  heroCardTitle: {
-    color: '#ffffff',
-    fontSize: 26,
-    fontWeight: '900',
-    textAlign: 'right',
-    marginTop: 2,
-  },
-  heroTimeBadge: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  heroTimeText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  heroCountdownContainer: {
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-  },
-  heroCountdownLabel: {
-    color: '#e2e8f0',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  heroCountdownTimer: {
-    color: '#ffffff',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  sectionHeader: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    textAlign: 'right',
-  },
-  prayersScroll: {
-    flexDirection: 'row-reverse',
-    gap: 10,
-    paddingBottom: 8,
-  },
-  prayerItem: {
-    width: 76,
-    paddingVertical: 14,
-    borderRadius: 18,
-    alignItems: 'center',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  prayerName: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 8,
-  },
-  prayerTime: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  card: {
-    borderRadius: 20,
-    padding: 16,
-    marginTop: 16,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-  },
-  cardIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 14,
-  },
-  cardHeaderText: {
+  sealTextCol: {
     flex: 1,
     alignItems: 'flex-end',
+    marginRight: 14,
+    marginLeft: 10,
   },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
+  sealMainTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14.5,
+    color: '#a7f3d0',
+    textAlign: 'right',
   },
-  cardSubtitle: {
+  sealSubTitle: {
+    fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
-    marginTop: 3,
+    color: '#829a8e',
+    textAlign: 'right',
+    marginTop: 2,
+    marginBottom: 6,
   },
-  toolsGrid: {
+  sealProgressTrack: {
+    width: '100%',
+    height: 4.5,
+    borderRadius: 3,
+    backgroundColor: '#203328',
+    overflow: 'hidden',
     flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    gap: 12,
   },
-  toolCard: {
-    width: '48%',
-    borderRadius: 20,
-    padding: 16,
-    alignItems: 'flex-end',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
+  sealProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: '#7ea875',
   },
-  toolIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  sealChevron: {
+    marginLeft: 2,
+  },
+  sealPlusBox: {
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
   },
-  toolTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginBottom: 2,
+  sealTextColCenter: {
+    flex: 1,
+    alignItems: 'flex-end',
+    marginRight: 16,
   },
-  toolDesc: {
-    fontSize: 11,
+  sealMainTitleCenter: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15.5,
+    color: '#c4eed7',
+    textAlign: 'right',
   },
-  verseCard: {
-    borderRadius: 20,
-    padding: 20,
-    marginTop: 20,
+  sealPaginationDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  sealDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#1d382d',
+  },
+  sealDotActive: {
+    width: 18,
+    backgroundColor: '#6ee7b7',
+  },
+
+  /* Modal: New Quran Seal */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#10221c',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 22,
     borderWidth: 1,
+    borderColor: '#1e3c30',
+    maxHeight: '85%',
   },
-  verseBismillah: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 8,
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#193328',
   },
-  verseText: {
+  modalTitleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
+  },
+  modalTitle: {
+    fontFamily: 'Cairo_800ExtraBold',
     fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    lineHeight: 28,
+    color: '#ffffff',
   },
-  verseRef: {
+  modalTitleIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#162b23',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFieldLabel: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#a7f3d0',
+    textAlign: 'right',
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  modalInput: {
+    backgroundColor: '#0c1a15',
+    borderWidth: 1,
+    borderColor: '#193328',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#ffffff',
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 14,
+  },
+  durationChipsRow: {
+    flexDirection: 'row-reverse',
+    gap: 8,
+  },
+  durationChip: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    backgroundColor: '#0c1a15',
+    borderWidth: 1,
+    borderColor: '#193328',
+    alignItems: 'center',
+  },
+  durationChipActive: {
+    borderColor: '#6ee7b7',
+    backgroundColor: '#163629',
+  },
+  durationChipText: {
+    fontFamily: 'Cairo_700Bold',
     fontSize: 12,
-    marginTop: 8,
+    color: '#829a8e',
+  },
+  durationChipTextActive: {
+    color: '#6ee7b7',
+  },
+  durationChipSub: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 9,
+    color: '#556a60',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  durationChipSubActive: {
+    color: '#a7f3d0',
+  },
+  startingPointBox: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: '#0c1a15',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#193328',
+    padding: 14,
+    marginTop: 14,
+  },
+  startingPointTextCol: {
+    flex: 1,
+    alignItems: 'flex-end',
+    marginRight: 12,
+  },
+  startingPointTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#ffffff',
+  },
+  startingPointSub: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#829a8e',
+    marginTop: 2,
+  },
+  startingPointIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#163629',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reminderRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: '#0c1a15',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#193328',
+    padding: 14,
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  checkboxCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#324a3e',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxCircleActive: {
+    backgroundColor: '#6ee7b7',
+    borderColor: '#6ee7b7',
+  },
+  reminderTextCol: {
+    flex: 1,
+    alignItems: 'flex-end',
+    marginRight: 12,
+    marginLeft: 8,
+  },
+  reminderTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#ffffff',
+  },
+  reminderSub: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#829a8e',
+    marginTop: 2,
+  },
+  modalPrimaryBtn: {
+    backgroundColor: '#6ee7b7',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  modalPrimaryBtnText: {
+    fontFamily: 'Cairo_800ExtraBold',
+    fontSize: 15,
+    color: '#0a1612',
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalCancelBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#83958c',
   },
 });

@@ -1,77 +1,117 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { View, StyleSheet, Platform } from 'react-native';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: colors.tabIconDefault,
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: '#10b981',
+        tabBarInactiveTintColor: '#64748b',
         tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          height: 60,
-          paddingBottom: 8,
+          backgroundColor: '#162238',
+          borderTopColor: '#1e293b',
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 76 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 18 : 8,
           paddingTop: 8,
+          position: 'absolute',
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          elevation: 12,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
-        headerStyle: {
-          backgroundColor: colors.background,
-        },
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          color: colors.text,
-        },
-        headerShadowVisible: false,
+        headerShown: false,
       }}>
+      {/* Tab 5: Duas (Hands praying) */}
       <Tabs.Screen
-        name="index"
+        name="duas"
         options={{
-          title: 'الرئيسية',
-          headerShown: false,
+          title: 'الأدعية',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+              <FontAwesome5 name="praying-hands" size={20} color={color} />
+            </View>
           ),
         }}
       />
-      <Tabs.Screen
-        name="quran"
-        options={{
-          title: 'المصحف',
-          headerTitle: 'المصحف الشريف',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'book' : 'book-outline'} size={24} color={color} />
-          ),
-        }}
-      />
+
+      {/* Tab 4: Adhkar & Tasbih (Rosary / prayer beads) */}
       <Tabs.Screen
         name="adhkar"
         options={{
           title: 'الأذكار',
-          headerTitle: 'الأذكار والسبحة',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={24} color={color} />
+            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+              <MaterialCommunityIcons name="counter" size={24} color={color} />
+            </View>
           ),
         }}
       />
+
+      {/* Tab 3: Reciters (Person listening / reciting) */}
+      <Tabs.Screen
+        name="reciters"
+        options={{
+          title: 'القراء',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+              <MaterialCommunityIcons name="account-voice" size={24} color={color} />
+            </View>
+          ),
+        }}
+      />
+
+      {/* Tab 2: Quran (Holy Book) */}
+      <Tabs.Screen
+        name="quran"
+        options={{
+          title: 'المصحف',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+              <Ionicons name="book-outline" size={22} color={color} />
+            </View>
+          ),
+        }}
+      />
+
+      {/* Tab 1: Home (Main screen) */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'الرئيسية',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+              <Ionicons name="home-outline" size={22} color={color} />
+            </View>
+          ),
+        }}
+      />
+
+      {/* Hide secondary screens from bottom bar */}
       <Tabs.Screen
         name="qibla"
         options={{
-          title: 'القبلة',
-          headerTitle: 'اتجاه القبلة',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'compass' : 'compass-outline'} size={24} color={color} />
-          ),
+          href: null,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+  },
+  activeIconContainer: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  },
+});
