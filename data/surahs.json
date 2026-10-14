@@ -1,0 +1,1028 @@
+[
+  {
+    "id": 1,
+    "name_arabic": "الفاتحة",
+    "name_simple": "Al-Fatihah",
+    "revelation_place": "makkah",
+    "verses_count": 7,
+    "start_page": 1,
+    "vocalized_name": "سُورَةُ الفَاتِحَةِ"
+  },
+  {
+    "id": 2,
+    "name_arabic": "البقرة",
+    "name_simple": "Al-Baqarah",
+    "revelation_place": "madinah",
+    "verses_count": 286,
+    "start_page": 2,
+    "vocalized_name": "سُورَةُ البَقَرَةِ"
+  },
+  {
+    "id": 3,
+    "name_arabic": "آل عمران",
+    "name_simple": "Ali 'Imran",
+    "revelation_place": "madinah",
+    "verses_count": 200,
+    "start_page": 50,
+    "vocalized_name": "سُورَةُ آلِ عِمْرَانَ"
+  },
+  {
+    "id": 4,
+    "name_arabic": "النساء",
+    "name_simple": "An-Nisa",
+    "revelation_place": "madinah",
+    "verses_count": 176,
+    "start_page": 77,
+    "vocalized_name": "سُورَةُ النِّسَاءِ"
+  },
+  {
+    "id": 5,
+    "name_arabic": "المائدة",
+    "name_simple": "Al-Ma'idah",
+    "revelation_place": "madinah",
+    "verses_count": 120,
+    "start_page": 106,
+    "vocalized_name": "سُورَةُ المَائِدَةِ"
+  },
+  {
+    "id": 6,
+    "name_arabic": "الأنعام",
+    "name_simple": "Al-An'am",
+    "revelation_place": "makkah",
+    "verses_count": 165,
+    "start_page": 128,
+    "vocalized_name": "سُورَةُ الأَنْعَامِ"
+  },
+  {
+    "id": 7,
+    "name_arabic": "الأعراف",
+    "name_simple": "Al-A'raf",
+    "revelation_place": "makkah",
+    "verses_count": 206,
+    "start_page": 151,
+    "vocalized_name": "سُورَةُ الأَعْرَافِ"
+  },
+  {
+    "id": 8,
+    "name_arabic": "الأنفال",
+    "name_simple": "Al-Anfal",
+    "revelation_place": "madinah",
+    "verses_count": 75,
+    "start_page": 177,
+    "vocalized_name": "سُورَةُ الأَنْفَالِ"
+  },
+  {
+    "id": 9,
+    "name_arabic": "التوبة",
+    "name_simple": "At-Tawbah",
+    "revelation_place": "madinah",
+    "verses_count": 129,
+    "start_page": 187,
+    "vocalized_name": "سُورَةُ التَّوْبَةِ"
+  },
+  {
+    "id": 10,
+    "name_arabic": "يونس",
+    "name_simple": "Yunus",
+    "revelation_place": "makkah",
+    "verses_count": 109,
+    "start_page": 208,
+    "vocalized_name": "سُورَةُ يُونُسَ"
+  },
+  {
+    "id": 11,
+    "name_arabic": "هود",
+    "name_simple": "Hud",
+    "revelation_place": "makkah",
+    "verses_count": 123,
+    "start_page": 221,
+    "vocalized_name": "سُورَةُ هُودٍ"
+  },
+  {
+    "id": 12,
+    "name_arabic": "يوسف",
+    "name_simple": "Yusuf",
+    "revelation_place": "makkah",
+    "verses_count": 111,
+    "start_page": 235,
+    "vocalized_name": "سُورَةُ يُوسُفَ"
+  },
+  {
+    "id": 13,
+    "name_arabic": "الرعد",
+    "name_simple": "Ar-Ra'd",
+    "revelation_place": "madinah",
+    "verses_count": 43,
+    "start_page": 249,
+    "vocalized_name": "سُورَةُ الرَّعْدِ"
+  },
+  {
+    "id": 14,
+    "name_arabic": "ابراهيم",
+    "name_simple": "Ibrahim",
+    "revelation_place": "makkah",
+    "verses_count": 52,
+    "start_page": 255,
+    "vocalized_name": "سُورَةُ إِبْرَاهِيمَ"
+  },
+  {
+    "id": 15,
+    "name_arabic": "الحجر",
+    "name_simple": "Al-Hijr",
+    "revelation_place": "makkah",
+    "verses_count": 99,
+    "start_page": 262,
+    "vocalized_name": "سُورَةُ الحِجْرِ"
+  },
+  {
+    "id": 16,
+    "name_arabic": "النحل",
+    "name_simple": "An-Nahl",
+    "revelation_place": "makkah",
+    "verses_count": 128,
+    "start_page": 267,
+    "vocalized_name": "سُورَةُ النَّحْلِ"
+  },
+  {
+    "id": 17,
+    "name_arabic": "الإسراء",
+    "name_simple": "Al-Isra",
+    "revelation_place": "makkah",
+    "verses_count": 111,
+    "start_page": 282,
+    "vocalized_name": "سُورَةُ الإِسْرَاءِ"
+  },
+  {
+    "id": 18,
+    "name_arabic": "الكهف",
+    "name_simple": "Al-Kahf",
+    "revelation_place": "makkah",
+    "verses_count": 110,
+    "start_page": 293,
+    "vocalized_name": "سُورَةُ الكَهْفِ"
+  },
+  {
+    "id": 19,
+    "name_arabic": "مريم",
+    "name_simple": "Maryam",
+    "revelation_place": "makkah",
+    "verses_count": 98,
+    "start_page": 305,
+    "vocalized_name": "سُورَةُ مَرْيَمَ"
+  },
+  {
+    "id": 20,
+    "name_arabic": "طه",
+    "name_simple": "Taha",
+    "revelation_place": "makkah",
+    "verses_count": 135,
+    "start_page": 312,
+    "vocalized_name": "سُورَةُ طٰهٰ"
+  },
+  {
+    "id": 21,
+    "name_arabic": "الأنبياء",
+    "name_simple": "Al-Anbya",
+    "revelation_place": "makkah",
+    "verses_count": 112,
+    "start_page": 322,
+    "vocalized_name": "سُورَةُ الأَنْبِيَاءِ"
+  },
+  {
+    "id": 22,
+    "name_arabic": "الحج",
+    "name_simple": "Al-Hajj",
+    "revelation_place": "madinah",
+    "verses_count": 78,
+    "start_page": 332,
+    "vocalized_name": "سُورَةُ الحَجِّ"
+  },
+  {
+    "id": 23,
+    "name_arabic": "المؤمنون",
+    "name_simple": "Al-Mu'minun",
+    "revelation_place": "makkah",
+    "verses_count": 118,
+    "start_page": 342,
+    "vocalized_name": "سُورَةُ المُؤْمِنُونَ"
+  },
+  {
+    "id": 24,
+    "name_arabic": "النور",
+    "name_simple": "An-Nur",
+    "revelation_place": "madinah",
+    "verses_count": 64,
+    "start_page": 350,
+    "vocalized_name": "سُورَةُ النُّورِ"
+  },
+  {
+    "id": 25,
+    "name_arabic": "الفرقان",
+    "name_simple": "Al-Furqan",
+    "revelation_place": "makkah",
+    "verses_count": 77,
+    "start_page": 359,
+    "vocalized_name": "سُورَةُ الفُرْقَانِ"
+  },
+  {
+    "id": 26,
+    "name_arabic": "الشعراء",
+    "name_simple": "Ash-Shu'ara",
+    "revelation_place": "makkah",
+    "verses_count": 227,
+    "start_page": 367,
+    "vocalized_name": "سُورَةُ الشُّعَرَاءِ"
+  },
+  {
+    "id": 27,
+    "name_arabic": "النمل",
+    "name_simple": "An-Naml",
+    "revelation_place": "makkah",
+    "verses_count": 93,
+    "start_page": 377,
+    "vocalized_name": "سُورَةُ النَّمْلِ"
+  },
+  {
+    "id": 28,
+    "name_arabic": "القصص",
+    "name_simple": "Al-Qasas",
+    "revelation_place": "makkah",
+    "verses_count": 88,
+    "start_page": 385,
+    "vocalized_name": "سُورَةُ القَصَصِ"
+  },
+  {
+    "id": 29,
+    "name_arabic": "العنكبوت",
+    "name_simple": "Al-'Ankabut",
+    "revelation_place": "makkah",
+    "verses_count": 69,
+    "start_page": 396,
+    "vocalized_name": "سُورَةُ العَنْكَبُوتِ"
+  },
+  {
+    "id": 30,
+    "name_arabic": "الروم",
+    "name_simple": "Ar-Rum",
+    "revelation_place": "makkah",
+    "verses_count": 60,
+    "start_page": 404,
+    "vocalized_name": "سُورَةُ الرُّومِ"
+  },
+  {
+    "id": 31,
+    "name_arabic": "لقمان",
+    "name_simple": "Luqman",
+    "revelation_place": "makkah",
+    "verses_count": 34,
+    "start_page": 411,
+    "vocalized_name": "سُورَةُ لُقْمَانَ"
+  },
+  {
+    "id": 32,
+    "name_arabic": "السجدة",
+    "name_simple": "As-Sajdah",
+    "revelation_place": "makkah",
+    "verses_count": 30,
+    "start_page": 415,
+    "vocalized_name": "سُورَةُ السَّجْدَةِ"
+  },
+  {
+    "id": 33,
+    "name_arabic": "الأحزاب",
+    "name_simple": "Al-Ahzab",
+    "revelation_place": "madinah",
+    "verses_count": 73,
+    "start_page": 418,
+    "vocalized_name": "سُورَةُ الأَحْزَابِ"
+  },
+  {
+    "id": 34,
+    "name_arabic": "سبإ",
+    "name_simple": "Saba",
+    "revelation_place": "makkah",
+    "verses_count": 54,
+    "start_page": 428,
+    "vocalized_name": "سُورَةُ سَبَإٍ"
+  },
+  {
+    "id": 35,
+    "name_arabic": "فاطر",
+    "name_simple": "Fatir",
+    "revelation_place": "makkah",
+    "verses_count": 45,
+    "start_page": 434,
+    "vocalized_name": "سُورَةُ فَاطِرٍ"
+  },
+  {
+    "id": 36,
+    "name_arabic": "يس",
+    "name_simple": "Ya-Sin",
+    "revelation_place": "makkah",
+    "verses_count": 83,
+    "start_page": 440,
+    "vocalized_name": "سُورَةُ يس"
+  },
+  {
+    "id": 37,
+    "name_arabic": "الصافات",
+    "name_simple": "As-Saffat",
+    "revelation_place": "makkah",
+    "verses_count": 182,
+    "start_page": 446,
+    "vocalized_name": "سُورَةُ الصَّافَّاتِ"
+  },
+  {
+    "id": 38,
+    "name_arabic": "ص",
+    "name_simple": "Sad",
+    "revelation_place": "makkah",
+    "verses_count": 88,
+    "start_page": 453,
+    "vocalized_name": "سُورَةُ ص"
+  },
+  {
+    "id": 39,
+    "name_arabic": "الزمر",
+    "name_simple": "Az-Zumar",
+    "revelation_place": "makkah",
+    "verses_count": 75,
+    "start_page": 458,
+    "vocalized_name": "سُورَةُ الزُّمَرِ"
+  },
+  {
+    "id": 40,
+    "name_arabic": "غافر",
+    "name_simple": "Ghafir",
+    "revelation_place": "makkah",
+    "verses_count": 85,
+    "start_page": 467,
+    "vocalized_name": "سُورَةُ غَافِرٍ"
+  },
+  {
+    "id": 41,
+    "name_arabic": "فصلت",
+    "name_simple": "Fussilat",
+    "revelation_place": "makkah",
+    "verses_count": 54,
+    "start_page": 477,
+    "vocalized_name": "سُورَةُ فُصِّلَتْ"
+  },
+  {
+    "id": 42,
+    "name_arabic": "الشورى",
+    "name_simple": "Ash-Shuraa",
+    "revelation_place": "makkah",
+    "verses_count": 53,
+    "start_page": 483,
+    "vocalized_name": "سُورَةُ الشُّورَىٰ"
+  },
+  {
+    "id": 43,
+    "name_arabic": "الزخرف",
+    "name_simple": "Az-Zukhruf",
+    "revelation_place": "makkah",
+    "verses_count": 89,
+    "start_page": 489,
+    "vocalized_name": "سُورَةُ الزُّخْرُفِ"
+  },
+  {
+    "id": 44,
+    "name_arabic": "الدخان",
+    "name_simple": "Ad-Dukhan",
+    "revelation_place": "makkah",
+    "verses_count": 59,
+    "start_page": 496,
+    "vocalized_name": "سُورَةُ الدُّخَانِ"
+  },
+  {
+    "id": 45,
+    "name_arabic": "الجاثية",
+    "name_simple": "Al-Jathiyah",
+    "revelation_place": "makkah",
+    "verses_count": 37,
+    "start_page": 499,
+    "vocalized_name": "سُورَةُ الجَاثِيَةِ"
+  },
+  {
+    "id": 46,
+    "name_arabic": "الأحقاف",
+    "name_simple": "Al-Ahqaf",
+    "revelation_place": "makkah",
+    "verses_count": 35,
+    "start_page": 502,
+    "vocalized_name": "سُورَةُ الأَحْقَافِ"
+  },
+  {
+    "id": 47,
+    "name_arabic": "محمد",
+    "name_simple": "Muhammad",
+    "revelation_place": "madinah",
+    "verses_count": 38,
+    "start_page": 507,
+    "vocalized_name": "سُورَةُ مُحَمَّدٍ"
+  },
+  {
+    "id": 48,
+    "name_arabic": "الفتح",
+    "name_simple": "Al-Fath",
+    "revelation_place": "madinah",
+    "verses_count": 29,
+    "start_page": 511,
+    "vocalized_name": "سُورَةُ الفَتْحِ"
+  },
+  {
+    "id": 49,
+    "name_arabic": "الحجرات",
+    "name_simple": "Al-Hujurat",
+    "revelation_place": "madinah",
+    "verses_count": 18,
+    "start_page": 515,
+    "vocalized_name": "سُورَةُ الحُجُرَاتِ"
+  },
+  {
+    "id": 50,
+    "name_arabic": "ق",
+    "name_simple": "Qaf",
+    "revelation_place": "makkah",
+    "verses_count": 45,
+    "start_page": 518,
+    "vocalized_name": "سُورَةُ ق"
+  },
+  {
+    "id": 51,
+    "name_arabic": "الذاريات",
+    "name_simple": "Adh-Dhariyat",
+    "revelation_place": "makkah",
+    "verses_count": 60,
+    "start_page": 520,
+    "vocalized_name": "سُورَةُ الذَّارِيَاتِ"
+  },
+  {
+    "id": 52,
+    "name_arabic": "الطور",
+    "name_simple": "At-Tur",
+    "revelation_place": "makkah",
+    "verses_count": 49,
+    "start_page": 523,
+    "vocalized_name": "سُورَةُ الطُّورِ"
+  },
+  {
+    "id": 53,
+    "name_arabic": "النجم",
+    "name_simple": "An-Najm",
+    "revelation_place": "makkah",
+    "verses_count": 62,
+    "start_page": 526,
+    "vocalized_name": "سُورَةُ النَّجْمِ"
+  },
+  {
+    "id": 54,
+    "name_arabic": "القمر",
+    "name_simple": "Al-Qamar",
+    "revelation_place": "makkah",
+    "verses_count": 55,
+    "start_page": 528,
+    "vocalized_name": "سُورَةُ القَمَرِ"
+  },
+  {
+    "id": 55,
+    "name_arabic": "الرحمن",
+    "name_simple": "Ar-Rahman",
+    "revelation_place": "madinah",
+    "verses_count": 78,
+    "start_page": 531,
+    "vocalized_name": "سُورَةُ الرَّحْمٰن"
+  },
+  {
+    "id": 56,
+    "name_arabic": "الواقعة",
+    "name_simple": "Al-Waqi'ah",
+    "revelation_place": "makkah",
+    "verses_count": 96,
+    "start_page": 534,
+    "vocalized_name": "سُورَةُ الوَاقِعَةِ"
+  },
+  {
+    "id": 57,
+    "name_arabic": "الحديد",
+    "name_simple": "Al-Hadid",
+    "revelation_place": "madinah",
+    "verses_count": 29,
+    "start_page": 537,
+    "vocalized_name": "سُورَةُ الحَدِيدِ"
+  },
+  {
+    "id": 58,
+    "name_arabic": "المجادلة",
+    "name_simple": "Al-Mujadila",
+    "revelation_place": "madinah",
+    "verses_count": 22,
+    "start_page": 542,
+    "vocalized_name": "سُورَةُ المُجَادَلَةِ"
+  },
+  {
+    "id": 59,
+    "name_arabic": "الحشر",
+    "name_simple": "Al-Hashr",
+    "revelation_place": "madinah",
+    "verses_count": 24,
+    "start_page": 545,
+    "vocalized_name": "سُورَةُ الحَشْرِ"
+  },
+  {
+    "id": 60,
+    "name_arabic": "الممتحنة",
+    "name_simple": "Al-Mumtahanah",
+    "revelation_place": "madinah",
+    "verses_count": 13,
+    "start_page": 549,
+    "vocalized_name": "سُورَةُ المُمْتَحَنَةِ"
+  },
+  {
+    "id": 61,
+    "name_arabic": "الصف",
+    "name_simple": "As-Saf",
+    "revelation_place": "madinah",
+    "verses_count": 14,
+    "start_page": 551,
+    "vocalized_name": "سُورَةُ الصَّفِّ"
+  },
+  {
+    "id": 62,
+    "name_arabic": "الجمعة",
+    "name_simple": "Al-Jumu'ah",
+    "revelation_place": "madinah",
+    "verses_count": 11,
+    "start_page": 553,
+    "vocalized_name": "سُورَةُ الجُمُعَةِ"
+  },
+  {
+    "id": 63,
+    "name_arabic": "المنافقون",
+    "name_simple": "Al-Munafiqun",
+    "revelation_place": "madinah",
+    "verses_count": 11,
+    "start_page": 554,
+    "vocalized_name": "سُورَةُ المُنَافِقُونَ"
+  },
+  {
+    "id": 64,
+    "name_arabic": "التغابن",
+    "name_simple": "At-Taghabun",
+    "revelation_place": "madinah",
+    "verses_count": 18,
+    "start_page": 556,
+    "vocalized_name": "سُورَةُ التَّغَابُنِ"
+  },
+  {
+    "id": 65,
+    "name_arabic": "الطلاق",
+    "name_simple": "At-Talaq",
+    "revelation_place": "madinah",
+    "verses_count": 12,
+    "start_page": 558,
+    "vocalized_name": "سُورَةُ الطَّلَاقِ"
+  },
+  {
+    "id": 66,
+    "name_arabic": "التحريم",
+    "name_simple": "At-Tahrim",
+    "revelation_place": "madinah",
+    "verses_count": 12,
+    "start_page": 560,
+    "vocalized_name": "سُورَةُ التَّحْرِيمِ"
+  },
+  {
+    "id": 67,
+    "name_arabic": "الملك",
+    "name_simple": "Al-Mulk",
+    "revelation_place": "makkah",
+    "verses_count": 30,
+    "start_page": 562,
+    "vocalized_name": "سُورَةُ المُلْكِ"
+  },
+  {
+    "id": 68,
+    "name_arabic": "القلم",
+    "name_simple": "Al-Qalam",
+    "revelation_place": "makkah",
+    "verses_count": 52,
+    "start_page": 564,
+    "vocalized_name": "سُورَةُ القَلَمِ"
+  },
+  {
+    "id": 69,
+    "name_arabic": "الحاقة",
+    "name_simple": "Al-Haqqah",
+    "revelation_place": "makkah",
+    "verses_count": 52,
+    "start_page": 566,
+    "vocalized_name": "سُورَةُ الحَاقَّةِ"
+  },
+  {
+    "id": 70,
+    "name_arabic": "المعارج",
+    "name_simple": "Al-Ma'arij",
+    "revelation_place": "makkah",
+    "verses_count": 44,
+    "start_page": 568,
+    "vocalized_name": "سُورَةُ المَعَارِجِ"
+  },
+  {
+    "id": 71,
+    "name_arabic": "نوح",
+    "name_simple": "Nuh",
+    "revelation_place": "makkah",
+    "verses_count": 28,
+    "start_page": 570,
+    "vocalized_name": "سُورَةُ نُوحٍ"
+  },
+  {
+    "id": 72,
+    "name_arabic": "الجن",
+    "name_simple": "Al-Jinn",
+    "revelation_place": "makkah",
+    "verses_count": 28,
+    "start_page": 572,
+    "vocalized_name": "سُورَةُ الجِنِّ"
+  },
+  {
+    "id": 73,
+    "name_arabic": "المزمل",
+    "name_simple": "Al-Muzzammil",
+    "revelation_place": "makkah",
+    "verses_count": 20,
+    "start_page": 574,
+    "vocalized_name": "سُورَةُ المُزَّمِّلِ"
+  },
+  {
+    "id": 74,
+    "name_arabic": "المدثر",
+    "name_simple": "Al-Muddaththir",
+    "revelation_place": "makkah",
+    "verses_count": 56,
+    "start_page": 575,
+    "vocalized_name": "سُورَةُ المُدَّثِّرِ"
+  },
+  {
+    "id": 75,
+    "name_arabic": "القيامة",
+    "name_simple": "Al-Qiyamah",
+    "revelation_place": "makkah",
+    "verses_count": 40,
+    "start_page": 577,
+    "vocalized_name": "سُورَةُ القِيَامَةِ"
+  },
+  {
+    "id": 76,
+    "name_arabic": "الانسان",
+    "name_simple": "Al-Insan",
+    "revelation_place": "madinah",
+    "verses_count": 31,
+    "start_page": 578,
+    "vocalized_name": "سُورَةُ الإِنْسَانِ"
+  },
+  {
+    "id": 77,
+    "name_arabic": "المرسلات",
+    "name_simple": "Al-Mursalat",
+    "revelation_place": "makkah",
+    "verses_count": 50,
+    "start_page": 580,
+    "vocalized_name": "سُورَةُ المُرْسَلَاتِ"
+  },
+  {
+    "id": 78,
+    "name_arabic": "النبإ",
+    "name_simple": "An-Naba",
+    "revelation_place": "makkah",
+    "verses_count": 40,
+    "start_page": 582,
+    "vocalized_name": "سُورَةُ النَّبَإِ"
+  },
+  {
+    "id": 79,
+    "name_arabic": "النازعات",
+    "name_simple": "An-Nazi'at",
+    "revelation_place": "makkah",
+    "verses_count": 46,
+    "start_page": 583,
+    "vocalized_name": "سُورَةُ النَّازِعَاتِ"
+  },
+  {
+    "id": 80,
+    "name_arabic": "عبس",
+    "name_simple": "'Abasa",
+    "revelation_place": "makkah",
+    "verses_count": 42,
+    "start_page": 585,
+    "vocalized_name": "سُورَةُ عَبَسَ"
+  },
+  {
+    "id": 81,
+    "name_arabic": "التكوير",
+    "name_simple": "At-Takwir",
+    "revelation_place": "makkah",
+    "verses_count": 29,
+    "start_page": 586,
+    "vocalized_name": "سُورَةُ التَّكْوِيرِ"
+  },
+  {
+    "id": 82,
+    "name_arabic": "الإنفطار",
+    "name_simple": "Al-Infitar",
+    "revelation_place": "makkah",
+    "verses_count": 19,
+    "start_page": 587,
+    "vocalized_name": "سُورَةُ الانْفِطَارِ"
+  },
+  {
+    "id": 83,
+    "name_arabic": "المطففين",
+    "name_simple": "Al-Mutaffifin",
+    "revelation_place": "makkah",
+    "verses_count": 36,
+    "start_page": 587,
+    "vocalized_name": "سُورَةُ المُطَفِّفِينَ"
+  },
+  {
+    "id": 84,
+    "name_arabic": "الإنشقاق",
+    "name_simple": "Al-Inshiqaq",
+    "revelation_place": "makkah",
+    "verses_count": 25,
+    "start_page": 589,
+    "vocalized_name": "سُورَةُ الانْشِقَاقِ"
+  },
+  {
+    "id": 85,
+    "name_arabic": "البروج",
+    "name_simple": "Al-Buruj",
+    "revelation_place": "makkah",
+    "verses_count": 22,
+    "start_page": 590,
+    "vocalized_name": "سُورَةُ البُرُوجِ"
+  },
+  {
+    "id": 86,
+    "name_arabic": "الطارق",
+    "name_simple": "At-Tariq",
+    "revelation_place": "makkah",
+    "verses_count": 17,
+    "start_page": 591,
+    "vocalized_name": "سُورَةُ الطَّارِقِ"
+  },
+  {
+    "id": 87,
+    "name_arabic": "الأعلى",
+    "name_simple": "Al-A'la",
+    "revelation_place": "makkah",
+    "verses_count": 19,
+    "start_page": 591,
+    "vocalized_name": "سُورَةُ الأَعْلَىٰ"
+  },
+  {
+    "id": 88,
+    "name_arabic": "الغاشية",
+    "name_simple": "Al-Ghashiyah",
+    "revelation_place": "makkah",
+    "verses_count": 26,
+    "start_page": 592,
+    "vocalized_name": "سُورَةُ الغَاشِيَةِ"
+  },
+  {
+    "id": 89,
+    "name_arabic": "الفجر",
+    "name_simple": "Al-Fajr",
+    "revelation_place": "makkah",
+    "verses_count": 30,
+    "start_page": 593,
+    "vocalized_name": "سُورَةُ الفَجْرِ"
+  },
+  {
+    "id": 90,
+    "name_arabic": "البلد",
+    "name_simple": "Al-Balad",
+    "revelation_place": "makkah",
+    "verses_count": 20,
+    "start_page": 594,
+    "vocalized_name": "سُورَةُ البَلَدِ"
+  },
+  {
+    "id": 91,
+    "name_arabic": "الشمس",
+    "name_simple": "Ash-Shams",
+    "revelation_place": "makkah",
+    "verses_count": 15,
+    "start_page": 595,
+    "vocalized_name": "سُورَةُ الشَّمْسِ"
+  },
+  {
+    "id": 92,
+    "name_arabic": "الليل",
+    "name_simple": "Al-Layl",
+    "revelation_place": "makkah",
+    "verses_count": 21,
+    "start_page": 595,
+    "vocalized_name": "سُورَةُ اللَّيْلِ"
+  },
+  {
+    "id": 93,
+    "name_arabic": "الضحى",
+    "name_simple": "Ad-Duhaa",
+    "revelation_place": "makkah",
+    "verses_count": 11,
+    "start_page": 596,
+    "vocalized_name": "سُورَةُ الضُّحَىٰ"
+  },
+  {
+    "id": 94,
+    "name_arabic": "الشرح",
+    "name_simple": "Ash-Sharh",
+    "revelation_place": "makkah",
+    "verses_count": 8,
+    "start_page": 596,
+    "vocalized_name": "سُورَةُ الشَّرْحِ"
+  },
+  {
+    "id": 95,
+    "name_arabic": "التين",
+    "name_simple": "At-Tin",
+    "revelation_place": "makkah",
+    "verses_count": 8,
+    "start_page": 597,
+    "vocalized_name": "سُورَةُ التِّينِ"
+  },
+  {
+    "id": 96,
+    "name_arabic": "العلق",
+    "name_simple": "Al-'Alaq",
+    "revelation_place": "makkah",
+    "verses_count": 19,
+    "start_page": 597,
+    "vocalized_name": "سُورَةُ العَلَقِ"
+  },
+  {
+    "id": 97,
+    "name_arabic": "القدر",
+    "name_simple": "Al-Qadr",
+    "revelation_place": "makkah",
+    "verses_count": 5,
+    "start_page": 598,
+    "vocalized_name": "سُورَةُ القَدْرِ"
+  },
+  {
+    "id": 98,
+    "name_arabic": "البينة",
+    "name_simple": "Al-Bayyinah",
+    "revelation_place": "madinah",
+    "verses_count": 8,
+    "start_page": 598,
+    "vocalized_name": "سُورَةُ البَيِّنَةِ"
+  },
+  {
+    "id": 99,
+    "name_arabic": "الزلزلة",
+    "name_simple": "Az-Zalzalah",
+    "revelation_place": "madinah",
+    "verses_count": 8,
+    "start_page": 599,
+    "vocalized_name": "سُورَةُ الزَّلْزَلَةِ"
+  },
+  {
+    "id": 100,
+    "name_arabic": "العاديات",
+    "name_simple": "Al-'Adiyat",
+    "revelation_place": "makkah",
+    "verses_count": 11,
+    "start_page": 599,
+    "vocalized_name": "سُورَةُ العَادِيَاتِ"
+  },
+  {
+    "id": 101,
+    "name_arabic": "القارعة",
+    "name_simple": "Al-Qari'ah",
+    "revelation_place": "makkah",
+    "verses_count": 11,
+    "start_page": 600,
+    "vocalized_name": "سُورَةُ القَارِعَةِ"
+  },
+  {
+    "id": 102,
+    "name_arabic": "التكاثر",
+    "name_simple": "At-Takathur",
+    "revelation_place": "makkah",
+    "verses_count": 8,
+    "start_page": 600,
+    "vocalized_name": "سُورَةُ التَّكَاثُرِ"
+  },
+  {
+    "id": 103,
+    "name_arabic": "العصر",
+    "name_simple": "Al-'Asr",
+    "revelation_place": "makkah",
+    "verses_count": 3,
+    "start_page": 601,
+    "vocalized_name": "سُورَةُ العَصْرِ"
+  },
+  {
+    "id": 104,
+    "name_arabic": "الهمزة",
+    "name_simple": "Al-Humazah",
+    "revelation_place": "makkah",
+    "verses_count": 9,
+    "start_page": 601,
+    "vocalized_name": "سُورَةُ الهُمَزَةِ"
+  },
+  {
+    "id": 105,
+    "name_arabic": "الفيل",
+    "name_simple": "Al-Fil",
+    "revelation_place": "makkah",
+    "verses_count": 5,
+    "start_page": 601,
+    "vocalized_name": "سُورَةُ الفِيلِ"
+  },
+  {
+    "id": 106,
+    "name_arabic": "قريش",
+    "name_simple": "Quraysh",
+    "revelation_place": "makkah",
+    "verses_count": 4,
+    "start_page": 602,
+    "vocalized_name": "سُورَةُ قُرَيْشٍ"
+  },
+  {
+    "id": 107,
+    "name_arabic": "الماعون",
+    "name_simple": "Al-Ma'un",
+    "revelation_place": "makkah",
+    "verses_count": 7,
+    "start_page": 602,
+    "vocalized_name": "سُورَةُ المَاعُونِ"
+  },
+  {
+    "id": 108,
+    "name_arabic": "الكوثر",
+    "name_simple": "Al-Kawthar",
+    "revelation_place": "makkah",
+    "verses_count": 3,
+    "start_page": 602,
+    "vocalized_name": "سُورَةُ الكَوْثَرِ"
+  },
+  {
+    "id": 109,
+    "name_arabic": "الكافرون",
+    "name_simple": "Al-Kafirun",
+    "revelation_place": "makkah",
+    "verses_count": 6,
+    "start_page": 603,
+    "vocalized_name": "سُورَةُ الكَافِرُونَ"
+  },
+  {
+    "id": 110,
+    "name_arabic": "النصر",
+    "name_simple": "An-Nasr",
+    "revelation_place": "madinah",
+    "verses_count": 3,
+    "start_page": 603,
+    "vocalized_name": "سُورَةُ النَّصْرِ"
+  },
+  {
+    "id": 111,
+    "name_arabic": "المسد",
+    "name_simple": "Al-Masad",
+    "revelation_place": "makkah",
+    "verses_count": 5,
+    "start_page": 603,
+    "vocalized_name": "سُورَةُ المَسَدِ"
+  },
+  {
+    "id": 112,
+    "name_arabic": "الإخلاص",
+    "name_simple": "Al-Ikhlas",
+    "revelation_place": "makkah",
+    "verses_count": 4,
+    "start_page": 604,
+    "vocalized_name": "سُورَةُ الإِخْلَاصِ"
+  },
+  {
+    "id": 113,
+    "name_arabic": "الفلق",
+    "name_simple": "Al-Falaq",
+    "revelation_place": "makkah",
+    "verses_count": 5,
+    "start_page": 604,
+    "vocalized_name": "سُورَةُ الفَلَقِ"
+  },
+  {
+    "id": 114,
+    "name_arabic": "الناس",
+    "name_simple": "An-Nas",
+    "revelation_place": "makkah",
+    "verses_count": 6,
+    "start_page": 604,
+    "vocalized_name": "سُورَةُ النَّاسِ"
+  }
+]
