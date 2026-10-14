@@ -15,6 +15,68 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Svg, { Circle, Path } from 'react-native-svg';
+
+// Custom icons matching user design exactly
+function TasbihBeadsIcon({ size = 20, color = '#ffffff' }: { size?: number; color?: string }) {
+  const radius = 6.5;
+  const center = 10;
+  const count = 12;
+  const beads = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i * 2 * Math.PI) / count - Math.PI / 2;
+    const cx = center + radius * Math.cos(angle);
+    const cy = center + radius * Math.sin(angle);
+    beads.push(<Circle key={i} cx={cx} cy={cy} r={1.25} fill="none" stroke={color} strokeWidth={1.2} />);
+  }
+  return (
+    <Svg width={size} height={size} viewBox="0 0 22 22">
+      {beads}
+      <Path
+        d="M 10 16.5 L 10 18.5 M 8.5 21 L 10 18.5 L 11.5 21"
+        stroke={color}
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function QuranStandIcon({ size = 20, color = '#483852' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 6C9.5 4.5 5 4.5 2 6.5V16C5 14 9.5 14 12 15.5C14.5 14 19 14 22 16V6.5C19 4.5 14.5 4.5 12 6Z"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path d="M12 6V15.5" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+      <Path
+        d="M5 18L19 22M19 18L5 22"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+function MorningSunIcon({ size = 20, color = '#483852' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="4.5" stroke={color} strokeWidth={1.7} />
+      <Path
+        d="M12 2V5M12 19V22M2 12H5M19 12H22M4.93 4.93L7.05 7.05M16.95 16.95L19.07 19.07M4.93 19.07L7.05 16.95M16.95 7.05L19.07 4.93"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 44;
@@ -388,6 +450,57 @@ export default function HomeScreen() {
             <View style={[styles.sealDot, activeSealIndex === 0 && styles.sealDotActive]} />
             <View style={[styles.sealDot, activeSealIndex === 1 && styles.sealDotActive]} />
           </View>
+        </View>
+
+        {/* ================= 6. Recent Activities Section (أنشطتك الأخيرة) ================= */}
+        <View style={styles.recentActivitiesSection}>
+          <Text style={styles.recentActivitiesHeaderTitle}>أنشطتك الأخيرة</Text>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.recentActivitiesScroll}
+          >
+            {/* Pill 1: السبحة */}
+            <TouchableOpacity
+              style={[styles.activityPill, { backgroundColor: '#9eb2ea' }]}
+              activeOpacity={0.82}
+              onPress={() => router.push('/adhkar' as any)}
+            >
+              <TasbihBeadsIcon size={20} color="#ffffff" />
+              <Text style={[styles.activityPillText, { color: '#1e293b' }]}>السبحة</Text>
+            </TouchableOpacity>
+
+            {/* Pill 2: أدعية من القرآن */}
+            <TouchableOpacity
+              style={[styles.activityPill, { backgroundColor: '#eedff2' }]}
+              activeOpacity={0.82}
+              onPress={() => router.push('/duas' as any)}
+            >
+              <QuranStandIcon size={20} color="#483852" />
+              <Text style={[styles.activityPillText, { color: '#2c1e34' }]}>أدعية من القرآن</Text>
+            </TouchableOpacity>
+
+            {/* Pill 3: أذكار الصباح */}
+            <TouchableOpacity
+              style={[styles.activityPill, { backgroundColor: '#f3e8f5' }]}
+              activeOpacity={0.82}
+              onPress={() => router.push('/adhkar' as any)}
+            >
+              <MorningSunIcon size={20} color="#483852" />
+              <Text style={[styles.activityPillText, { color: '#2c1e34' }]}>أذكار الصباح</Text>
+            </TouchableOpacity>
+
+            {/* Pill 4: سورة الكهف */}
+            <TouchableOpacity
+              style={[styles.activityPill, { backgroundColor: '#dceddd' }]}
+              activeOpacity={0.82}
+              onPress={() => router.push('/quran' as any)}
+            >
+              <Ionicons name="book-outline" size={18} color="#274431" />
+              <Text style={[styles.activityPillText, { color: '#162e1f' }]}>سورة الكهف</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </ScrollView>
 
@@ -1161,5 +1274,40 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
     color: '#83958c',
+  },
+
+  /* 6. Recent Activities Section */
+  recentActivitiesSection: {
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  recentActivitiesHeaderTitle: {
+    fontFamily: 'Cairo_800ExtraBold',
+    fontSize: 18,
+    color: '#a7f3d0',
+    textAlign: 'right',
+    marginBottom: 14,
+  },
+  recentActivitiesScroll: {
+    flexDirection: 'row-reverse',
+    gap: 10,
+    paddingBottom: 6,
+  },
+  activityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  activityPillText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14.5,
+    letterSpacing: -0.2,
   },
 });
