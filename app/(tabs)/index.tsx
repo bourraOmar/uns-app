@@ -14,7 +14,7 @@ import {
   TextInput,
   Share,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 // Custom icons using pure React Native components (no external SVG dependency)
 function TasbihBeadsIcon({ size = 22, color = '#ffffff' }: { size?: number; color?: string }) {
@@ -102,6 +102,65 @@ interface PrayerItem {
   name: string;
   time: string;
   icon: ImageSourcePropType;
+}
+
+interface RibbonBadgeProps {
+  type: 'ayah' | 'hadith' | 'dua';
+}
+
+function InspirationRibbonBadge({ type }: RibbonBadgeProps) {
+  const config = {
+    ayah: {
+      title: 'آية اليوم',
+      bgColor: '#44563f',
+      foldColor: '#2b3927',
+      textColor: '#e4f4e7',
+      icon: <FontAwesome5 name="quran" size={16} color="#dcfce7" />,
+    },
+    hadith: {
+      title: 'حديث اليوم',
+      bgColor: '#524b2f',
+      foldColor: '#36311d',
+      textColor: '#fef9c3',
+      icon: <FontAwesome5 name="mosque" size={15} color="#fef08a" />,
+    },
+    dua: {
+      title: 'دعاء اليوم',
+      bgColor: '#3b4452',
+      foldColor: '#242b35',
+      textColor: '#e0f2fe',
+      icon: <FontAwesome5 name="pray" size={15} color="#bae6fd" />,
+    },
+  }[type];
+
+  return (
+    <View style={styles.ribbonWrapper}>
+      {/* 1. Top Ribbon Banner */}
+      <View style={[styles.ribbonTopBanner, { backgroundColor: config.bgColor }]}>
+        <Text style={[styles.ribbonTitleText, { color: config.textColor }]}>
+          {config.title}
+        </Text>
+      </View>
+
+      {/* 2. Hanging Tab + Angled Fold Flap */}
+      <View style={styles.ribbonHangingContainer}>
+        {/* Hanging Tab with Icon */}
+        <View style={[styles.ribbonTabSquare, { backgroundColor: config.bgColor }]}>
+          {config.icon}
+        </View>
+
+        {/* 45-degree Angled Fold Flap */}
+        <View
+          style={[
+            styles.ribbonFoldTriangle,
+            {
+              borderTopColor: config.foldColor,
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
 }
 
 export default function HomeScreen() {
@@ -523,10 +582,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="share-outline" size={17} color="#94a3b8" />
               </TouchableOpacity>
-              <View style={[styles.inspirationBadge, styles.ayahBadge]}>
-                <Ionicons name="book-outline" size={14} color="#6ee7b7" />
-                <Text style={[styles.inspirationBadgeText, styles.ayahBadgeText]}>آية اليوم</Text>
-              </View>
+              <InspirationRibbonBadge type="ayah" />
             </View>
 
             <Text style={styles.ayahContentText}>
@@ -555,10 +611,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="share-outline" size={17} color="#94a3b8" />
               </TouchableOpacity>
-              <View style={[styles.inspirationBadge, styles.hadithBadge]}>
-                <MaterialCommunityIcons name="book-open-variant" size={14} color="#fde047" />
-                <Text style={[styles.inspirationBadgeText, styles.hadithBadgeText]}>حديث اليوم</Text>
-              </View>
+              <InspirationRibbonBadge type="hadith" />
             </View>
 
             <Text style={styles.hadithContentText}>
@@ -583,10 +636,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="share-outline" size={17} color="#94a3b8" />
               </TouchableOpacity>
-              <View style={[styles.inspirationBadge, styles.duaBadge]}>
-                <MaterialCommunityIcons name="hands-pray" size={14} color="#5eead4" />
-                <Text style={[styles.inspirationBadgeText, styles.duaBadgeText]}>دعاء اليوم</Text>
-              </View>
+              <InspirationRibbonBadge type="dua" />
             </View>
 
             <Text style={styles.duaContentText}>
@@ -1410,65 +1460,70 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   inspirationCard: {
-    backgroundColor: '#0c1813',
+    backgroundColor: '#1b221d',
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#192b22',
-    padding: 18,
+    borderColor: '#26342a',
+    padding: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
   },
   inspirationCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
+    alignItems: 'flex-start',
+    marginBottom: 10,
   },
   inspirationShareBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: '#14251d',
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#16221b',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#1e382b',
+    borderColor: '#24352b',
+    marginTop: 2,
   },
-  inspirationBadge: {
-    flexDirection: 'row',
+  /* Handcrafted 3D Folded Bookmark Ribbon */
+  ribbonWrapper: {
+    alignItems: 'flex-end',
+  },
+  ribbonTopBanner: {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 4,
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    gap: 6,
-    borderWidth: 1,
+    justifyContent: 'center',
+    minWidth: 86,
   },
-  ayahBadge: {
-    backgroundColor: '#142e22',
-    borderColor: '#1f4834',
-  },
-  ayahBadgeText: {
-    color: '#a7f3d0',
-  },
-  hadithBadge: {
-    backgroundColor: '#2b2917',
-    borderColor: '#423e20',
-  },
-  hadithBadgeText: {
-    color: '#fef08a',
-  },
-  duaBadge: {
-    backgroundColor: '#142c30',
-    borderColor: '#1e4348',
-  },
-  duaBadgeText: {
-    color: '#99f6e4',
-  },
-  inspirationBadgeText: {
+  ribbonTitleText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
+    fontSize: 12.5,
+    textAlign: 'center',
+  },
+  ribbonHangingContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingLeft: 18,
+  },
+  ribbonTabSquare: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+  },
+  ribbonFoldTriangle: {
+    width: 0,
+    height: 0,
+    borderStyle: 'solid',
+    borderTopWidth: 26,
+    borderRightWidth: 32,
+    borderRightColor: 'transparent',
   },
   ayahContentText: {
     fontFamily: 'Amiri_700Bold',
