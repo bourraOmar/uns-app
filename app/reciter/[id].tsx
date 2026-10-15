@@ -17,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { RECITERS_DATA, Reciter } from '@/data/reciters';
 import surahsData from '@/data/surahs.json';
 import AudioPlayerModal from '@/components/AudioPlayerModal';
+import { backgroundSoundService } from '@/services/backgroundSoundService';
 
 interface SurahItem {
   id: number;
@@ -50,6 +51,34 @@ export default function ReciterProfileScreen() {
   const [durationMillis, setDurationMillis] = useState(0);
   const [currentSpeed, setCurrentSpeed] = useState(1.0);
   const [isPlayerModalVisible, setIsPlayerModalVisible] = useState(false);
+  const [quranVolume, setQuranVolume] = useState(1.0);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
+
+  const isShuffleRef = useRef(isShuffle);
+  isShuffleRef.current = isShuffle;
+
+  const isRepeatRef = useRef(isRepeat);
+  isRepeatRef.current = isRepeat;
+
+  const currentSurahIdRef = useRef(currentSurahId);
+  currentSurahIdRef.current = currentSurahId;
+
+  const getRandomSurahId = (currentId: number | null): number => {
+    const candidates = surahsData.map((s) => s.id).filter((id) => id !== currentId);
+    const randomIndex = Math.floor(Math.random() * candidates.length);
+    return candidates[randomIndex] || 1;
+  };
+
+  const handleQuranVolumeChange = async (vol: number) => {
+    const clamped = Math.max(0, Math.min(1, vol));
+    setQuranVolume(clamped);
+    if (soundRef.current) {
+      try {
+        await soundRef.current.setVolumeAsync(clamped);
+      } catch {}
+    }
+  };
 
   // Unload sound when unmounting
   useEffect(() => {
@@ -58,8 +87,14 @@ export default function ReciterProfileScreen() {
         soundRef.current.unloadAsync().catch(() => {});
         soundRef.current = null;
       }
+      backgroundSoundService.unload().catch(() => {});
     };
   }, []);
+
+  // Sync background sound playback with Quran playback
+  useEffect(() => {
+    backgroundSoundService.setQuranPlaying(isPlaying);
+  }, [isPlaying]);
 
   // Compute clean, direct CDN URL for a surah
   const getAudioUrl = (surahId: number): string => {
@@ -157,6 +192,20 @@ export default function ReciterProfileScreen() {
               setIsPlaying(false);
               setPlaybackProgress(0);
               setPositionMillis(0);
+
+              if (isRepeatRef.current && currentSurahIdRef.current) {
+                // Repeat current surah
+                handlePlaySurah(currentSurahIdRef.current);
+              } else if (isShuffleRef.current) {
+                // Shuffle to a random surah
+                handlePlaySurah(getRandomSurahId(currentSurahIdRef.current));
+              } else if (currentSurahIdRef.current && currentSurahIdRef.current < 114) {
+                // Auto-advance to next surah in playlist
+                handlePlaySurah(currentSurahIdRef.current + 1);
+              } else if (currentSurahIdRef.current === 114) {
+                // Loop back to Al-Fatihah
+                handlePlaySurah(1);
+              }
             }
           } else if (status.error) {
             console.warn(`Playback error for ${audioUri}:`, status.error);
@@ -166,6 +215,9 @@ export default function ReciterProfileScreen() {
       );
 
       soundRef.current = newSound;
+      if (quranVolume !== 1.0) {
+        await newSound.setVolumeAsync(quranVolume).catch(() => {});
+      }
       if (currentSpeed !== 1.0) {
         await newSound.setRateAsync(currentSpeed, true).catch(() => {});
       }
@@ -183,17 +235,25 @@ export default function ReciterProfileScreen() {
     }
   };
 
-  // Skip to next surah
+  // Skip to next surah (respecting shuffle)
   const handleNextSurah = () => {
-    if (currentSurahId && currentSurahId < 114) {
+    if (isShuffleRef.current) {
+      handlePlaySurah(getRandomSurahId(currentSurahId));
+    } else if (currentSurahId && currentSurahId < 114) {
       handlePlaySurah(currentSurahId + 1);
+    } else if (currentSurahId === 114) {
+      handlePlaySurah(1);
     }
   };
 
-  // Skip to previous surah
+  // Skip to previous surah (respecting shuffle)
   const handlePrevSurah = () => {
-    if (currentSurahId && currentSurahId > 1) {
+    if (isShuffleRef.current) {
+      handlePlaySurah(getRandomSurahId(currentSurahId));
+    } else if (currentSurahId && currentSurahId > 1) {
       handlePlaySurah(currentSurahId - 1);
+    } else if (currentSurahId === 1) {
+      handlePlaySurah(114);
     }
   };
 
@@ -444,6 +504,13 @@ export default function ReciterProfileScreen() {
         onSeek={handleSeek}
         currentSpeed={currentSpeed}
         onSpeedChange={handleSpeedChange}
+        onSelectSurah={(surahId) => handlePlaySurah(surahId)}
+        quranVolume={quranVolume}
+        onQuranVolumeChange={handleQuranVolumeChange}
+        isShuffle={isShuffle}
+        onToggleShuffle={() => setIsShuffle((prev) => !prev)}
+        isRepeat={isRepeat}
+        onToggleRepeat={() => setIsRepeat((prev) => !prev)}
       />
     </SafeAreaView>
   );

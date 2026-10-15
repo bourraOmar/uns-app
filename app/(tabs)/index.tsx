@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { AnimatedGradientBackground } from '@/components/AnimatedGradientBackground';
 // Custom icons using pure React Native components (no external SVG dependency)
 function TasbihBeadsIcon({ size = 22, color = '#ffffff' }: { size?: number; color?: string }) {
   const radius = (size - 6) / 2;
@@ -269,7 +270,8 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="light-content" backgroundColor="#080d19" />
+      <AnimatedGradientBackground />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -783,7 +785,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a', // Website dark slate navy (slate-900)
+    backgroundColor: '#080d19',
   },
   scrollContent: {
     paddingHorizontal: 16,
