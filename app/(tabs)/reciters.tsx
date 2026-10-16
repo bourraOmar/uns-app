@@ -19,7 +19,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import Svg, { Path } from 'react-native-svg';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 import {
   RECITERS_DATA,
@@ -27,74 +26,6 @@ import {
   fetchRecitersFromMp3Quran,
   matchesReciter,
 } from '@/data/reciters';
-
-// --- CUSTOM SVG ICONS ---
-
-// 1. Square Open Book Icon (Used for المصحف)
-function MushafSquareBookIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M4 6.5H10.5C11.5 6.5 12 7.2 12 8V18.5C11.5 17.8 10.5 17.2 9.5 17.2H4V6.5Z"
-        stroke={color}
-        strokeWidth="2.2"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M20 6.5H13.5C12.5 6.5 12 7.2 12 8V18.5C12.5 17.8 13.5 17.2 14.5 17.2H20V6.5Z"
-        stroke={color}
-        strokeWidth="2.2"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-// 2. Open Book with Radiating Rays Icon (Used for المُشغّل / Player)
-function PlayerBookRaysIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2.5V5.5" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-      <Path d="M6 4.5L8.5 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-      <Path d="M18 4.5L15.5 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-      <Path
-        d="M4.5 10.5H10.5C11.5 10.5 12 11.2 12 12V19.5C11.5 18.8 10.5 18.3 9.5 18.3H4.5V10.5Z"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M19.5 10.5H13.5C12.5 10.5 12 11.2 12 12V19.5C12.5 18.8 13.5 18.3 14.5 18.3H19.5V10.5Z"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-// 3. Mosque / Gate Facade Icon (Used for الخدمات / Services)
-function ServicesMosqueIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M4 21V12C4 10 6 7 12 7C18 7 20 10 20 12V21"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M8.5 21V15C8.5 13.5 10 12.5 12 12.5C14 12.5 15.5 13.5 15.5 15V21"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <Path d="M12 3V7" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <Path d="M2.5 21H21.5" stroke={color} strokeWidth="2" strokeLinecap="round" />
-    </Svg>
-  );
-}
 
 type FilterType = 'all' | 'hafs' | 'multiple';
 
