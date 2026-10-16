@@ -62,11 +62,11 @@ export function ScrollCollapseProvider({ children }: { children: ReactNode }) {
     const diff = currentY - lastScrollY.current;
 
     if (currentRouteRef.current === 'index') {
-      // Home page: collapse on scroll down, expand on scroll up / top
-      if (currentY > 40 && diff > 6) {
-        setIsCollapsed(true);
-      } else if (diff < -8 || currentY <= 20) {
+      // Home page: show menu bar JUST when it reaches the top of the page
+      if (currentY <= 25) {
         setIsCollapsed(false);
+      } else if (currentY > 35 && diff > 3) {
+        setIsCollapsed(true);
       }
     } else {
       // Non-home pages: stay collapsed. If user manually expanded menu, scrolling down closes it.
