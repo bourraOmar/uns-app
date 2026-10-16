@@ -361,7 +361,7 @@ function FloatingTabBar({ state, navigation }: any) {
         </BlurView>
       </Animated.View>
 
-      {/* 3. COLLAPSED DOCK ROW (PAGE ICON + MINI PLAYER + SEARCH ICON) */}
+      {/* 3. COLLAPSED DOCK ROW (SEARCH ICON + MINI PLAYER + PAGE ICON) */}
       <Animated.View
         style={[
           styles.collapsedDockWrapper,
@@ -375,11 +375,11 @@ function FloatingTabBar({ state, navigation }: any) {
         ]}
         pointerEvents={isCollapsed ? 'auto' : 'none'}
       >
-        {/* Left Circle: Current Page Icon (taps to expand menu) */}
+        {/* Left Circle: Search Icon */}
         <TouchableOpacity
           style={styles.dockCircleButton}
           activeOpacity={0.8}
-          onPress={handlePageIconPress}
+          onPress={handleSearchPress}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
           <BlurView
@@ -387,7 +387,7 @@ function FloatingTabBar({ state, navigation }: any) {
             tint="dark"
             style={styles.dockCircleBlur}
           >
-            {getPageIcon(currentRoute?.name)}
+            <Ionicons name="search" size={20} color="#ffffff" />
           </BlurView>
         </TouchableOpacity>
 
@@ -455,11 +455,11 @@ function FloatingTabBar({ state, navigation }: any) {
           <View style={{ flex: 1 }} />
         )}
 
-        {/* Right Circle: Search Icon */}
+        {/* Right Circle: Current Page Icon (taps to expand menu) */}
         <TouchableOpacity
           style={styles.dockCircleButton}
           activeOpacity={0.8}
-          onPress={handleSearchPress}
+          onPress={handlePageIconPress}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
           <BlurView
@@ -467,7 +467,7 @@ function FloatingTabBar({ state, navigation }: any) {
             tint="dark"
             style={styles.dockCircleBlur}
           >
-            <Ionicons name="search" size={20} color="#ffffff" />
+            {getPageIcon(currentRoute?.name)}
           </BlurView>
         </TouchableOpacity>
       </Animated.View>
