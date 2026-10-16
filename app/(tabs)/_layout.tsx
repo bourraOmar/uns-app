@@ -300,19 +300,17 @@ function FloatingTabBar({ state, navigation }: any) {
             onPress={openPlayerModal}
           >
             <BlurView
-              intensity={Platform.OS === 'ios' ? 70 : 90}
+              intensity={Platform.OS === 'ios' ? 85 : 95}
               tint="dark"
               style={styles.floatingMiniPlayerBlur}
             >
               <View style={styles.floatingMiniPlayerLeft}>
-                <Image
-                  source={require('@/assets/images/reciter_avatar_default.png')}
-                  style={styles.floatingAvatar}
-                  resizeMode="cover"
-                />
+                <View style={styles.floatingMicBadge}>
+                  <Ionicons name="mic" size={17} color="#34d399" />
+                </View>
                 <View style={styles.floatingTextColumn}>
                   <Text style={styles.floatingSurahTitle} numberOfLines={1}>
-                    {currentSurah.id}. {currentSurah.name_simple}({currentSurah.name_arabic})
+                    {currentSurah.id}. {currentSurah.name_simple} ({currentSurah.name_arabic})
                   </Text>
                   <Text style={styles.floatingReciterName} numberOfLines={1}>
                     {currentReciter.englishName || currentReciter.name}
@@ -529,15 +527,13 @@ function FloatingTabBar({ state, navigation }: any) {
                   tint="dark"
                   style={styles.dockedMiniPlayerBlur}
                 >
-                  <Image
-                    source={require('@/assets/images/reciter_avatar_default.png')}
-                    style={styles.dockedAvatar}
-                    resizeMode="cover"
-                  />
+                  <View style={styles.dockedMicBadge}>
+                    <Ionicons name="mic" size={15} color="#34d399" />
+                  </View>
 
                   <View style={styles.dockedTextColumn}>
                     <Text style={styles.dockedSurahTitle} numberOfLines={1}>
-                      {currentSurah.id}. {currentSurah.name_simple}({currentSurah.name_arabic})
+                      {currentSurah.id}. {currentSurah.name_simple} ({currentSurah.name_arabic})
                     </Text>
                   </View>
 
@@ -645,52 +641,61 @@ const styles = StyleSheet.create({
   },
   floatingMiniPlayerPill: {
     width: '100%',
-    borderRadius: 26,
+    borderRadius: 27,
     overflow: 'hidden',
+    backgroundColor: '#0f172a',
   },
   floatingMiniPlayerBlur: {
-    height: 52,
-    borderRadius: 26,
+    height: 54,
+    borderRadius: 27,
     overflow: 'hidden',
     backgroundColor:
-      Platform.OS === 'ios' ? 'rgba(17, 24, 39, 0.72)' : 'rgba(15, 23, 42, 0.92)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    borderTopColor: 'rgba(255, 255, 255, 0.28)',
+      Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.92)' : 'rgba(15, 23, 42, 0.98)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: 10,
-    paddingRight: 16,
+    paddingLeft: 8,
+    paddingRight: 14,
   },
   floatingMiniPlayerLeft: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
-  floatingAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 7,
-    backgroundColor: '#1e293b',
+  floatingMicBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(52, 211, 153, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   floatingTextColumn: {
     flex: 1,
     marginLeft: 10,
+    marginRight: 8,
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   floatingSurahTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
     color: '#ffffff',
     lineHeight: 18,
+    textAlign: 'left',
   },
   floatingReciterName: {
-    fontFamily: 'Cairo_500Medium',
+    fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#94a3b8',
-    marginTop: -1,
+    color: '#34d399',
+    textAlign: 'left',
+    marginTop: 0,
   },
   floatingControls: {
     flexDirection: 'row',
@@ -811,6 +816,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     borderRadius: 24,
     overflow: 'hidden',
+    backgroundColor: '#0f172a',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.35,
@@ -821,32 +827,38 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.72)' : 'rgba(30, 41, 59, 0.92)',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.88)' : 'rgba(30, 41, 59, 0.98)',
     borderWidth: 1.2,
     borderColor: 'rgba(255, 255, 255, 0.18)',
     borderTopColor: 'rgba(255, 255, 255, 0.3)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: 7,
+    paddingLeft: 6,
     paddingRight: 12,
   },
-  dockedAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 7,
-    backgroundColor: '#1e293b',
+  dockedMicBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(52, 211, 153, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dockedTextColumn: {
     flex: 1,
     marginLeft: 8,
     marginRight: 6,
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   dockedSurahTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 12,
     color: '#ffffff',
+    textAlign: 'left',
   },
   dockedControls: {
     flexDirection: 'row',
