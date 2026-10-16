@@ -300,7 +300,7 @@ function FloatingTabBar({ state, navigation }: any) {
             onPress={openPlayerModal}
           >
             <BlurView
-              intensity={Platform.OS === 'ios' ? 85 : 95}
+              intensity={Platform.OS === 'ios' ? 70 : 85}
               tint="dark"
               style={styles.floatingMiniPlayerBlur}
             >
@@ -641,19 +641,18 @@ const styles = StyleSheet.create({
   },
   floatingMiniPlayerPill: {
     width: '100%',
-    borderRadius: 27,
+    borderRadius: 26,
     overflow: 'hidden',
-    backgroundColor: '#0f172a',
   },
   floatingMiniPlayerBlur: {
-    height: 54,
-    borderRadius: 27,
+    height: 52,
+    borderRadius: 26,
     overflow: 'hidden',
     backgroundColor:
-      Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.92)' : 'rgba(15, 23, 42, 0.98)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.16)',
-    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+      Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.60)' : 'rgba(30, 41, 59, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderTopColor: 'rgba(255, 255, 255, 0.28)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -816,7 +815,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#0f172a',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.35,
@@ -827,7 +825,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.88)' : 'rgba(30, 41, 59, 0.98)',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.65)' : 'rgba(30, 41, 59, 0.85)',
     borderWidth: 1.2,
     borderColor: 'rgba(255, 255, 255, 0.18)',
     borderTopColor: 'rgba(255, 255, 255, 0.3)',
