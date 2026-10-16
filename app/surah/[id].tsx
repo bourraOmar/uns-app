@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   Image,
   StatusBar,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 
@@ -19,6 +21,8 @@ import surahsData from '@/data/surahs.json';
 import { toEasternArabicNumerals } from '@/data/quranPages';
 import { SurahItem } from '@/context/AudioPlayerContext';
 import AyahFrame from '@/components/quran/AyahFrame';
+import VerseFloatingMenu from '@/components/quran/VerseFloatingMenu';
+import TafsirModal from '@/components/quran/TafsirModal';
 
 interface VerseData {
   id: number;
@@ -50,10 +54,41 @@ export default function SurahReaderScreen() {
   );
   const [isLoading, setIsLoading] = useState<boolean>(surahId !== 1);
 
+  // Selected verse state for floating menu
+  const [selectedVerse, setSelectedVerse] = useState<VerseData | null>(null);
+
+  // Tafsir modal state
+  const [isTafsirVisible, setIsTafsirVisible] = useState<boolean>(false);
+
+  // Bookmarked verses list
+  const [bookmarkedVerses, setBookmarkedVerses] = useState<string[]>([]);
+
+  // Single verse audio playback state
+  const [verseSound, setVerseSound] = useState<Audio.Sound | null>(null);
+  const [playingVerseNum, setPlayingVerseNum] = useState<number | null>(null);
+  const [isLoadingAudio, setIsLoadingAudio] = useState<boolean>(false);
+
   useEffect(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    setSelectedVerse(null);
     loadSurahVerses(surahId);
+    loadBookmarks();
   }, [surahId]);
+
+  useEffect(() => {
+    return () => {
+      if (verseSound) {
+        verseSound.unloadAsync();
+      }
+    };
+  }, [verseSound]);
+
+  const loadBookmarks = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('@uns_verse_bookmarks');
+      if (saved) setBookmarkedVerses(JSON.parse(saved));
+    } catch {}
+  };
 
   const loadSurahVerses = async (chapterId: number) => {
     if (chapterId === 1) {
@@ -105,12 +140,115 @@ export default function SurahReaderScreen() {
     }
   };
 
+  const handleVersePress = (verse: VerseData) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (selectedVerse?.verse_number === verse.verse_number) {
+      setSelectedVerse(null);
+    } else {
+      setSelectedVerse(verse);
+    }
+  };
+
+  const handleToggleBookmark = async (verse: VerseData) => {
+    const key = `${surahId}:${verse.verse_number}`;
+    const isAlready = bookmarkedVerses.includes(key);
+    const updated = isAlready
+      ? bookmarkedVerses.filter((k) => k !== key)
+      : [...bookmarkedVerses, key];
+    setBookmarkedVerses(updated);
+    try {
+      await AsyncStorage.setItem('@uns_verse_bookmarks', JSON.stringify(updated));
+    } catch {}
+  };
+
+  const handlePlayVerse = async (verse: VerseData) => {
+    if (playingVerseNum === verse.verse_number && verseSound) {
+      await verseSound.stopAsync();
+      await verseSound.unloadAsync();
+      setVerseSound(null);
+      setPlayingVerseNum(null);
+      return;
+    }
+
+    try {
+      setIsLoadingAudio(true);
+      if (verseSound) {
+        await verseSound.unloadAsync();
+      }
+      const pad3 = (n: number) => n.toString().padStart(3, '0');
+      const audioUrl = `https://everyayah.com/data/Alafasy_128kbps/${pad3(surahId)}${pad3(verse.verse_number)}.mp3`;
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true }
+      );
+      setVerseSound(sound);
+      setPlayingVerseNum(verse.verse_number);
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync();
+          setVerseSound(null);
+          setPlayingVerseNum(null);
+        }
+      });
+    } catch {
+      // Keep silent
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  };
+
+  const handleShareVerse = async (verse: VerseData) => {
+    try {
+      await Share.share({
+        message: `${verse.text_uthmani}\n\n[سورة ${currentSurah.name_arabic}: الآية ${toEasternArabicNumerals(verse.verse_number)}]`,
+      });
+    } catch {}
+  };
+
   const isFatiha = currentSurah.id === 1;
   const showBasmalahHeader = currentSurah.id !== 1 && currentSurah.id !== 9;
+  const isSelectedBookmark = selectedVerse
+    ? bookmarkedVerses.includes(`${surahId}:${selectedVerse.verse_number}`)
+    : false;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+
+      {/* FLOATING CONTEXT MENU OVERLAY (MATCHING SCREENSHOT WITH MENU BAR FROSTED GLASS BACKGROUND) */}
+      {selectedVerse && (
+        <View style={styles.floatingMenuBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setSelectedVerse(null)}
+          />
+          <View style={styles.floatingMenuFloatingBox}>
+            <VerseFloatingMenu
+              visible={true}
+              onTafsir={() => setIsTafsirVisible(true)}
+              onBookmark={() => handleToggleBookmark(selectedVerse)}
+              onPlay={() => handlePlayVerse(selectedVerse)}
+              onShare={() => handleShareVerse(selectedVerse)}
+              isBookmarked={isSelectedBookmark}
+              isPlaying={playingVerseNum === selectedVerse.verse_number}
+              isLoadingAudio={isLoadingAudio}
+            />
+          </View>
+        </View>
+      )}
+
+      {/* TAFSIR MODAL */}
+      {selectedVerse && (
+        <TafsirModal
+          visible={isTafsirVisible}
+          onClose={() => setIsTafsirVisible(false)}
+          surahName={currentSurah.name_arabic}
+          surahId={currentSurah.id}
+          verseNumber={selectedVerse.verse_number}
+          verseText={selectedVerse.text_uthmani}
+        />
+      )}
 
       <ScrollView
         ref={scrollViewRef}
@@ -143,7 +281,7 @@ export default function SurahReaderScreen() {
           </View>
         </View>
 
-        {/* MAIN SURAH TEXT CARD (Matching Website Surah Text Area) */}
+        {/* MAIN SURAH TEXT CARD */}
         <View style={styles.surahTextCard}>
           {/* Basmalah for Surahs other than Al-Fatiha and At-Tawbah */}
           {showBasmalahHeader && (
@@ -166,25 +304,42 @@ export default function SurahReaderScreen() {
             <View style={styles.versesWrapper}>
               {/* For Surah Al-Fatihah: Verse 1 is Basmalah */}
               {isFatiha && (
-                <View style={styles.fatihaBasmalahWrapper}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => handleVersePress(verses[0])}
+                  style={[
+                    styles.fatihaBasmalahWrapper,
+                    selectedVerse?.verse_number === 1 && styles.selectedBasmalahWrapper,
+                  ]}
+                >
                   <Image
                     source={require('@/assets/images/basmalah.png')}
                     style={styles.fatihaBasmalahImage}
                     resizeMode="contain"
                   />
                   <AyahFrame number={1} />
-                </View>
+                </TouchableOpacity>
               )}
 
-              {/* Quran Continuous Flow Paragraph */}
+              {/* Quran Continuous Flow Paragraph with Interactive Highlight */}
               <Text style={styles.surahParagraph}>
                 {verses.map((verse) => {
                   if (isFatiha && verse.verse_number === 1) return null;
+                  const isSelected = selectedVerse?.verse_number === verse.verse_number;
                   return (
                     <React.Fragment key={verse.id || verse.verse_number}>
-                      <Text style={styles.verseText}>{verse.text_uthmani} </Text>
+                      <Text
+                        onPress={() => handleVersePress(verse)}
+                        style={[
+                          styles.verseText,
+                          isSelected && styles.selectedVerseHighlight,
+                        ]}
+                      >
+                        {verse.text_uthmani}
+                      </Text>
+                      <Text> </Text>
                       <AyahFrame number={verse.verse_number} />
-                      <Text style={styles.verseText}> </Text>
+                      <Text> </Text>
                     </React.Fragment>
                   );
                 })}
@@ -239,6 +394,19 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 96,
+  },
+
+  /* FLOATING MENU BACKDROP & POSITIONING */
+  floatingMenuBackdrop: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  floatingMenuFloatingBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
   },
 
   /* HEADER BLOCK */
@@ -338,8 +506,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
     marginBottom: 20,
     marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+  },
+  selectedBasmalahWrapper: {
+    backgroundColor: 'rgba(74, 222, 128, 0.28)',
+    borderRadius: 14,
   },
   fatihaBasmalahImage: {
     width: 210,
@@ -368,11 +544,10 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
     includeFontPadding: false,
   },
-  ayahNumber: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 17,
-    color: '#4ade80',
-    includeFontPadding: false,
+  selectedVerseHighlight: {
+    backgroundColor: 'rgba(74, 222, 128, 0.28)',
+    color: '#ffffff',
+    borderRadius: 8,
   },
 
   /* LOADING */
