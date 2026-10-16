@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 import azkarData from '@/data/azkar.json';
 
 interface AdhkarCategoryItem {
@@ -78,6 +79,7 @@ type FilterType = 'all' | 'morning_evening' | 'tasbih' | 'other';
 
 export default function AdhkarScreen() {
   const router = useRouter();
+  const { onScroll } = useScrollCollapse();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -132,6 +134,8 @@ export default function AdhkarScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         {/* Top Header */}
         <View style={styles.header}>

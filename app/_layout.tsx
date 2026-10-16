@@ -16,6 +16,7 @@ import { Rakkas_400Regular } from '@expo-google-fonts/rakkas';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { AudioPlayerProvider, useAudioPlayer } from '@/context/AudioPlayerContext';
+import { ScrollCollapseProvider } from '@/context/ScrollCollapseContext';
 import AudioPlayerModal from '@/components/AudioPlayerModal';
 
 export default function RootLayout() {
@@ -46,7 +47,9 @@ export default function RootLayout() {
 
   return (
     <AudioPlayerProvider>
-      <RootLayoutNav />
+      <ScrollCollapseProvider>
+        <RootLayoutNav />
+      </ScrollCollapseProvider>
     </AudioPlayerProvider>
   );
 }

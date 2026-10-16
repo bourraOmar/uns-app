@@ -1,10 +1,21 @@
+import React, { useRef, useEffect } from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  Animated,
+  Image,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
-import MiniAudioPlayer from '@/components/MiniAudioPlayer';
+import { useScrollCollapse } from '@/context/ScrollCollapseContext';
+import { useAudioPlayer } from '@/context/AudioPlayerContext';
 
 // --- CUSTOM SVG ICONS MATCHING SCREENSHOT EXACTLY ---
 
@@ -106,69 +117,367 @@ const TAB_ITEMS = [
   },
 ];
 
-// Custom Floating Tab Bar Component
+// Returns the icon corresponding to the current active page
+function getPageIcon(routeName: string) {
+  switch (routeName) {
+    case 'duas':
+      return <ServicesMosqueIcon size={22} color="#ffffff" />;
+    case 'adhkar':
+      return <MaterialCommunityIcons name="format-quote-close" size={22} color="#ffffff" />;
+    case 'quran':
+      return <MushafSquareBookIcon size={22} color="#ffffff" />;
+    case 'reciters':
+      return <PlayerBookRaysIcon size={22} color="#ffffff" />;
+    case 'index':
+    default:
+      return <Ionicons name="home" size={22} color="#ffffff" />;
+  }
+}
+
+// Custom Floating & Collapsible Tab Bar Component
 function FloatingTabBar({ state, navigation }: any) {
   const currentRoute = state.routes[state.index];
 
-  // Hide on screens that have their own custom floating action bar (like reciters and qibla)
-  if (currentRoute?.name === 'qibla' || currentRoute?.name === 'reciters') {
+  // Hide only on qibla full screen compass
+  if (currentRoute?.name === 'qibla') {
     return null;
   }
 
+  const { isCollapsed, setIsCollapsed, triggerSearch } = useScrollCollapse();
+  const {
+    currentSurah,
+    currentReciter,
+    isPlaying,
+    isLoadingAudio,
+    togglePlay,
+    nextSurah,
+    openPlayerModal,
+    isPlayerModalVisible,
+  } = useAudioPlayer();
+
+  const collapseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(collapseAnim, {
+      toValue: isCollapsed ? 1 : 0,
+      tension: 50,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  }, [isCollapsed]);
+
+  const handlePageIconPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Tap page icon to expand back into full 5-item menu
+    setIsCollapsed(false);
+  };
+
+  const handleSearchPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerSearch();
+  };
+
+  // Interpolations for floating mini player (above expanded bar)
+  const floatingPlayerTranslateY = collapseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 68],
+  });
+  const floatingPlayerOpacity = collapseAnim.interpolate({
+    inputRange: [0, 0.45, 1],
+    outputRange: [1, 0, 0],
+  });
+  const floatingPlayerScale = collapseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.85],
+  });
+
+  // Interpolations for expanded 5-item bar
+  const expandedBarOpacity = collapseAnim.interpolate({
+    inputRange: [0, 0.35, 1],
+    outputRange: [1, 0, 0],
+  });
+  const expandedBarTranslateY = collapseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 16],
+  });
+  const expandedBarScale = collapseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.92],
+  });
+
+  // Interpolations for collapsed dock row
+  const dockRowOpacity = collapseAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0.6, 1],
+  });
+  const dockRowTranslateY = collapseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-16, 0],
+  });
+  const dockRowScale = collapseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.92, 1],
+  });
+
+  const hasActiveAudio = !!currentSurah && !isPlayerModalVisible;
+
   return (
-    <>
-      <MiniAudioPlayer bottomOffset={Platform.OS === 'ios' ? 100 : 92} />
-      <View style={styles.floatingBarContainer} pointerEvents="box-none">
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 75 : 90}
-        tint="dark"
-        style={styles.floatingMenuBar}
+    <View style={styles.floatingBarContainer} pointerEvents="box-none">
+      {/* 1. FLOATING MINI PLAYER (ABOVE 5-ITEM BAR IN EXPANDED STATE) */}
+      {hasActiveAudio && (
+        <Animated.View
+          style={[
+            styles.floatingMiniPlayerAnimWrapper,
+            {
+              transform: [
+                { translateY: floatingPlayerTranslateY },
+                { scale: floatingPlayerScale },
+              ],
+              opacity: floatingPlayerOpacity,
+            },
+          ]}
+          pointerEvents={isCollapsed ? 'none' : 'auto'}
+        >
+          <TouchableOpacity
+            style={styles.floatingMiniPlayerPill}
+            activeOpacity={0.92}
+            onPress={openPlayerModal}
+          >
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 70 : 90}
+              tint="dark"
+              style={styles.floatingMiniPlayerBlur}
+            >
+              <View style={styles.floatingMiniPlayerLeft}>
+                <Image
+                  source={require('@/assets/images/reciter_avatar_default.png')}
+                  style={styles.floatingAvatar}
+                  resizeMode="cover"
+                />
+                <View style={styles.floatingTextColumn}>
+                  <Text style={styles.floatingSurahTitle} numberOfLines={1}>
+                    {currentSurah.id}. {currentSurah.name_simple}({currentSurah.name_arabic})
+                  </Text>
+                  <Text style={styles.floatingReciterName} numberOfLines={1}>
+                    {currentReciter.englishName || currentReciter.name}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.floatingControls}>
+                <TouchableOpacity
+                  style={styles.floatingIconButton}
+                  activeOpacity={0.7}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  {isLoadingAudio ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Ionicons
+                      name={isPlaying ? 'pause' : 'play'}
+                      size={20}
+                      color="#ffffff"
+                      style={isPlaying ? undefined : { marginLeft: 2 }}
+                    />
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.floatingIconButton}
+                  activeOpacity={0.7}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    nextSurah();
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="play-forward" size={19} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+            </BlurView>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {/* 2. EXPANDED 5-ITEM FLOATING TAB BAR */}
+      <Animated.View
+        style={[
+          styles.expandedBarWrapper,
+          {
+            opacity: expandedBarOpacity,
+            transform: [
+              { translateY: expandedBarTranslateY },
+              { scale: expandedBarScale },
+            ],
+          },
+        ]}
+        pointerEvents={isCollapsed ? 'none' : 'auto'}
       >
-        {TAB_ITEMS.map((item) => {
-          const isFocused = currentRoute?.name === item.name;
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 75 : 90}
+          tint="dark"
+          style={styles.floatingMenuBar}
+        >
+          {TAB_ITEMS.map((item) => {
+            const isFocused = currentRoute?.name === item.name;
 
-          const onPress = () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            if (!isFocused) {
-              navigation.navigate(item.name);
+            const onPress = () => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (!isFocused) {
+                navigation.navigate(item.name);
+              }
+            };
+
+            if (isFocused) {
+              return (
+                <TouchableOpacity
+                  key={item.name}
+                  onPress={onPress}
+                  activeOpacity={0.8}
+                  style={styles.activePillTouchable}
+                >
+                  <BlurView
+                    intensity={Platform.OS === 'ios' ? 40 : 60}
+                    tint="dark"
+                    style={styles.floatingMenuItemActivePill}
+                  >
+                    {item.renderIcon('#34d399')}
+                    <Text style={styles.floatingMenuItemActiveText}>{item.label}</Text>
+                  </BlurView>
+                </TouchableOpacity>
+              );
             }
-          };
 
-          if (isFocused) {
             return (
               <TouchableOpacity
                 key={item.name}
+                style={styles.floatingMenuItem}
                 onPress={onPress}
-                activeOpacity={0.8}
-                style={styles.activePillTouchable}
+                activeOpacity={0.7}
               >
-                <BlurView
-                  intensity={Platform.OS === 'ios' ? 40 : 60}
-                  tint="dark"
-                  style={styles.floatingMenuItemActivePill}
-                >
-                  {item.renderIcon('#34d399')}
-                  <Text style={styles.floatingMenuItemActiveText}>{item.label}</Text>
-                </BlurView>
+                {item.renderIcon('#8ba7c0')}
+                <Text style={styles.floatingMenuItemText}>{item.label}</Text>
               </TouchableOpacity>
             );
-          }
+          })}
+        </BlurView>
+      </Animated.View>
 
-          return (
-            <TouchableOpacity
-              key={item.name}
-              style={styles.floatingMenuItem}
-              onPress={onPress}
-              activeOpacity={0.7}
+      {/* 3. COLLAPSED DOCK ROW (PAGE ICON + MINI PLAYER + SEARCH ICON) */}
+      <Animated.View
+        style={[
+          styles.collapsedDockWrapper,
+          {
+            opacity: dockRowOpacity,
+            transform: [
+              { translateY: dockRowTranslateY },
+              { scale: dockRowScale },
+            ],
+          },
+        ]}
+        pointerEvents={isCollapsed ? 'auto' : 'none'}
+      >
+        {/* Left Circle: Current Page Icon (taps to expand menu) */}
+        <TouchableOpacity
+          style={styles.dockCircleButton}
+          activeOpacity={0.8}
+          onPress={handlePageIconPress}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 75 : 90}
+            tint="dark"
+            style={styles.dockCircleBlur}
+          >
+            {getPageIcon(currentRoute?.name)}
+          </BlurView>
+        </TouchableOpacity>
+
+        {/* Center: Docked Mini Player Pill */}
+        {hasActiveAudio ? (
+          <TouchableOpacity
+            style={styles.dockedMiniPlayerContainer}
+            activeOpacity={0.9}
+            onPress={openPlayerModal}
+          >
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 75 : 90}
+              tint="dark"
+              style={styles.dockedMiniPlayerBlur}
             >
-              {item.renderIcon('#8ba7c0')}
-              <Text style={styles.floatingMenuItemText}>{item.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </BlurView>
+              <Image
+                source={require('@/assets/images/reciter_avatar_default.png')}
+                style={styles.dockedAvatar}
+                resizeMode="cover"
+              />
+
+              <View style={styles.dockedTextColumn}>
+                <Text style={styles.dockedSurahTitle} numberOfLines={1}>
+                  {currentSurah.id}. {currentSurah.name_simple}({currentSurah.name_arabic})
+                </Text>
+              </View>
+
+              <View style={styles.dockedControls}>
+                <TouchableOpacity
+                  style={styles.dockedControlBtn}
+                  activeOpacity={0.7}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                >
+                  {isLoadingAudio ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Ionicons
+                      name={isPlaying ? 'pause' : 'play'}
+                      size={18}
+                      color="#ffffff"
+                      style={isPlaying ? undefined : { marginLeft: 1 }}
+                    />
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dockedControlBtn}
+                  activeOpacity={0.7}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    nextSurah();
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                >
+                  <Ionicons name="play-forward" size={17} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+            </BlurView>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
+
+        {/* Right Circle: Search Icon */}
+        <TouchableOpacity
+          style={styles.dockCircleButton}
+          activeOpacity={0.8}
+          onPress={handleSearchPress}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 75 : 90}
+            tint="dark"
+            style={styles.dockCircleBlur}
+          >
+            <Ionicons name="search" size={20} color="#ffffff" />
+          </BlurView>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
-    </>
   );
 }
 
@@ -193,9 +502,89 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   floatingBarContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 28 : 20,
-    left: 16,
-    right: 16,
+    bottom: Platform.OS === 'ios' ? 24 : 16,
+    left: 14,
+    right: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+  },
+
+  /* 1. FLOATING MINI PLAYER (EXPANDED) */
+  floatingMiniPlayerAnimWrapper: {
+    width: '100%',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 10,
+    borderRadius: 26,
+  },
+  floatingMiniPlayerPill: {
+    width: '100%',
+    borderRadius: 26,
+    overflow: 'hidden',
+  },
+  floatingMiniPlayerBlur: {
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
+    backgroundColor:
+      Platform.OS === 'ios' ? 'rgba(17, 24, 39, 0.72)' : 'rgba(15, 23, 42, 0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderTopColor: 'rgba(255, 255, 255, 0.28)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 10,
+    paddingRight: 16,
+  },
+  floatingMiniPlayerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  floatingAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 7,
+    backgroundColor: '#1e293b',
+  },
+  floatingTextColumn: {
+    flex: 1,
+    marginLeft: 10,
+    justifyContent: 'center',
+  },
+  floatingSurahTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#ffffff',
+    lineHeight: 18,
+  },
+  floatingReciterName: {
+    fontFamily: 'Cairo_500Medium',
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: -1,
+  },
+  floatingControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  floatingIconButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* 2. EXPANDED 5-ITEM FLOATING TAB BAR */
+  expandedBarWrapper: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -260,5 +649,92 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(52, 211, 153, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+
+  /* 3. COLLAPSED DOCK ROW (MATCHING SCREENSHOT) */
+  collapsedDockWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dockCircleButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  dockCircleBlur: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.72)' : 'rgba(30, 41, 59, 0.92)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 24,
+  },
+  dockedMiniPlayerContainer: {
+    flex: 1,
+    height: 48,
+    marginHorizontal: 8,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  dockedMiniPlayerBlur: {
+    flex: 1,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.72)' : 'rgba(30, 41, 59, 0.92)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 7,
+    paddingRight: 12,
+  },
+  dockedAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 7,
+    backgroundColor: '#1e293b',
+  },
+  dockedTextColumn: {
+    flex: 1,
+    marginLeft: 8,
+    marginRight: 6,
+    justifyContent: 'center',
+  },
+  dockedSurahTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: '#ffffff',
+  },
+  dockedControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dockedControlBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

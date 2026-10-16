@@ -20,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 import surahsData from '../../data/surahs.json';
 
 // --- CUSTOM SVG ICONS MATCHING SCREENSHOT EXACTLY ---
@@ -186,11 +187,18 @@ const JUZ_LIST = Array.from({ length: 30 }, (_, i) => i + 1);
 export default function QuranScreen() {
   const router = useRouter();
   const flatListRef = useRef<FlatList<SurahItem>>(null);
+  const { onScroll, registerSearchHandler } = useScrollCollapse();
 
   const [activeTab, setActiveTab] = useState<'mushaf' | 'readings'>('mushaf');
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeJuz, setActiveJuz] = useState<number | null>(null);
+
+  useEffect(() => {
+    return registerSearchHandler(() => {
+      setShowSearch((prev) => !prev);
+    });
+  }, [registerSearchHandler]);
 
   // Recent Readings state
   const [recentReadings, setRecentReadings] = useState<RecentReadingItem[]>(INITIAL_RECENT_READINGS);
@@ -542,6 +550,8 @@ export default function QuranScreen() {
               renderItem={renderSurahCard}
               contentContainerStyle={styles.surahListContent}
               showsVerticalScrollIndicator={false}
+              onScroll={onScroll}
+              scrollEventThrottle={16}
               onScrollToIndexFailed={(info) => {
                 flatListRef.current?.scrollToOffset({
                   offset: info.averageItemLength * info.index,

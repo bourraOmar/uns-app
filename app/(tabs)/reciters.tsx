@@ -20,7 +20,7 @@ import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
-import MiniAudioPlayer from '@/components/MiniAudioPlayer';
+import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 import {
   RECITERS_DATA,
   Reciter,
@@ -150,6 +150,14 @@ export default function RecitersScreen() {
       }).start();
     }
   }, [showFloatingMenu]);
+
+  const { onScroll, registerSearchHandler } = useScrollCollapse();
+
+  useEffect(() => {
+    return registerSearchHandler(() => {
+      handleOpenSearch();
+    });
+  }, [registerSearchHandler]);
 
   const handleOpenSearch = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -356,6 +364,8 @@ export default function RecitersScreen() {
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            onScroll={onScroll}
+            scrollEventThrottle={16}
           />
         ) : (
           /* EMPTY STATE MATCHING SCREENSHOT EXACTLY */
@@ -370,199 +380,45 @@ export default function RecitersScreen() {
           </View>
         )}
 
-        {/* BOTTOM FLOATING ACTION BAR AREA */}
-        {showFloatingMenu ? (
-          <>
-            {/* Backdrop to dismiss expanded floating menu */}
-            <Pressable
-              style={StyleSheet.absoluteFill}
-              onPress={() => setShowFloatingMenu(false)}
-            />
-
-            {/* Expanded 5-Item Floating Menu Bar with iOS Glass Effect */}
-            <Animated.View
-              style={[
-                styles.floatingMenuAnimContainer,
-                {
-                  opacity: menuAnim,
-                  transform: [
-                    {
-                      scale: menuAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.88, 1],
-                      }),
-                    },
-                    {
-                      translateY: menuAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [15, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <BlurView
-                intensity={Platform.OS === 'ios' ? 75 : 90}
-                tint="dark"
-                style={styles.floatingMenuBar}
-              >
-                {/* 1. الخدمات (Services / Duas - Far Left) */}
-                <TouchableOpacity
-                  style={styles.floatingMenuItem}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowFloatingMenu(false);
-                    router.push('/duas' as any);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <ServicesMosqueIcon size={21} color="#8ba7c0" />
-                  <Text style={styles.floatingMenuItemText}>الخدمات</Text>
-                </TouchableOpacity>
-
-                {/* 2. الأذكار (Adhkar / Quotes) */}
-                <TouchableOpacity
-                  style={styles.floatingMenuItem}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowFloatingMenu(false);
-                    router.push('/adhkar' as any);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons name="format-quote-close" size={22} color="#8ba7c0" />
-                  <Text style={styles.floatingMenuItemText}>الأذكار</Text>
-                </TouchableOpacity>
-
-                {/* 3. المصحف (Quran Book) */}
-                <TouchableOpacity
-                  style={styles.floatingMenuItem}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowFloatingMenu(false);
-                    router.push('/quran' as any);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <MushafSquareBookIcon size={21} color="#8ba7c0" />
-                  <Text style={styles.floatingMenuItemText}>المصحف</Text>
-                </TouchableOpacity>
-
-                {/* 4. المُشغّل (ACTIVE Player Tab with glowing emerald capsule) */}
-                <TouchableOpacity
-                  style={styles.activePillTouchable}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowFloatingMenu(false);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <BlurView
-                    intensity={Platform.OS === 'ios' ? 40 : 60}
-                    tint="dark"
-                    style={styles.floatingMenuItemActivePill}
-                  >
-                    <PlayerBookRaysIcon size={21} color="#34d399" />
-                    <Text style={styles.floatingMenuItemActiveText}>المُشغّل</Text>
-                  </BlurView>
-                </TouchableOpacity>
-
-                {/* 5. الرئيسية (Home - Far Right) */}
-                <TouchableOpacity
-                  style={styles.floatingMenuItem}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowFloatingMenu(false);
-                    router.replace('/');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="home-outline" size={20} color="#8ba7c0" />
-                  <Text style={styles.floatingMenuItemText}>الرئيسية</Text>
-                </TouchableOpacity>
-              </BlurView>
-            </Animated.View>
-          </>
-        ) : (
-          /* Bottom Row: Either Search Input Capsule (Active) or Circular Search Button */
+        {/* BOTTOM ACTIVE SEARCH BAR (WHEN USER TAPS SEARCH) */}
+        {isSearchActive && (
           <View style={styles.bottomBarRow} pointerEvents="box-none">
-            {isSearchActive ? (
-              /* Expanded Bottom Search Capsule Bar */
-              <View style={styles.bottomSearchCapsule}>
-                {/* Clear / Close X Button on the Left */}
-                <TouchableOpacity
-                  style={styles.searchCloseCircle}
-                  onPress={() => {
-                    if (search.length > 0) {
-                      setSearch('');
-                    } else {
-                      handleCloseSearch();
-                    }
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="close" size={14} color="#f8fafc" />
-                </TouchableOpacity>
-
-                {/* Search Text Input in the Center (supports Arabic & English) */}
-                <TextInput
-                  ref={searchInputRef}
-                  style={styles.bottomSearchInput}
-                  placeholder="ابحث باسم القارئ (عربي / English)..."
-                  placeholderTextColor="#64748b"
-                  value={search}
-                  onChangeText={setSearch}
-                  textAlign={isEnglishQuery ? 'left' : 'right'}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="search"
-                />
-
-                {/* Search Magnifying Glass Icon on the Right */}
-                <Ionicons name="search" size={20} color="#94a3b8" style={styles.searchMagnifierIcon} />
-              </View>
-            ) : (
-              /* Collapsed Search Button on the Left */
+            <View style={styles.bottomSearchCapsule}>
+              {/* Clear / Close X Button on the Left */}
               <TouchableOpacity
-                style={styles.floatingCircleButton}
-                activeOpacity={0.85}
-                onPress={handleOpenSearch}
+                style={styles.searchCloseCircle}
+                onPress={() => {
+                  if (search.length > 0) {
+                    setSearch('');
+                  } else {
+                    handleCloseSearch();
+                  }
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="search" size={22} color="#f8fafc" />
+                <Ionicons name="close" size={14} color="#f8fafc" />
               </TouchableOpacity>
-            )}
 
-            {/* Right: Circular Player Button (Always on the Right) */}
-            <TouchableOpacity
-              style={styles.floatingCircleButton}
-              activeOpacity={0.85}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                if (isSearchActive) {
-                  Keyboard.dismiss();
-                }
-                setShowFloatingMenu(true);
-              }}
-            >
-              <PlayerBookRaysIcon size={22} color="#f8fafc" />
-            </TouchableOpacity>
+              {/* Search Text Input in the Center (supports Arabic & English) */}
+              <TextInput
+                ref={searchInputRef}
+                style={styles.bottomSearchInput}
+                placeholder="ابحث باسم القارئ (عربي / English)..."
+                placeholderTextColor="#64748b"
+                value={search}
+                onChangeText={setSearch}
+                textAlign={isEnglishQuery ? 'left' : 'right'}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+
+              {/* Search Magnifying Glass Icon on the Right */}
+              <Ionicons name="search" size={20} color="#94a3b8" style={styles.searchMagnifierIcon} />
+            </View>
           </View>
         )}
       </KeyboardAvoidingView>
-
-      {/* FLOATING MINI PLAYER (MATCHING SCREENSHOT) */}
-      <MiniAudioPlayer
-        bottomOffset={
-          showFloatingMenu
-            ? Platform.OS === 'ios'
-              ? 98
-              : 90
-            : Platform.OS === 'ios'
-            ? 84
-            : 76
-        }
-      />
     </SafeAreaView>
   );
 }

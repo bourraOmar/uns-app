@@ -11,12 +11,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 import { DUA_CATEGORIES, DuaCategory, DuaItem } from '@/data/duas';
 
 type FilterTab = 'all' | 'quran' | 'prophet';
 
 export default function DuasScreen() {
   const router = useRouter();
+  const { onScroll } = useScrollCollapse();
   const [search, setSearch] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<FilterTab>('all');
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
@@ -47,6 +49,8 @@ export default function DuasScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         {/* Top Header */}
         <View style={styles.header}>

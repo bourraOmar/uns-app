@@ -17,6 +17,7 @@ import {
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AnimatedGradientBackground } from '@/components/AnimatedGradientBackground';
+import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 // Custom icons using pure React Native components (no external SVG dependency)
 function TasbihBeadsIcon({ size = 22, color = '#ffffff' }: { size?: number; color?: string }) {
   const radius = (size - 6) / 2;
@@ -166,6 +167,7 @@ function InspirationRibbonBadge({ type }: RibbonBadgeProps) {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { onScroll } = useScrollCollapse();
 
   const [locationCity] = useState('آسفي، المغرب');
   const [activePrayerId, setActivePrayerId] = useState('Asr'); // Active prayer (e.g. Asr)
@@ -275,6 +277,8 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         {/* ================= 1. Top Header ================= */}
         <View style={styles.topHeader}>
