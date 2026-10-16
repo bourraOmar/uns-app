@@ -11,6 +11,8 @@ import { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 interface ScrollCollapseContextType {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
+  currentRouteName: string;
+  setCurrentRouteName: (route: string) => void;
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   registerSearchHandler: (handler: () => void) => () => void;
   triggerSearch: () => void;
@@ -20,19 +22,28 @@ const ScrollCollapseContext = createContext<ScrollCollapseContextType | null>(nu
 
 export function ScrollCollapseProvider({ children }: { children: ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [currentRouteName, setCurrentRouteName] = useState('index');
   const lastScrollY = useRef(0);
   const searchHandlerRef = useRef<(() => void) | null>(null);
+  const currentRouteRef = useRef(currentRouteName);
+  currentRouteRef.current = currentRouteName;
 
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const currentY = event.nativeEvent.contentOffset.y;
     const diff = currentY - lastScrollY.current;
 
-    // When scrolling down past initial top space (> 40px)
-    if (currentY > 40 && diff > 6) {
-      setIsCollapsed(true);
-    } else if (diff < -8 || currentY <= 20) {
-      // When scrolling back up or near the top
-      setIsCollapsed(false);
+    if (currentRouteRef.current === 'index') {
+      // Home page: collapse on scroll down, expand on scroll up / top
+      if (currentY > 40 && diff > 6) {
+        setIsCollapsed(true);
+      } else if (diff < -8 || currentY <= 20) {
+        setIsCollapsed(false);
+      }
+    } else {
+      // Non-home pages: stay collapsed. If user manually expanded menu, scrolling down closes it.
+      if (diff > 6 || currentY > 40) {
+        setIsCollapsed(true);
+      }
     }
 
     lastScrollY.current = currentY;
@@ -56,6 +67,8 @@ export function ScrollCollapseProvider({ children }: { children: ReactNode }) {
       value={{
         isCollapsed,
         setIsCollapsed,
+        currentRouteName,
+        setCurrentRouteName,
         onScroll,
         registerSearchHandler,
         triggerSearch,

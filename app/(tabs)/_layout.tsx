@@ -124,7 +124,7 @@ function FloatingTabBar({ state, navigation }: any) {
     return null;
   }
 
-  const { isCollapsed, setIsCollapsed, triggerSearch } = useScrollCollapse();
+  const { isCollapsed, setIsCollapsed, triggerSearch, setCurrentRouteName } = useScrollCollapse();
   const {
     currentSurah,
     currentReciter,
@@ -135,6 +135,17 @@ function FloatingTabBar({ state, navigation }: any) {
     openPlayerModal,
     isPlayerModalVisible,
   } = useAudioPlayer();
+
+  useEffect(() => {
+    if (currentRoute?.name) {
+      setCurrentRouteName(currentRoute.name);
+      if (currentRoute.name === 'index') {
+        setIsCollapsed(false);
+      } else {
+        setIsCollapsed(true);
+      }
+    }
+  }, [currentRoute?.name]);
 
   const collapseAnim = useRef(new Animated.Value(0)).current;
 
@@ -310,6 +321,8 @@ function FloatingTabBar({ state, navigation }: any) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               if (!isFocused) {
                 navigation.navigate(item.name);
+              } else if (currentRoute?.name !== 'index') {
+                setIsCollapsed(true);
               }
             };
 
