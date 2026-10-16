@@ -198,6 +198,7 @@ export default function QuranScreen() {
     try {
       await AsyncStorage.setItem('@uns_recent_readings', JSON.stringify(updated));
     } catch {}
+    router.push({ pathname: '/surah/[id]', params: { id: surah.id.toString() } });
   };
 
   // Filtered Surahs based on search query
@@ -412,6 +413,7 @@ export default function QuranScreen() {
                   activeOpacity={0.7}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push({ pathname: '/surah/[id]', params: { id: item.surahId.toString() } });
                   }}
                 >
                   {/* Left: Page Number with Chevron */}
