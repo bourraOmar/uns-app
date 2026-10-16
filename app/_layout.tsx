@@ -15,6 +15,8 @@ import {
 import { Rakkas_400Regular } from '@expo-google-fonts/rakkas';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { AudioPlayerProvider, useAudioPlayer } from '@/context/AudioPlayerContext';
+import AudioPlayerModal from '@/components/AudioPlayerModal';
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -42,7 +44,63 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <AudioPlayerProvider>
+      <RootLayoutNav />
+    </AudioPlayerProvider>
+  );
+}
+
+function GlobalAudioPlayerModal() {
+  const {
+    isPlayerModalVisible,
+    closePlayerModal,
+    currentSurah,
+    currentReciter,
+    isPlaying,
+    isLoadingAudio,
+    positionMillis,
+    durationMillis,
+    togglePlay,
+    nextSurah,
+    prevSurah,
+    seekTo,
+    currentSpeed,
+    setSpeed,
+    playSurah,
+    quranVolume,
+    setVolume,
+    isShuffle,
+    toggleShuffle,
+    isRepeat,
+    toggleRepeat,
+  } = useAudioPlayer();
+
+  return (
+    <AudioPlayerModal
+      visible={isPlayerModalVisible}
+      onClose={closePlayerModal}
+      surah={currentSurah}
+      reciter={currentReciter}
+      isPlaying={isPlaying}
+      isLoadingAudio={isLoadingAudio}
+      positionMillis={positionMillis}
+      durationMillis={durationMillis}
+      onTogglePlay={togglePlay}
+      onNext={nextSurah}
+      onPrev={prevSurah}
+      onSeek={seekTo}
+      currentSpeed={currentSpeed}
+      onSpeedChange={setSpeed}
+      onSelectSurah={(surahId) => playSurah(surahId)}
+      quranVolume={quranVolume}
+      onQuranVolumeChange={setVolume}
+      isShuffle={isShuffle}
+      onToggleShuffle={toggleShuffle}
+      isRepeat={isRepeat}
+      onToggleRepeat={toggleRepeat}
+    />
+  );
 }
 
 function RootLayoutNav() {
@@ -55,6 +113,7 @@ function RootLayoutNav() {
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         <Stack.Screen name="reciter/[id]" options={{ headerShown: false }} />
       </Stack>
+      <GlobalAudioPlayerModal />
     </ThemeProvider>
   );
 }

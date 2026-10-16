@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,27 +7,16 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
-  Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { RECITERS_DATA, Reciter } from '@/data/reciters';
 import surahsData from '@/data/surahs.json';
-import AudioPlayerModal from '@/components/AudioPlayerModal';
-import { backgroundSoundService } from '@/services/backgroundSoundService';
-
-interface SurahItem {
-  id: number;
-  name_arabic: string;
-  name_simple: string;
-  revelation_place: string;
-  verses_count: number;
-  start_page: number;
-  vocalized_name: string;
-}
+import { useAudioPlayer, SurahItem } from '@/context/AudioPlayerContext';
+import MiniAudioPlayer from '@/components/MiniAudioPlayer';
 
 export default function ReciterProfileScreen() {
   const router = useRouter();
@@ -41,271 +30,25 @@ export default function ReciterProfileScreen() {
   // Find reciter info
   const reciter = useMemoReciter(params);
 
-  // Audio Playback Ref and States
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const [currentSurahId, setCurrentSurahId] = useState<number | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
-  const [playbackProgress, setPlaybackProgress] = useState(0);
-  const [positionMillis, setPositionMillis] = useState(0);
-  const [durationMillis, setDurationMillis] = useState(0);
-  const [currentSpeed, setCurrentSpeed] = useState(1.0);
-  const [isPlayerModalVisible, setIsPlayerModalVisible] = useState(false);
-  const [quranVolume, setQuranVolume] = useState(1.0);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
-
-  const isShuffleRef = useRef(isShuffle);
-  isShuffleRef.current = isShuffle;
-
-  const isRepeatRef = useRef(isRepeat);
-  isRepeatRef.current = isRepeat;
-
-  const currentSurahIdRef = useRef(currentSurahId);
-  currentSurahIdRef.current = currentSurahId;
-
-  const getRandomSurahId = (currentId: number | null): number => {
-    const candidates = surahsData.map((s) => s.id).filter((id) => id !== currentId);
-    const randomIndex = Math.floor(Math.random() * candidates.length);
-    return candidates[randomIndex] || 1;
-  };
-
-  const handleQuranVolumeChange = async (vol: number) => {
-    const clamped = Math.max(0, Math.min(1, vol));
-    setQuranVolume(clamped);
-    if (soundRef.current) {
-      try {
-        await soundRef.current.setVolumeAsync(clamped);
-      } catch {}
-    }
-  };
-
-  // Unload sound when unmounting
-  useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
-      }
-      backgroundSoundService.unload().catch(() => {});
-    };
-  }, []);
-
-  // Sync background sound playback with Quran playback
-  useEffect(() => {
-    backgroundSoundService.setQuranPlaying(isPlaying);
-  }, [isPlaying]);
-
-  // Compute clean, direct CDN URL for a surah
-  const getAudioUrl = (surahId: number): string => {
-    let base = reciter.server;
-
-    // Fallback if missing or pointing to legacy redirect server
-    if (
-      !base ||
-      base.includes('server6.mp3quran.net') ||
-      base.includes('server8.mp3quran.net') ||
-      base.includes('server10.mp3quran.net') ||
-      base.includes('server12.mp3quran.net')
-    ) {
-      const found = RECITERS_DATA.find((r) => r.id === reciter.id || r.name === reciter.name);
-      if (found?.server) {
-        base = found.server;
-      }
-    }
-
-    if (!base) {
-      base = 'https://cdn.mp3quran.net/audio/ibrahim-akhdar/r1/';
-    }
-
-    // Ensure https and trailing slash
-    base = base.replace('http://', 'https://');
-    const cleanBase = base.endsWith('/') ? base : `${base}/`;
-    const padded = String(surahId).padStart(3, '0');
-    return `${cleanBase}${padded}.mp3`;
-  };
-
-  // Audio toggle for a specific surah
-  const handlePlaySurah = async (surahId: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    // If currently playing this exact surah, toggle play/pause
-    if (currentSurahId === surahId && soundRef.current) {
-      try {
-        const status = await soundRef.current.getStatusAsync();
-        if (status.isLoaded) {
-          if (status.isPlaying) {
-            await soundRef.current.pauseAsync();
-            setIsPlaying(false);
-          } else {
-            await soundRef.current.playAsync();
-            setIsPlaying(true);
-          }
-          return;
-        }
-      } catch (err) {
-        console.warn('Error toggling play/pause:', err);
-      }
-    }
-
-    // Stop and unload existing sound
-    if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-      } catch {}
-      soundRef.current = null;
-    }
-
-    const audioUri = getAudioUrl(surahId);
-    setCurrentSurahId(surahId);
-    setIsLoadingAudio(true);
-    setIsPlaying(false);
-    setPlaybackProgress(0);
-
-    try {
-      // Safe audio mode setup
-      try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: true,
-          shouldDuckAndroid: true,
-        });
-      } catch (modeErr) {
-        // Non-fatal on web/older android
-      }
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: audioUri },
-        { shouldPlay: true, progressUpdateIntervalMillis: 350 },
-        (status) => {
-          if (status.isLoaded) {
-            setIsPlaying(status.isPlaying);
-            if (status.positionMillis !== undefined) {
-              setPositionMillis(status.positionMillis);
-            }
-            if (status.durationMillis && status.durationMillis > 0) {
-              setDurationMillis(status.durationMillis);
-              setPlaybackProgress(status.positionMillis / status.durationMillis);
-            }
-            if (status.didJustFinish) {
-              setIsPlaying(false);
-              setPlaybackProgress(0);
-              setPositionMillis(0);
-
-              if (isRepeatRef.current && currentSurahIdRef.current) {
-                // Repeat current surah
-                handlePlaySurah(currentSurahIdRef.current);
-              } else if (isShuffleRef.current) {
-                // Shuffle to a random surah
-                handlePlaySurah(getRandomSurahId(currentSurahIdRef.current));
-              } else if (currentSurahIdRef.current && currentSurahIdRef.current < 114) {
-                // Auto-advance to next surah in playlist
-                handlePlaySurah(currentSurahIdRef.current + 1);
-              } else if (currentSurahIdRef.current === 114) {
-                // Loop back to Al-Fatihah
-                handlePlaySurah(1);
-              }
-            }
-          } else if (status.error) {
-            console.warn(`Playback error for ${audioUri}:`, status.error);
-            setIsPlaying(false);
-          }
-        }
-      );
-
-      soundRef.current = newSound;
-      if (quranVolume !== 1.0) {
-        await newSound.setVolumeAsync(quranVolume).catch(() => {});
-      }
-      if (currentSpeed !== 1.0) {
-        await newSound.setRateAsync(currentSpeed, true).catch(() => {});
-      }
-      await newSound.playAsync();
-      setIsPlaying(true);
-    } catch (err: any) {
-      console.warn('Failed to load/play audio:', audioUri, err);
-      setIsPlaying(false);
-      Alert.alert(
-        'تعذر تشغيل الصوت',
-        'يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.'
-      );
-    } finally {
-      setIsLoadingAudio(false);
-    }
-  };
-
-  // Skip to next surah (respecting shuffle)
-  const handleNextSurah = () => {
-    if (isShuffleRef.current) {
-      handlePlaySurah(getRandomSurahId(currentSurahId));
-    } else if (currentSurahId && currentSurahId < 114) {
-      handlePlaySurah(currentSurahId + 1);
-    } else if (currentSurahId === 114) {
-      handlePlaySurah(1);
-    }
-  };
-
-  // Skip to previous surah (respecting shuffle)
-  const handlePrevSurah = () => {
-    if (isShuffleRef.current) {
-      handlePlaySurah(getRandomSurahId(currentSurahId));
-    } else if (currentSurahId && currentSurahId > 1) {
-      handlePlaySurah(currentSurahId - 1);
-    } else if (currentSurahId === 1) {
-      handlePlaySurah(114);
-    }
-  };
-
-  // Seek / Scrub to a target position in milliseconds
-  const handleSeek = async (millis: number) => {
-    if (soundRef.current) {
-      try {
-        await soundRef.current.setPositionAsync(millis);
-        setPositionMillis(millis);
-      } catch (err) {
-        console.warn('Error seeking:', err);
-      }
-    }
-  };
-
-  // Change playback speed rate
-  const handleSpeedChange = async (speed: number) => {
-    setCurrentSpeed(speed);
-    if (soundRef.current) {
-      try {
-        await soundRef.current.setRateAsync(speed, true);
-      } catch (err) {
-        console.warn('Error setting rate:', err);
-      }
-    }
-  };
+  // Global Audio Player Context
+  const {
+    currentSurah,
+    currentReciter,
+    isPlaying,
+    isLoadingAudio,
+    playSurah,
+    togglePlay,
+    openPlayerModal,
+  } = useAudioPlayer();
 
   // Master Big Play/Pause button in Spotify header
   const handleToggleMasterPlay = () => {
-    if (currentSurahId) {
-      handlePlaySurah(currentSurahId);
+    if (currentSurah && currentReciter.id === reciter.id) {
+      togglePlay();
     } else {
-      // Start with Surah Al-Fatihah (1)
-      handlePlaySurah(1);
+      // Start with Surah Al-Fatihah (1) with this reciter
+      playSurah(1, reciter);
     }
-  };
-
-  // Stop mini-player
-  const handleStopPlaying = async () => {
-    if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-      } catch {}
-      soundRef.current = null;
-    }
-    setCurrentSurahId(null);
-    setIsPlaying(false);
-    setPlaybackProgress(0);
-    setPositionMillis(0);
-    setDurationMillis(0);
-    setIsPlayerModalVisible(false);
   };
 
   // Header component with Spotify Cover, Reciter Info, Big Play Button, and Table Columns Header
@@ -355,7 +98,7 @@ export default function ReciterProfileScreen() {
 
   // Each Surah Track Item in the Spotify Table
   const renderSurahTrack = ({ item }: { item: SurahItem }) => {
-    const isCurrentPlaying = currentSurahId === item.id;
+    const isCurrentPlaying = currentSurah?.id === item.id && currentReciter.id === reciter.id;
     const revelation = item.revelation_place === 'makkah' ? 'Makkah' : 'Madinah';
 
     return (
@@ -363,8 +106,8 @@ export default function ReciterProfileScreen() {
         style={[styles.trackRow, isCurrentPlaying && styles.trackRowActive]}
         activeOpacity={0.75}
         onPress={() => {
-          handlePlaySurah(item.id);
-          setIsPlayerModalVisible(true);
+          playSurah(item.id, reciter);
+          openPlayerModal();
         }}
       >
         {/* Column 4: Verses Count */}
@@ -401,8 +144,6 @@ export default function ReciterProfileScreen() {
     );
   };
 
-  const currentSurah = surahsData.find((s) => s.id === currentSurahId);
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" />
@@ -432,86 +173,13 @@ export default function ReciterProfileScreen() {
         renderItem={renderSurahTrack}
         contentContainerStyle={[
           styles.listContent,
-          currentSurahId ? { paddingBottom: 110 } : { paddingBottom: 40 },
+          currentSurah ? { paddingBottom: 110 } : { paddingBottom: 40 },
         ]}
         showsVerticalScrollIndicator={false}
       />
 
-      {/* SPOTIFY-STYLE NOW PLAYING FLOATING MINI-PLAYER */}
-      {currentSurah && (
-        <View style={styles.miniPlayerContainer}>
-          {/* Progress bar line at the very top of mini-player */}
-          <View style={styles.miniPlayerProgressBarBg}>
-            <View
-              style={[
-                styles.miniPlayerProgressBarFill,
-                { width: `${Math.min(100, Math.max(0, playbackProgress * 100))}%` },
-              ]}
-            />
-          </View>
-
-          <View style={styles.miniPlayerContent}>
-            {/* Play/Pause Control on the Left */}
-            <TouchableOpacity
-              style={styles.miniPlayerPlayBtn}
-              onPress={() => handlePlaySurah(currentSurah.id)}
-            >
-              {isLoadingAudio ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Ionicons
-                  name={isPlaying ? 'pause' : 'play'}
-                  size={20}
-                  color="#ffffff"
-                  style={isPlaying ? undefined : { marginLeft: 2 }}
-                />
-              )}
-            </TouchableOpacity>
-
-            {/* Surah & Reciter Details in Center - Tapping opens full player modal */}
-            <TouchableOpacity
-              style={styles.miniPlayerInfo}
-              activeOpacity={0.8}
-              onPress={() => setIsPlayerModalVisible(true)}
-            >
-              <Text style={styles.miniPlayerSurahTitle}>
-                سورة {currentSurah.name_arabic} ({currentSurah.name_simple})
-              </Text>
-              <Text style={styles.miniPlayerReciterSubtitle}>{reciter.name}</Text>
-            </TouchableOpacity>
-
-            {/* Close / Dismiss on the Right */}
-            <TouchableOpacity style={styles.miniPlayerCloseBtn} onPress={handleStopPlaying}>
-              <Ionicons name="close" size={18} color="#94a3b8" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* FULL-SCREEN SPOTIFY / IOS PLAYER MODAL (Matching Screenshot) */}
-      <AudioPlayerModal
-        visible={isPlayerModalVisible}
-        onClose={() => setIsPlayerModalVisible(false)}
-        surah={currentSurah || null}
-        reciter={reciter}
-        isPlaying={isPlaying}
-        isLoadingAudio={isLoadingAudio}
-        positionMillis={positionMillis}
-        durationMillis={durationMillis}
-        onTogglePlay={handleToggleMasterPlay}
-        onNext={handleNextSurah}
-        onPrev={handlePrevSurah}
-        onSeek={handleSeek}
-        currentSpeed={currentSpeed}
-        onSpeedChange={handleSpeedChange}
-        onSelectSurah={(surahId) => handlePlaySurah(surahId)}
-        quranVolume={quranVolume}
-        onQuranVolumeChange={handleQuranVolumeChange}
-        isShuffle={isShuffle}
-        onToggleShuffle={() => setIsShuffle((prev) => !prev)}
-        isRepeat={isRepeat}
-        onToggleRepeat={() => setIsRepeat((prev) => !prev)}
-      />
+      {/* SPOTIFY-STYLE FLOATING MINI-PLAYER (MATCHING SCREENSHOT) */}
+      <MiniAudioPlayer bottomOffset={Platform.OS === 'ios' ? 24 : 16} />
     </SafeAreaView>
   );
 }

@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
+import MiniAudioPlayer from '@/components/MiniAudioPlayer';
 import {
   RECITERS_DATA,
   Reciter,
@@ -549,6 +550,19 @@ export default function RecitersScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* FLOATING MINI PLAYER (MATCHING SCREENSHOT) */}
+      <MiniAudioPlayer
+        bottomOffset={
+          showFloatingMenu
+            ? Platform.OS === 'ios'
+              ? 98
+              : 90
+            : Platform.OS === 'ios'
+            ? 84
+            : 76
+        }
+      />
     </SafeAreaView>
   );
 }

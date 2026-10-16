@@ -4,6 +4,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
+import MiniAudioPlayer from '@/components/MiniAudioPlayer';
 
 // --- CUSTOM SVG ICONS MATCHING SCREENSHOT EXACTLY ---
 
@@ -115,7 +116,9 @@ function FloatingTabBar({ state, navigation }: any) {
   }
 
   return (
-    <View style={styles.floatingBarContainer} pointerEvents="box-none">
+    <>
+      <MiniAudioPlayer bottomOffset={Platform.OS === 'ios' ? 100 : 92} />
+      <View style={styles.floatingBarContainer} pointerEvents="box-none">
       <BlurView
         intensity={Platform.OS === 'ios' ? 75 : 90}
         tint="dark"
@@ -165,6 +168,7 @@ function FloatingTabBar({ state, navigation }: any) {
         })}
       </BlurView>
     </View>
+    </>
   );
 }
 
