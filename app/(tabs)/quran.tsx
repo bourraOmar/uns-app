@@ -148,42 +148,6 @@ const INITIAL_RECENT_READINGS: RecentReadingItem[] = [
   },
 ];
 
-// Map each Juz (1..30) to its approximate starting Surah ID
-const JUZ_START_SURAH: Record<number, number> = {
-  1: 1,
-  2: 2,
-  3: 2,
-  4: 3,
-  5: 4,
-  6: 4,
-  7: 5,
-  8: 6,
-  9: 7,
-  10: 8,
-  11: 9,
-  12: 11,
-  13: 12,
-  14: 15,
-  15: 17,
-  16: 18,
-  17: 21,
-  18: 23,
-  19: 25,
-  20: 27,
-  21: 29,
-  22: 33,
-  23: 36,
-  24: 39,
-  25: 41,
-  26: 46,
-  27: 51,
-  28: 58,
-  29: 67,
-  30: 78,
-};
-
-const JUZ_LIST = Array.from({ length: 30 }, (_, i) => i + 1);
-
 export default function QuranScreen() {
   const router = useRouter();
   const flatListRef = useRef<FlatList<SurahItem>>(null);
@@ -197,7 +161,6 @@ export default function QuranScreen() {
   } = useScrollCollapse();
 
   const [activeTab, setActiveTab] = useState<'mushaf' | 'readings'>('mushaf');
-  const [activeJuz, setActiveJuz] = useState<number | null>(null);
 
   useEffect(() => {
     setSearchPlaceholder('ابحث عن اسم السورة أو رقمها...');
@@ -250,20 +213,6 @@ export default function QuranScreen() {
       );
     });
   }, [searchQuery]);
-
-  // Scroll to Surah for selected Juz
-  const handleSelectJuz = (juz: number) => {
-    setActiveJuz(juz);
-    const targetSurahId = JUZ_START_SURAH[juz] || 1;
-    const index = filteredSurahs.findIndex((s) => s.id >= targetSurahId);
-    if (index !== -1 && flatListRef.current) {
-      flatListRef.current.scrollToIndex({
-        index,
-        animated: true,
-        viewPosition: 0.1,
-      });
-    }
-  };
 
   const renderSurahCard = ({ item }: { item: SurahItem }) => {
     const isMakki = item.revelation_place === 'makkah';
@@ -501,37 +450,8 @@ export default function QuranScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* MAIN CONTENT AREA: JUZ RAIL ON LEFT + SURAHS LIST ON RIGHT */}
+          {/* MAIN CONTENT AREA: SURAHS LIST */}
           <View style={styles.contentRow}>
-            {/* VERTICAL JUZ INDEX RAIL (Left side: 1..30) */}
-            <View style={styles.juzRailContainer}>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.juzRailContent}
-              >
-                {JUZ_LIST.map((juz) => {
-                  const isSelected = activeJuz === juz;
-                  return (
-                    <TouchableOpacity
-                      key={juz}
-                      onPress={() => handleSelectJuz(juz)}
-                      style={[styles.juzNumberItem, isSelected && styles.juzNumberItemActive]}
-                      hitSlop={{ top: 4, bottom: 4, left: 6, right: 6 }}
-                    >
-                      <Text
-                        style={[
-                          styles.juzNumberText,
-                          isSelected && styles.juzNumberTextActive,
-                        ]}
-                      >
-                        {juz}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
             {/* SURAHS LIST OR EMPTY STATE */}
             {filteredSurahs.length > 0 ? (
               <FlatList
@@ -874,49 +794,14 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
   },
 
-  /* MAIN CONTENT ROW (RAIL + LIST) */
+  /* MAIN CONTENT AREA */
   contentRow: {
     flex: 1,
-    flexDirection: 'row',
-  },
-
-  /* VERTICAL JUZ RAIL (Far Left) */
-  juzRailContainer: {
-    width: 28,
-    paddingVertical: 4,
-    alignItems: 'center',
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(51, 65, 85, 0.35)',
-  },
-  juzRailContent: {
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  juzNumberItem: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 4,
-  },
-  juzNumberItemActive: {
-    backgroundColor: '#0f8e5d',
-  },
-  juzNumberText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 10,
-    color: '#64748b',
-  },
-  juzNumberTextActive: {
-    color: '#ffffff',
-    fontFamily: 'Cairo_700Bold',
   },
 
   /* SURAH LIST */
   surahListContent: {
-    paddingLeft: 12,
-    paddingRight: 16,
+    paddingHorizontal: 16,
     paddingBottom: 96,
   },
 
