@@ -18,6 +18,7 @@ import * as Haptics from 'expo-haptics';
 import surahsData from '@/data/surahs.json';
 import { toEasternArabicNumerals } from '@/data/quranPages';
 import { SurahItem } from '@/context/AudioPlayerContext';
+import AyahFrame from '@/components/quran/AyahFrame';
 
 interface VerseData {
   id: number;
@@ -171,7 +172,7 @@ export default function SurahReaderScreen() {
                     style={styles.fatihaBasmalahImage}
                     resizeMode="contain"
                   />
-                  <Text style={styles.ayahNumber}> (١) </Text>
+                  <AyahFrame number={1} />
                 </View>
               )}
 
@@ -179,11 +180,11 @@ export default function SurahReaderScreen() {
               <Text style={styles.surahParagraph}>
                 {verses.map((verse) => {
                   if (isFatiha && verse.verse_number === 1) return null;
-                  const numStr = toEasternArabicNumerals(verse.verse_number);
                   return (
                     <React.Fragment key={verse.id || verse.verse_number}>
-                      <Text style={styles.verseText}>{verse.text_uthmani}</Text>
-                      <Text style={styles.ayahNumber}> ({numStr}) </Text>
+                      <Text style={styles.verseText}>{verse.text_uthmani} </Text>
+                      <AyahFrame number={verse.verse_number} />
+                      <Text style={styles.verseText}> </Text>
                     </React.Fragment>
                   );
                 })}
