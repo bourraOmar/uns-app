@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -79,10 +79,13 @@ type FilterType = 'all' | 'morning_evening' | 'tasbih' | 'other';
 
 export default function AdhkarScreen() {
   const router = useRouter();
-  const { onScroll } = useScrollCollapse();
-  const [search, setSearch] = useState('');
+  const { onScroll, searchQuery, setSearchPlaceholder, openSearch } = useScrollCollapse();
   const [filter, setFilter] = useState<FilterType>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSearchPlaceholder('ابحث عن ذكر أو تسبيح (صباح، استغفار، نوم)...');
+  }, [setSearchPlaceholder]);
 
   // Tasbih state inside expanded tasbih
   const [tasbihValue, setTasbihValue] = useState(0);
@@ -114,8 +117,8 @@ export default function AdhkarScreen() {
       if (cat.id !== 'tasbih') return false;
     }
 
-    if (!search.trim()) return true;
-    const q = search.trim().toLowerCase();
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
     return cat.title.toLowerCase().includes(q) || cat.subtitle.toLowerCase().includes(q);
   });
 
@@ -134,6 +137,7 @@ export default function AdhkarScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         onScroll={onScroll}
         scrollEventThrottle={16}
       >
@@ -152,23 +156,17 @@ export default function AdhkarScreen() {
           </View>
         </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
+        {/* Search Bar Trigger */}
+        <TouchableOpacity
+          style={styles.searchBar}
+          activeOpacity={0.8}
+          onPress={openSearch}
+        >
           <Ionicons name="search" size={20} color="#64748b" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="...ابحث عن ذكر أو تسبيح (صباح، استغفار، نوم)"
-            placeholderTextColor="#64748b"
-            value={search}
-            onChangeText={setSearch}
-            textAlign="right"
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color="#64748b" />
-            </TouchableOpacity>
-          )}
-        </View>
+          <Text style={[styles.searchInputPlaceholder, !!searchQuery && styles.searchInputActiveText]}>
+            {searchQuery || 'ابحث عن ذكر أو تسبيح (صباح، استغفار، نوم)...'}
+          </Text>
+        </TouchableOpacity>
 
         {/* Filter Horizontal Chips */}
         <ScrollView
@@ -206,7 +204,8 @@ export default function AdhkarScreen() {
 
         {/* Adhkar Categories List */}
         <View style={styles.categoriesList}>
-          {filteredCategories.map((item) => {
+          {filteredCategories.length > 0 ? (
+            filteredCategories.map((item) => {
             const isExpanded = expandedId === item.id;
             const itemsList = getAzkarItemsForCategory(item.categoryKey);
 
@@ -307,7 +306,18 @@ export default function AdhkarScreen() {
                 )}
               </View>
             );
-          })}
+          })
+        ) : (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyCircleIcon}>
+              <Ionicons name="close" size={26} color="#f8fafc" />
+            </View>
+            <Text style={styles.emptyTitle}>لا توجد نتائج لما تبحث عنه!</Text>
+            <Text style={styles.emptySubtitle}>
+              لم نعثر على ذكر أو تسبيح باسم &quot;{searchQuery}&quot;
+            </Text>
+          </View>
+        )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -369,11 +379,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 10,
   },
-  searchInput: {
+  searchInputPlaceholder: {
     flex: 1,
-    fontSize: 14,
-    color: '#ffffff',
+    fontSize: 13,
+    color: '#64748b',
     textAlign: 'right',
+    fontFamily: 'Cairo_600SemiBold',
+  },
+  searchInputActiveText: {
+    color: '#ffffff',
   },
   chipsScroll: {
     flexDirection: 'row-reverse',
@@ -545,5 +559,38 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748b',
     fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 80,
+    paddingBottom: 140,
+  },
+  emptyCircleIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#162238',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 19,
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontFamily: 'Cairo_500Medium',
+    fontSize: 13,
+    color: '#85998a',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 320,
   },
 });

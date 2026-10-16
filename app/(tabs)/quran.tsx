@@ -187,18 +187,21 @@ const JUZ_LIST = Array.from({ length: 30 }, (_, i) => i + 1);
 export default function QuranScreen() {
   const router = useRouter();
   const flatListRef = useRef<FlatList<SurahItem>>(null);
-  const { onScroll, registerSearchHandler } = useScrollCollapse();
+  const {
+    onScroll,
+    searchQuery,
+    setSearchPlaceholder,
+    openSearch,
+    closeSearch,
+    isSearchActive,
+  } = useScrollCollapse();
 
   const [activeTab, setActiveTab] = useState<'mushaf' | 'readings'>('mushaf');
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [activeJuz, setActiveJuz] = useState<number | null>(null);
 
   useEffect(() => {
-    return registerSearchHandler(() => {
-      setShowSearch((prev) => !prev);
-    });
-  }, [registerSearchHandler]);
+    setSearchPlaceholder('ابحث عن اسم السورة أو رقمها...');
+  }, [setSearchPlaceholder]);
 
   // Recent Readings state
   const [recentReadings, setRecentReadings] = useState<RecentReadingItem[]>(INITIAL_RECENT_READINGS);
@@ -329,14 +332,21 @@ export default function QuranScreen() {
 
           {/* Search Toggle Button */}
           <TouchableOpacity
-            style={[styles.headerCircleButton, showSearch && styles.headerCircleButtonActive]}
+            style={[styles.headerCircleButton, isSearchActive && styles.headerCircleButtonActive]}
             activeOpacity={0.8}
-            onPress={() => setShowSearch(!showSearch)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (isSearchActive) {
+                closeSearch();
+              } else {
+                openSearch();
+              }
+            }}
           >
             <Ionicons
-              name={showSearch ? 'close' : 'search'}
+              name={isSearchActive ? 'close' : 'search'}
               size={17}
-              color={showSearch ? '#34d399' : '#cbd5e1'}
+              color={isSearchActive ? '#34d399' : '#cbd5e1'}
             />
           </TouchableOpacity>
         </View>
@@ -354,26 +364,6 @@ export default function QuranScreen() {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* SEARCH BAR (Toggled or inline) */}
-      {showSearch && (
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={18} color="#64748b" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="ابحث عن اسم السورة أو رقمها..."
-            placeholderTextColor="#64748b"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoFocus
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearSearchBtn}>
-              <Ionicons name="close-circle" size={18} color="#64748b" />
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
 
       {/* SEGMENTED PILL TABS ("المصحف" / "قراءاتي") */}
       <View style={styles.segmentedTabsContainer}>
@@ -542,23 +532,36 @@ export default function QuranScreen() {
               </ScrollView>
             </View>
 
-            {/* SURAHS LIST */}
-            <FlatList
-              ref={flatListRef}
-              data={filteredSurahs}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={renderSurahCard}
-              contentContainerStyle={styles.surahListContent}
-              showsVerticalScrollIndicator={false}
-              onScroll={onScroll}
-              scrollEventThrottle={16}
-              onScrollToIndexFailed={(info) => {
-                flatListRef.current?.scrollToOffset({
-                  offset: info.averageItemLength * info.index,
-                  animated: true,
-                });
-              }}
-            />
+            {/* SURAHS LIST OR EMPTY STATE */}
+            {filteredSurahs.length > 0 ? (
+              <FlatList
+                ref={flatListRef}
+                data={filteredSurahs}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={renderSurahCard}
+                contentContainerStyle={styles.surahListContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                onScroll={onScroll}
+                scrollEventThrottle={16}
+                onScrollToIndexFailed={(info) => {
+                  flatListRef.current?.scrollToOffset({
+                    offset: info.averageItemLength * info.index,
+                    animated: true,
+                  });
+                }}
+              />
+            ) : (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyCircleIcon}>
+                  <Ionicons name="close" size={26} color="#f8fafc" />
+                </View>
+                <Text style={styles.emptyTitle}>لا توجد نتائج لما تبحث عنه!</Text>
+                <Text style={styles.emptySubtitle}>
+                  لم نعثر على سورة باسم أو رقم &quot;{searchQuery}&quot;
+                </Text>
+              </View>
+            )}
           </View>
         </>
       )}
@@ -1091,5 +1094,39 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 11,
     color: '#34d399',
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 80,
+    paddingBottom: 140,
+  },
+  emptyCircleIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 19,
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontFamily: 'Cairo_500Medium',
+    fontSize: 13,
+    color: '#85998a',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 320,
   },
 });

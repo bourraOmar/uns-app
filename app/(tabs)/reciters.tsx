@@ -82,34 +82,11 @@ export default function RecitersScreen() {
     }
   }, [showFloatingMenu]);
 
-  const { onScroll, registerSearchHandler } = useScrollCollapse();
+  const { onScroll, searchQuery, setSearchPlaceholder } = useScrollCollapse();
 
   useEffect(() => {
-    return registerSearchHandler(() => {
-      handleOpenSearch();
-    });
-  }, [registerSearchHandler]);
-
-  const handleOpenSearch = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsSearchActive(true);
-    setShowFloatingMenu(false);
-    setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 100);
-  };
-
-  const handleCloseSearch = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSearch('');
-    setIsSearchActive(false);
-    Keyboard.dismiss();
-  };
-
-  // Detect if current query is in English for dynamic text alignment
-  const isEnglishQuery = useMemo(() => {
-    return /^[a-zA-Z0-9\s-_'.,]+$/.test(search.trim());
-  }, [search]);
+    setSearchPlaceholder('ابحث باسم القارئ (عربي / English)...');
+  }, [setSearchPlaceholder]);
 
   // Filter reciters based on bilingual search and selected narration filter
   const filteredReciters = useMemo(() => {
@@ -119,9 +96,9 @@ export default function RecitersScreen() {
       if (filter === 'multiple' && !r.rewaya.includes('روايا')) return false;
 
       // Bilingual search query check (supports Arabic & English)
-      return matchesReciter(r, search);
+      return matchesReciter(r, searchQuery);
     });
-  }, [reciters, search, filter]);
+  }, [reciters, searchQuery, filter]);
 
   const filterLabel = useMemo(() => {
     switch (filter) {
@@ -306,47 +283,8 @@ export default function RecitersScreen() {
             </View>
             <Text style={styles.emptyTitle}>لا توجد نتائج لما تبحث عنه!</Text>
             <Text style={styles.emptySubtitle}>
-              لم نعثر على نتيجة باسم &quot;{search}&quot; ، جرب البحث باسم آخر أو بالاسم الكامل
+              لم نعثر على نتيجة باسم &quot;{searchQuery}&quot; ، جرب البحث باسم آخر أو بالاسم الكامل
             </Text>
-          </View>
-        )}
-
-        {/* BOTTOM ACTIVE SEARCH BAR (WHEN USER TAPS SEARCH) */}
-        {isSearchActive && (
-          <View style={styles.bottomBarRow} pointerEvents="box-none">
-            <View style={styles.bottomSearchCapsule}>
-              {/* Clear / Close X Button on the Left */}
-              <TouchableOpacity
-                style={styles.searchCloseCircle}
-                onPress={() => {
-                  if (search.length > 0) {
-                    setSearch('');
-                  } else {
-                    handleCloseSearch();
-                  }
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="close" size={14} color="#f8fafc" />
-              </TouchableOpacity>
-
-              {/* Search Text Input in the Center (supports Arabic & English) */}
-              <TextInput
-                ref={searchInputRef}
-                style={styles.bottomSearchInput}
-                placeholder="ابحث باسم القارئ (عربي / English)..."
-                placeholderTextColor="#64748b"
-                value={search}
-                onChangeText={setSearch}
-                textAlign={isEnglishQuery ? 'left' : 'right'}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="search"
-              />
-
-              {/* Search Magnifying Glass Icon on the Right */}
-              <Ionicons name="search" size={20} color="#94a3b8" style={styles.searchMagnifierIcon} />
-            </View>
           </View>
         )}
       </KeyboardAvoidingView>

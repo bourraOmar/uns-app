@@ -6,7 +6,7 @@ import React, {
   useCallback,
   ReactNode,
 } from 'react';
-import { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { NativeSyntheticEvent, NativeScrollEvent, Keyboard } from 'react-native';
 
 interface ScrollCollapseContextType {
   isCollapsed: boolean;
@@ -14,6 +14,17 @@ interface ScrollCollapseContextType {
   currentRouteName: string;
   setCurrentRouteName: (route: string) => void;
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+
+  // Global Search State
+  isSearchActive: boolean;
+  setIsSearchActive: (active: boolean) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  searchPlaceholder: string;
+  setSearchPlaceholder: (placeholder: string) => void;
+  openSearch: () => void;
+  closeSearch: () => void;
+
   registerSearchHandler: (handler: () => void) => () => void;
   triggerSearch: () => void;
 }
@@ -23,10 +34,28 @@ const ScrollCollapseContext = createContext<ScrollCollapseContextType | null>(nu
 export function ScrollCollapseProvider({ children }: { children: ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentRouteName, setCurrentRouteName] = useState('index');
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchPlaceholder, setSearchPlaceholder] = useState('ابحث...');
+
   const lastScrollY = useRef(0);
   const searchHandlerRef = useRef<(() => void) | null>(null);
   const currentRouteRef = useRef(currentRouteName);
   currentRouteRef.current = currentRouteName;
+
+  const openSearch = useCallback(() => {
+    setIsCollapsed(true);
+    setIsSearchActive(true);
+    if (searchHandlerRef.current) {
+      searchHandlerRef.current();
+    }
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setIsSearchActive(false);
+    setSearchQuery('');
+    Keyboard.dismiss();
+  }, []);
 
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const currentY = event.nativeEvent.contentOffset.y;
@@ -57,9 +86,14 @@ export function ScrollCollapseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const triggerSearch = useCallback(() => {
-    if (searchHandlerRef.current) {
-      searchHandlerRef.current();
-    }
+    openSearch();
+  }, [openSearch]);
+
+  const updateCurrentRoute = useCallback((route: string) => {
+    setCurrentRouteName(route);
+    // When switching routes, close active search cleanly
+    setIsSearchActive(false);
+    setSearchQuery('');
   }, []);
 
   return (
@@ -68,8 +102,16 @@ export function ScrollCollapseProvider({ children }: { children: ReactNode }) {
         isCollapsed,
         setIsCollapsed,
         currentRouteName,
-        setCurrentRouteName,
+        setCurrentRouteName: updateCurrentRoute,
         onScroll,
+        isSearchActive,
+        setIsSearchActive,
+        searchQuery,
+        setSearchQuery,
+        searchPlaceholder,
+        setSearchPlaceholder,
+        openSearch,
+        closeSearch,
         registerSearchHandler,
         triggerSearch,
       }}

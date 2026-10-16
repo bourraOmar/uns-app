@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { AnimatedGradientBackground } from '@/components/AnimatedGradientBackground';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 // Custom icons using pure React Native components (no external SVG dependency)
@@ -167,7 +168,7 @@ function InspirationRibbonBadge({ type }: RibbonBadgeProps) {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { onScroll } = useScrollCollapse();
+  const { onScroll, openSearch } = useScrollCollapse();
 
   const [locationCity] = useState('آسفي، المغرب');
   const [activePrayerId, setActivePrayerId] = useState('Asr'); // Active prayer (e.g. Asr)
@@ -290,7 +291,14 @@ export default function HomeScreen() {
             <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.7}>
               <Ionicons name="bookmark" size={18} color="#8ba7c0" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              activeOpacity={0.7}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                openSearch();
+              }}
+            >
               <Ionicons name="search" size={18} color="#8ba7c0" />
             </TouchableOpacity>
           </View>

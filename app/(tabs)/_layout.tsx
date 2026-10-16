@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { Tabs } from 'expo-router';
 import {
   View,
@@ -9,6 +9,8 @@ import {
   Animated,
   Image,
   ActivityIndicator,
+  TextInput,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -124,7 +126,18 @@ function FloatingTabBar({ state, navigation }: any) {
     return null;
   }
 
-  const { isCollapsed, setIsCollapsed, triggerSearch, setCurrentRouteName } = useScrollCollapse();
+  const {
+    isCollapsed,
+    setIsCollapsed,
+    triggerSearch,
+    setCurrentRouteName,
+    isSearchActive,
+    searchQuery,
+    setSearchQuery,
+    searchPlaceholder,
+    openSearch,
+    closeSearch,
+  } = useScrollCollapse();
   const {
     currentSurah,
     currentReciter,
@@ -135,6 +148,49 @@ function FloatingTabBar({ state, navigation }: any) {
     openPlayerModal,
     isPlayerModalVisible,
   } = useAudioPlayer();
+
+  const keyboardTranslateY = useRef(new Animated.Value(0)).current;
+  const searchInputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const height = e.endCoordinates.height;
+      const shift = -(height - (Platform.OS === 'ios' ? 14 : 6));
+      Animated.timing(keyboardTranslateY, {
+        toValue: shift,
+        duration: Platform.OS === 'ios' ? e.duration || 250 : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, (e) => {
+      Animated.timing(keyboardTranslateY, {
+        toValue: 0,
+        duration: Platform.OS === 'ios' ? e.duration || 250 : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isSearchActive) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 60);
+    }
+  }, [isSearchActive]);
+
+  const isEnglishQuery = useMemo(() => {
+    return /^[a-zA-Z0-9\s-_'.,]+$/.test(searchQuery.trim());
+  }, [searchQuery]);
 
   useEffect(() => {
     if (currentRoute?.name) {
@@ -166,7 +222,7 @@ function FloatingTabBar({ state, navigation }: any) {
 
   const handleSearchPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    triggerSearch();
+    openSearch();
   };
 
   // Interpolations for floating mini player (above expanded bar)
@@ -211,10 +267,18 @@ function FloatingTabBar({ state, navigation }: any) {
     outputRange: [0.92, 1],
   });
 
-  const hasActiveAudio = !!currentSurah && !isPlayerModalVisible;
+  const hasActiveAudio = !!currentSurah && !isPlayerModalVisible && !isSearchActive;
 
   return (
-    <View style={styles.floatingBarContainer} pointerEvents="box-none">
+    <Animated.View
+      style={[
+        styles.floatingBarContainer,
+        {
+          transform: [{ translateY: keyboardTranslateY }],
+        },
+      ]}
+      pointerEvents="box-none"
+    >
       {/* 1. FLOATING MINI PLAYER (ABOVE 5-ITEM BAR IN EXPANDED STATE) */}
       {hasActiveAudio && (
         <Animated.View
@@ -375,103 +439,167 @@ function FloatingTabBar({ state, navigation }: any) {
         ]}
         pointerEvents={isCollapsed ? 'auto' : 'none'}
       >
-        {/* Left Circle: Search Icon */}
-        <TouchableOpacity
-          style={styles.dockCircleButton}
-          activeOpacity={0.8}
-          onPress={handleSearchPress}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-        >
-          <BlurView
-            intensity={Platform.OS === 'ios' ? 75 : 90}
-            tint="dark"
-            style={styles.dockCircleBlur}
-          >
-            <Ionicons name="search" size={20} color="#ffffff" />
-          </BlurView>
-        </TouchableOpacity>
-
-        {/* Center: Docked Mini Player Pill */}
-        {hasActiveAudio ? (
-          <TouchableOpacity
-            style={styles.dockedMiniPlayerContainer}
-            activeOpacity={0.9}
-            onPress={openPlayerModal}
-          >
+        {isSearchActive ? (
+          <>
+            {/* Active Search Capsule on Left / Center matching screenshot */}
             <BlurView
               intensity={Platform.OS === 'ios' ? 75 : 90}
               tint="dark"
-              style={styles.dockedMiniPlayerBlur}
+              style={styles.dockSearchCapsule}
             >
-              <Image
-                source={require('@/assets/images/reciter_avatar_default.png')}
-                style={styles.dockedAvatar}
-                resizeMode="cover"
+              {/* Clear / Close X Button on the Left */}
+              <TouchableOpacity
+                style={styles.searchCloseCircle}
+                onPress={() => {
+                  if (searchQuery.length > 0) {
+                    setSearchQuery('');
+                  } else {
+                    closeSearch();
+                  }
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={14} color="#f8fafc" />
+              </TouchableOpacity>
+
+              {/* Search Text Input in the Center */}
+              <TextInput
+                ref={searchInputRef}
+                style={styles.dockSearchInput}
+                placeholder={searchPlaceholder}
+                placeholderTextColor="#64748b"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                textAlign={isEnglishQuery ? 'left' : 'right'}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
               />
 
-              <View style={styles.dockedTextColumn}>
-                <Text style={styles.dockedSurahTitle} numberOfLines={1}>
-                  {currentSurah.id}. {currentSurah.name_simple}({currentSurah.name_arabic})
-                </Text>
-              </View>
-
-              <View style={styles.dockedControls}>
-                <TouchableOpacity
-                  style={styles.dockedControlBtn}
-                  activeOpacity={0.7}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    togglePlay();
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                >
-                  {isLoadingAudio ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <Ionicons
-                      name={isPlaying ? 'pause' : 'play'}
-                      size={18}
-                      color="#ffffff"
-                      style={isPlaying ? undefined : { marginLeft: 1 }}
-                    />
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.dockedControlBtn}
-                  activeOpacity={0.7}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    nextSurah();
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                >
-                  <Ionicons name="play-forward" size={17} color="#ffffff" />
-                </TouchableOpacity>
-              </View>
+              {/* Search Magnifying Glass Icon on the Right */}
+              <Ionicons name="search" size={20} color="#94a3b8" style={{ marginLeft: 4 }} />
             </BlurView>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ flex: 1 }} />
-        )}
 
-        {/* Right Circle: Current Page Icon (taps to expand menu) */}
-        <TouchableOpacity
-          style={styles.dockCircleButton}
-          activeOpacity={0.8}
-          onPress={handlePageIconPress}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-        >
-          <BlurView
-            intensity={Platform.OS === 'ios' ? 75 : 90}
-            tint="dark"
-            style={styles.dockCircleBlur}
-          >
-            {getPageIcon(currentRoute?.name)}
-          </BlurView>
-        </TouchableOpacity>
+            {/* Right Circle: Current Page Icon (taps to close search & toggle menu) */}
+            <TouchableOpacity
+              style={styles.dockCircleButton}
+              activeOpacity={0.8}
+              onPress={() => {
+                closeSearch();
+                handlePageIconPress();
+              }}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <BlurView
+                intensity={Platform.OS === 'ios' ? 75 : 90}
+                tint="dark"
+                style={styles.dockCircleBlur}
+              >
+                {getPageIcon(currentRoute?.name)}
+              </BlurView>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            {/* Left Circle: Search Icon */}
+            <TouchableOpacity
+              style={styles.dockCircleButton}
+              activeOpacity={0.8}
+              onPress={handleSearchPress}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <BlurView
+                intensity={Platform.OS === 'ios' ? 75 : 90}
+                tint="dark"
+                style={styles.dockCircleBlur}
+              >
+                <Ionicons name="search" size={20} color="#ffffff" />
+              </BlurView>
+            </TouchableOpacity>
+
+            {/* Center: Docked Mini Player Pill */}
+            {hasActiveAudio ? (
+              <TouchableOpacity
+                style={styles.dockedMiniPlayerContainer}
+                activeOpacity={0.9}
+                onPress={openPlayerModal}
+              >
+                <BlurView
+                  intensity={Platform.OS === 'ios' ? 75 : 90}
+                  tint="dark"
+                  style={styles.dockedMiniPlayerBlur}
+                >
+                  <Image
+                    source={require('@/assets/images/reciter_avatar_default.png')}
+                    style={styles.dockedAvatar}
+                    resizeMode="cover"
+                  />
+
+                  <View style={styles.dockedTextColumn}>
+                    <Text style={styles.dockedSurahTitle} numberOfLines={1}>
+                      {currentSurah.id}. {currentSurah.name_simple}({currentSurah.name_arabic})
+                    </Text>
+                  </View>
+
+                  <View style={styles.dockedControls}>
+                    <TouchableOpacity
+                      style={styles.dockedControlBtn}
+                      activeOpacity={0.7}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        togglePlay();
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                    >
+                      {isLoadingAudio ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <Ionicons
+                          name={isPlaying ? 'pause' : 'play'}
+                          size={18}
+                          color="#ffffff"
+                          style={isPlaying ? undefined : { marginLeft: 1 }}
+                        />
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.dockedControlBtn}
+                      activeOpacity={0.7}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        nextSurah();
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="play-forward" size={17} color="#ffffff" />
+                    </TouchableOpacity>
+                  </View>
+                </BlurView>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+
+            {/* Right Circle: Current Page Icon (taps to expand menu) */}
+            <TouchableOpacity
+              style={styles.dockCircleButton}
+              activeOpacity={0.8}
+              onPress={handlePageIconPress}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <BlurView
+                intensity={Platform.OS === 'ios' ? 75 : 90}
+                tint="dark"
+                style={styles.dockCircleBlur}
+              >
+                {getPageIcon(currentRoute?.name)}
+              </BlurView>
+            </TouchableOpacity>
+          </>
+        )}
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -728,6 +856,43 @@ const styles = StyleSheet.create({
   dockedControlBtn: {
     width: 28,
     height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* ACTIVE SEARCH CAPSULE (MATCHING SCREENSHOT) */
+  dockSearchCapsule: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 10,
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.75)' : 'rgba(30, 41, 59, 0.92)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  dockSearchInput: {
+    flex: 1,
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 14,
+    color: '#f8fafc',
+    textAlign: 'right',
+    paddingHorizontal: 8,
+  },
+  searchCloseCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },

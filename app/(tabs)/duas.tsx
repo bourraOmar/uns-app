@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -18,10 +18,13 @@ type FilterTab = 'all' | 'quran' | 'prophet';
 
 export default function DuasScreen() {
   const router = useRouter();
-  const { onScroll } = useScrollCollapse();
-  const [search, setSearch] = useState('');
+  const { onScroll, searchQuery, setSearchPlaceholder, openSearch } = useScrollCollapse();
   const [selectedFilter, setSelectedFilter] = useState<FilterTab>('all');
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSearchPlaceholder('ابحث عن دعاء أو مناسبة (سفر، شفاء، استخارة...)...');
+  }, [setSearchPlaceholder]);
 
   const filteredCategories = DUA_CATEGORIES.filter((cat) => {
     // Filter by tab
@@ -29,8 +32,8 @@ export default function DuasScreen() {
     if (selectedFilter === 'prophet' && cat.group !== 'prophet') return false;
 
     // Filter by search
-    if (!search.trim()) return true;
-    const query = search.trim().toLowerCase();
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.trim().toLowerCase();
     const matchesTitle = cat.title.toLowerCase().includes(query) || cat.subtitle.toLowerCase().includes(query);
     const matchesItem = cat.duas.some(
       (d) => d.content.toLowerCase().includes(query) || d.title.toLowerCase().includes(query)
@@ -49,6 +52,7 @@ export default function DuasScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         onScroll={onScroll}
         scrollEventThrottle={16}
       >
@@ -67,23 +71,17 @@ export default function DuasScreen() {
           </View>
         </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
+        {/* Search Bar Trigger */}
+        <TouchableOpacity
+          style={styles.searchBar}
+          activeOpacity={0.8}
+          onPress={openSearch}
+        >
           <Ionicons name="search" size={20} color="#64748b" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="ابحث عن دعاء أو مناسبة (سفر، شفاء، استخارة...)"
-            placeholderTextColor="#64748b"
-            value={search}
-            onChangeText={setSearch}
-            textAlign="right"
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color="#64748b" />
-            </TouchableOpacity>
-          )}
-        </View>
+          <Text style={[styles.searchInputPlaceholder, !!searchQuery && styles.searchInputActiveText]}>
+            {searchQuery || 'ابحث عن دعاء أو مناسبة (سفر، شفاء، استخارة...)'}
+          </Text>
+        </TouchableOpacity>
 
         {/* Filter Chips */}
         <ScrollView
@@ -145,53 +143,65 @@ export default function DuasScreen() {
 
         {/* Duas Category Cards List */}
         <View style={styles.cardsList}>
-          {filteredCategories.map((category) => {
-            const isExpanded = expandedCatId === category.id;
-            return (
-              <View key={category.id} style={styles.cardWrapper}>
-                <TouchableOpacity
-                  style={styles.cardHeader}
-                  activeOpacity={0.8}
-                  onPress={() => setExpandedCatId(isExpanded ? null : category.id)}
-                >
-                  {/* Left chevron indicator */}
-                  <Ionicons
-                    name={isExpanded ? 'chevron-down' : 'chevron-back'}
-                    size={20}
-                    color="#64748b"
-                  />
+          {filteredCategories.length > 0 ? (
+            filteredCategories.map((category) => {
+              const isExpanded = expandedCatId === category.id;
+              return (
+                <View key={category.id} style={styles.cardWrapper}>
+                  <TouchableOpacity
+                    style={styles.cardHeader}
+                    activeOpacity={0.8}
+                    onPress={() => setExpandedCatId(isExpanded ? null : category.id)}
+                  >
+                    {/* Left chevron indicator */}
+                    <Ionicons
+                      name={isExpanded ? 'chevron-down' : 'chevron-back'}
+                      size={20}
+                      color="#64748b"
+                    />
 
-                  {/* Middle Info */}
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.cardTitle}>{category.title}</Text>
-                    <Text style={styles.cardSubtitle}>
-                      {category.countText} • {category.subtitle}
-                    </Text>
-                  </View>
+                    {/* Middle Info */}
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.cardTitle}>{category.title}</Text>
+                      <Text style={styles.cardSubtitle}>
+                        {category.countText} • {category.subtitle}
+                      </Text>
+                    </View>
 
-                  {/* Right Icon Box */}
-                  <View style={styles.cardIconBox}>
-                    <Ionicons name={category.iconName as any} size={22} color="#94a3b8" />
-                  </View>
-                </TouchableOpacity>
+                    {/* Right Icon Box */}
+                    <View style={styles.cardIconBox}>
+                      <Ionicons name={category.iconName as any} size={22} color="#94a3b8" />
+                    </View>
+                  </TouchableOpacity>
 
-                {/* Expanded Duas List */}
-                {isExpanded && (
-                  <View style={styles.expandedContent}>
-                    {category.duas.map((dua) => (
-                      <View key={dua.id} style={styles.duaItem}>
-                        <Text style={styles.duaItemTitle}>{dua.title}</Text>
-                        <Text style={styles.duaItemText}>{dua.content}</Text>
-                        {dua.reference ? (
-                          <Text style={styles.duaItemRef}>{dua.reference}</Text>
-                        ) : null}
-                      </View>
-                    ))}
-                  </View>
-                )}
+                  {/* Expanded Duas List */}
+                  {isExpanded && (
+                    <View style={styles.expandedContent}>
+                      {category.duas.map((dua) => (
+                        <View key={dua.id} style={styles.duaItem}>
+                          <Text style={styles.duaItemTitle}>{dua.title}</Text>
+                          <Text style={styles.duaItemText}>{dua.content}</Text>
+                          {dua.reference ? (
+                            <Text style={styles.duaItemRef}>{dua.reference}</Text>
+                          ) : null}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })
+          ) : (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyCircleIcon}>
+                <Ionicons name="close" size={26} color="#f8fafc" />
               </View>
-            );
-          })}
+              <Text style={styles.emptyTitle}>لا توجد نتائج لما تبحث عنه!</Text>
+              <Text style={styles.emptySubtitle}>
+                لم نعثر على دعاء باسم &quot;{searchQuery}&quot;
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -253,11 +263,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 10,
   },
-  searchInput: {
+  searchInputPlaceholder: {
     flex: 1,
-    fontSize: 14,
-    color: '#ffffff',
+    fontSize: 13,
+    color: '#64748b',
     textAlign: 'right',
+    fontFamily: 'Cairo_600SemiBold',
+  },
+  searchInputActiveText: {
+    color: '#ffffff',
   },
   chipsScroll: {
     flexDirection: 'row-reverse',
@@ -361,5 +375,38 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'right',
     marginTop: 8,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 80,
+    paddingBottom: 140,
+  },
+  emptyCircleIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#162238',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 19,
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontFamily: 'Cairo_500Medium',
+    fontSize: 13,
+    color: '#85998a',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 320,
   },
 });
