@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
+import IslamicBackground from '@/components/IslamicBackground';
 import {
   RECITERS_DATA,
   Reciter,
@@ -38,7 +39,6 @@ export default function RecitersScreen() {
   const [isLoadingApi, setIsLoadingApi] = useState(false);
 
   const [search, setSearch] = useState('');
-  const [isSearchActive, setIsSearchActive] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
@@ -82,7 +82,7 @@ export default function RecitersScreen() {
     }
   }, [showFloatingMenu]);
 
-  const { onScroll, searchQuery, setSearchPlaceholder } = useScrollCollapse();
+  const { onScroll, searchQuery, setSearchPlaceholder, openSearch, closeSearch, isSearchActive } = useScrollCollapse();
 
   useEffect(() => {
     setSearchPlaceholder('ابحث باسم القارئ (عربي / English)...');
@@ -158,35 +158,71 @@ export default function RecitersScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="light-content" />
+    <View style={styles.container}>
+      <IslamicBackground />
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="light-content" />
 
-      {/* TOP NAVIGATION BAR */}
-      <View style={styles.topBar}>
-        {/* Filter Dropdown Pill Button on the Left */}
-        <TouchableOpacity
-          style={styles.filterPillButton}
-          activeOpacity={0.75}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShowFilterMenu(!showFilterMenu);
-          }}
-        >
-          <Ionicons name="swap-vertical" size={15} color="#94a3b8" />
-          <Text style={styles.filterPillText}>{filterLabel}</Text>
-        </TouchableOpacity>
+      {/* TOP HEADER MATCHING DHIKR PAGE */}
+      <View style={styles.topHeader}>
+        {/* Left Action Buttons: Profile, Filter/Bookmarks, Search */}
+        <View style={styles.leftActions}>
+          {/* Profile / Services shortcut */}
+          <TouchableOpacity
+            style={styles.circleActionBtn}
+            activeOpacity={0.75}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/(tabs)/duas' as any);
+            }}
+          >
+            <Ionicons name="person-outline" size={18} color="#f8fafc" />
+          </TouchableOpacity>
 
-        {/* Circular Back Button on the Right */}
-        <TouchableOpacity
-          style={styles.backCircleButton}
-          activeOpacity={0.75}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.back();
-          }}
-        >
-          <Ionicons name="chevron-forward" size={20} color="#f8fafc" />
-        </TouchableOpacity>
+          {/* Filter Dropdown Toggle Button */}
+          <TouchableOpacity
+            style={[styles.circleActionBtn, showFilterMenu && styles.circleActionBtnActive]}
+            activeOpacity={0.75}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowFilterMenu(!showFilterMenu);
+            }}
+          >
+            <Ionicons
+              name="swap-vertical"
+              size={18}
+              color={showFilterMenu ? '#10b981' : '#f8fafc'}
+            />
+          </TouchableOpacity>
+
+          {/* Search Toggle Button */}
+          <TouchableOpacity
+            style={[styles.circleActionBtn, isSearchActive && styles.circleActionBtnActive]}
+            activeOpacity={0.75}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (isSearchActive) {
+                closeSearch();
+              } else {
+                openSearch();
+              }
+            }}
+          >
+            <Ionicons
+              name={isSearchActive ? 'close' : 'search-outline'}
+              size={18}
+              color={isSearchActive ? '#10b981' : '#f8fafc'}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Right: Screen Title "القُرّاء" with optional loading spinner */}
+        <View style={styles.titleRow}>
+          {isLoadingApi && (
+            <ActivityIndicator size="small" color="#34d399" style={styles.loadingSpinner} />
+          )}
+          <Text style={styles.screenTitle}>القُرّاء</Text>
+        </View>
       </View>
 
       {/* FILTER DROPDOWN OPTIONS (Collapsible) */}
@@ -248,16 +284,6 @@ export default function RecitersScreen() {
         </View>
       )}
 
-      {/* SCREEN TITLE: "القُرّاء" with optional count */}
-      <View style={styles.titleContainer}>
-        <View style={styles.titleRow}>
-          {isLoadingApi && (
-            <ActivityIndicator size="small" color="#34d399" style={styles.loadingSpinner} />
-          )}
-          <Text style={styles.screenTitle}>القُرّاء</Text>
-        </View>
-      </View>
-
       {/* MAIN CONTENT AREA */}
       <KeyboardAvoidingView
         style={styles.contentWrapper}
@@ -288,60 +314,74 @@ export default function RecitersScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a', // Website dark slate navy (slate-900)
+    backgroundColor: 'transparent',
   },
   contentWrapper: {
     flex: 1,
   },
 
-  /* TOP NAVIGATION BAR */
-  topBar: {
+  /* TOP HEADER MATCHING DHIKR PAGE */
+  topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 6,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
-  backCircleButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1e293b',
+  leftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  circleActionBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(30, 41, 59, 0.75)',
     borderWidth: 1,
     borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  filterPillButton: {
+  circleActionBtnActive: {
+    borderColor: '#10b981',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#334155',
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    gap: 8,
+    gap: 10,
   },
-  filterPillText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 14,
+  loadingSpinner: {
+    marginRight: 4,
+  },
+  screenTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 32,
     color: '#f8fafc',
+    letterSpacing: -0.3,
+    textAlign: 'right',
   },
 
   /* FILTER DROPDOWN MENU */
   filterDropdownMenu: {
     marginHorizontal: 20,
-    marginTop: 6,
-    marginBottom: 8,
+    marginTop: 4,
+    marginBottom: 10,
     backgroundColor: '#1e293b',
     borderRadius: 16,
     borderWidth: 1,
@@ -368,28 +408,6 @@ const styles = StyleSheet.create({
   },
   filterMenuItemTextActive: {
     color: '#34d399',
-  },
-
-  /* TITLE */
-  titleContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
-    alignItems: 'flex-end',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  loadingSpinner: {
-    marginRight: 4,
-  },
-  screenTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 28,
-    color: '#f8fafc',
-    textAlign: 'right',
   },
 
   /* LIST & CARDS */

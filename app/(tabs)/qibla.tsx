@@ -14,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import IslamicBackground from '@/components/IslamicBackground';
 
 const KAABA_LAT = 21.4225;
 const KAABA_LNG = 39.8262;
@@ -107,7 +108,9 @@ export default function QiblaScreen() {
   const qiblaRelativeAngle = (qiblaAngle - heading + 360) % 360;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={styles.container}>
+      <IslamicBackground />
+      <SafeAreaView style={{ flex: 1 }}>
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.tint} />
@@ -209,13 +212,15 @@ export default function QiblaScreen() {
           )}
         </View>
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,

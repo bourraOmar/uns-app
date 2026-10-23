@@ -14,9 +14,9 @@ import {
 } from '@expo-google-fonts/cairo';
 import { Rakkas_400Regular } from '@expo-google-fonts/rakkas';
 
-import { useColorScheme } from '@/components/useColorScheme';
 import { AudioPlayerProvider, useAudioPlayer } from '@/context/AudioPlayerContext';
 import { ScrollCollapseProvider } from '@/context/ScrollCollapseContext';
+import { AppThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import AudioPlayerModal from '@/components/AudioPlayerModal';
 
 export default function RootLayout() {
@@ -46,11 +46,13 @@ export default function RootLayout() {
   }
 
   return (
-    <AudioPlayerProvider>
-      <ScrollCollapseProvider>
-        <RootLayoutNav />
-      </ScrollCollapseProvider>
-    </AudioPlayerProvider>
+    <AppThemeProvider>
+      <AudioPlayerProvider>
+        <ScrollCollapseProvider>
+          <RootLayoutNav />
+        </ScrollCollapseProvider>
+      </AudioPlayerProvider>
+    </AppThemeProvider>
   );
 }
 
@@ -107,15 +109,20 @@ function GlobalAudioPlayerModal() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { isDark } = useAppTheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: true }} />
         <Stack.Screen name="reciter/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="surah/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="tasbih" options={{ headerShown: false }} />
+        <Stack.Screen name="dhikr/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="category/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="dua-khatm" options={{ headerShown: false }} />
+        <Stack.Screen name="custom-daily-apps" options={{ headerShown: false }} />
       </Stack>
       <GlobalAudioPlayerModal />
     </ThemeProvider>

@@ -1,596 +1,610 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  TextInput,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
-import azkarData from '@/data/azkar.json';
+import { useAppTheme } from '@/context/ThemeContext';
+import IslamicBackground from '@/components/IslamicBackground';
 
-interface AdhkarCategoryItem {
+const SECTION_ICONS = {
+  duas: require('@/assets/icons/section_duas.png'),
+  adhkar: require('@/assets/icons/section_adhkar.png'),
+  fadael: require('@/assets/icons/section_fadael.png'),
+};
+
+const GRID_ICONS = {
+  tasbih: require('@/assets/icons/grid_tasbih.png'),
+  ruqyah: require('@/assets/icons/app_ruqyah.png'),
+  hajj: require('@/assets/icons/app_hajj_dua.png'),
+  ramadan: require('@/assets/icons/app_ramadan.png'),
+};
+
+interface FeaturedSection {
   id: string;
   title: string;
   subtitle: string;
-  iconName: string;
-  categoryKey: string;
-  count: number;
+  customIcon: any;
+  type: 'duas' | 'adhkar' | 'fadael';
 }
 
-const ADHKAR_CATEGORIES: AdhkarCategoryItem[] = [
+interface GridItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  customIcon?: any;
+  route: string;
+}
+
+const FEATURED_SECTIONS: FeaturedSection[] = [
+  {
+    id: 'duas',
+    title: 'قسم الأدعية',
+    subtitle: 'أدعية مختارة موثوقة من القرآن والسنة',
+    customIcon: SECTION_ICONS.duas,
+    type: 'duas',
+  },
+  {
+    id: 'adhkar',
+    title: 'قسم الأذكار',
+    subtitle: 'أذكار الصباح والمساء والصلاة',
+    customIcon: SECTION_ICONS.adhkar,
+    type: 'adhkar',
+  },
+  {
+    id: 'fadael',
+    title: 'قسم الفضائل',
+    subtitle: 'فضائل الذكر والصلاة على النبي ﷺ',
+    customIcon: SECTION_ICONS.fadael,
+    type: 'fadael',
+  },
+];
+
+const GRID_SECTIONS: GridItem[] = [
   {
     id: 'tasbih',
-    title: 'المسبحة الإلكترونية',
-    subtitle: 'عداد ذكي • المس أي مكان في الشاشة للتسبيح بسهولة',
-    iconName: 'time-outline',
-    categoryKey: 'تسابيح',
-    count: 33,
+    title: 'المسبحة',
+    subtitle: 'عدّاد تسبيح بسيط وسريع',
+    customIcon: GRID_ICONS.tasbih,
+    route: '/tasbih',
   },
   {
-    id: 'morning',
-    title: 'أذكار الصباح',
-    subtitle: '25 ذكراً • أذكار الصباح كاملة ومحصنة للبدء باليوم',
-    iconName: 'sunny-outline',
-    categoryKey: 'أذكار الصباح',
-    count: 25,
+    id: 'ruqyah',
+    title: 'الرقية الشرعية',
+    subtitle: 'آيات وأدعية للتحصين والشفاء',
+    customIcon: GRID_ICONS.ruqyah,
+    route: '/dhikr/ruqyah',
   },
   {
-    id: 'evening',
-    title: 'أذكار المساء',
-    subtitle: '25 ذكراً • أذكار المساء للتحصين والسكينة والراحة',
-    iconName: 'moon-outline',
-    categoryKey: 'أذكار المساء',
-    count: 25,
+    id: 'ramadan',
+    title: 'سنن رمضان والصيام',
+    subtitle: 'أدعية الإفطار وقيام الليل',
+    customIcon: GRID_ICONS.ramadan,
+    route: '/dhikr/ramadan',
   },
   {
-    id: 'after_prayer',
-    title: 'أذكار الصلاة',
-    subtitle: '9 أذكار • أذكار ما بعد السلام من الصلاة المفروضة',
-    iconName: 'file-tray-outline',
-    categoryKey: 'أذكار بعد السلام من الصلاة المفروضة',
-    count: 9,
+    id: 'hajj',
+    title: 'أعمال الحج',
+    subtitle: 'مناسك الحج والتلبية والأدعية',
+    customIcon: GRID_ICONS.hajj,
+    route: '/dhikr/hajj',
   },
   {
     id: 'sleep',
     title: 'أذكار النوم',
-    subtitle: '10 أذكار • أذكار النوم للتحصين والاطمئنان قبل النوم',
-    iconName: 'bed-outline',
-    categoryKey: 'أذكار النوم',
-    count: 10,
+    subtitle: 'تحصين النفس والسكينة قبل النوم',
+    icon: 'bed-outline',
+    route: '/dhikr/sleep',
   },
   {
     id: 'wake_up',
     title: 'أذكار الاستيقاظ',
-    subtitle: '3 أذكار • أذكار الاستيقاظ من النوم',
-    iconName: 'alarm-outline',
-    categoryKey: 'أذكار الاستيقاظ',
-    count: 3,
+    subtitle: 'حمد النعمة وبركة الصباح الجديد',
+    icon: 'sunny-outline',
+    route: '/dhikr/wake_up',
   },
 ];
 
-type FilterType = 'all' | 'morning_evening' | 'tasbih' | 'other';
-
 export default function AdhkarScreen() {
   const router = useRouter();
-  const { onScroll, searchQuery, setSearchPlaceholder, openSearch } = useScrollCollapse();
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { onScroll } = useScrollCollapse();
+  const { isDark } = useAppTheme();
 
-  useEffect(() => {
-    setSearchPlaceholder('ابحث عن ذكر أو تسبيح (صباح، استغفار، نوم)...');
-  }, [setSearchPlaceholder]);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Tasbih state inside expanded tasbih
-  const [tasbihValue, setTasbihValue] = useState(0);
-
-  // Adhkar counting state
-  const [dhikrCounts, setDhikrCounts] = useState<Record<string, number>>({});
-
-  const handleTasbihPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setTasbihValue((prev) => prev + 1);
+  const colors = {
+    title: isDark ? '#ffffff' : '#0f172a',
+    subtitle: isDark ? '#94a3b8' : '#64748b',
+    headerBtnBg: isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(241, 245, 249, 0.85)',
+    headerBtnBorder: isDark ? '#334155' : '#cbd5e1',
+    headerBtnIcon: isDark ? '#f8fafc' : '#1e293b',
+    cardBg: isDark ? 'rgba(26, 38, 57, 0.78)' : 'rgba(255, 255, 255, 0.85)',
+    cardBorder: isDark ? 'rgba(51, 65, 85, 0.55)' : 'rgba(226, 232, 240, 0.85)',
+    iconBadgeBg: isDark ? 'rgba(16, 185, 129, 0.16)' : 'rgba(16, 185, 129, 0.12)',
+    iconBadgeBorder: isDark ? 'rgba(52, 211, 153, 0.3)' : 'rgba(16, 185, 129, 0.25)',
+    iconColor: isDark ? '#34d399' : '#059669',
+    chevron: isDark ? '#64748b' : '#94a3b8',
+    modalBg: isDark ? 'rgba(15, 23, 42, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+    sheetBg: isDark ? '#1e293b' : '#ffffff',
+    sheetBorder: isDark ? '#334155' : '#e2e8f0',
   };
 
-  const handleDhikrCount = (uniqueKey: string, max: number) => {
+  const handleFeaturedPress = (section: FeaturedSection) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const curr = dhikrCounts[uniqueKey] || 0;
-    if (curr < max) {
-      setDhikrCounts((prev) => ({ ...prev, [uniqueKey]: curr + 1 }));
-      if (curr + 1 === max) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+    if (section.type === 'adhkar') {
+      router.push('/category/adhkar' as any);
+    } else if (section.type === 'duas') {
+      router.push('/category/duas' as any);
+    } else if (section.type === 'fadael') {
+      router.push('/category/fadael' as any);
     }
   };
 
-  const filteredCategories = ADHKAR_CATEGORIES.filter((cat) => {
-    if (filter === 'morning_evening') {
-      if (cat.id !== 'morning' && cat.id !== 'evening') return false;
-    }
-    if (filter === 'tasbih') {
-      if (cat.id !== 'tasbih') return false;
-    }
+  const handleGridPress = (item: GridItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(item.route as any);
+  };
 
+  // Filter grid items if searching
+  const filteredGrid = GRID_SECTIONS.filter((it) => {
     if (!searchQuery.trim()) return true;
-    const q = searchQuery.trim().toLowerCase();
-    return cat.title.toLowerCase().includes(q) || cat.subtitle.toLowerCase().includes(q);
+    const q = searchQuery.toLowerCase();
+    return it.title.toLowerCase().includes(q) || it.subtitle.toLowerCase().includes(q);
   });
 
-  const getAzkarItemsForCategory = (catKey: string): any[] => {
-    const raw = (azkarData as any)[catKey];
-    if (!raw) return [];
-    if (Array.isArray(raw)) {
-      return raw.flat(Infinity);
-    }
-    return [];
-  };
+  const filteredFeatured = FEATURED_SECTIONS.filter((it) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return it.title.toLowerCase().includes(q) || it.subtitle.toLowerCase().includes(q);
+  });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-      >
-        {/* Top Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-forward" size={22} color="#ffffff" />
-          </TouchableOpacity>
-          <View style={styles.headerTitles}>
-            <Text style={styles.headerTitle}>قسم الأذكار</Text>
-            <Text style={styles.headerSubtitle}>أدعية وأذكار اليوم والليلة والمسبحة الذكية</Text>
+    <View style={styles.container}>
+      <IslamicBackground />
+      <SafeAreaView style={{ flex: 1 }}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+
+        {/* TOP BAR MATCHING SCREENSHOT 1 */}
+        <View style={styles.topHeader}>
+          {/* Left Actions: Profile/Services, Favorites/Bookmarks, Search */}
+          <View style={styles.leftActions}>
+            {/* 1. Profile / Khadamat shortcut */}
+            <TouchableOpacity
+              style={[
+                styles.circleActionBtn,
+                { backgroundColor: colors.headerBtnBg, borderColor: colors.headerBtnBorder },
+              ]}
+              activeOpacity={0.75}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/(tabs)/duas' as any);
+              }}
+            >
+              <Ionicons name="person-outline" size={18} color={colors.headerBtnIcon} />
+            </TouchableOpacity>
+
+            {/* 2. Bookmarks / Favorites shortcut */}
+            <TouchableOpacity
+              style={[
+                styles.circleActionBtn,
+                { backgroundColor: colors.headerBtnBg, borderColor: colors.headerBtnBorder },
+              ]}
+              activeOpacity={0.75}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/dhikr/morning' as any);
+              }}
+            >
+              <Ionicons name="bookmark-outline" size={18} color={colors.headerBtnIcon} />
+            </TouchableOpacity>
+
+            {/* 3. Search Toggle */}
+            <TouchableOpacity
+              style={[
+                styles.circleActionBtn,
+                { backgroundColor: colors.headerBtnBg, borderColor: colors.headerBtnBorder },
+                showSearch && styles.circleActionBtnActive,
+              ]}
+              activeOpacity={0.75}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowSearch(!showSearch);
+              }}
+            >
+              <Ionicons
+                name={showSearch ? 'close-outline' : 'search-outline'}
+                size={18}
+                color={showSearch ? '#10b981' : colors.headerBtnIcon}
+              />
+            </TouchableOpacity>
           </View>
+
+          {/* Right: Screen Title "الأذكار" */}
+          <Text style={[styles.screenTitle, { color: colors.title }]}>الأذكار</Text>
         </View>
 
-        {/* Search Bar Trigger */}
-        <TouchableOpacity
-          style={styles.searchBar}
-          activeOpacity={0.8}
-          onPress={openSearch}
-        >
-          <Ionicons name="search" size={20} color="#64748b" />
-          <Text style={[styles.searchInputPlaceholder, !!searchQuery && styles.searchInputActiveText]}>
-            {searchQuery || 'ابحث عن ذكر أو تسبيح (صباح، استغفار، نوم)...'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Filter Horizontal Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsScroll}
-        >
-          <TouchableOpacity
-            style={[styles.filterChip, filter === 'all' && styles.filterChipActive]}
-            onPress={() => setFilter('all')}
-          >
-            <Text style={[styles.filterChipText, filter === 'all' && styles.filterChipTextActive]}>
-              الكل (7)
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, filter === 'morning_evening' && styles.filterChipActive]}
-            onPress={() => setFilter('morning_evening')}
-          >
-            <Text style={[styles.filterChipText, filter === 'morning_evening' && styles.filterChipTextActive]}>
-              الصباح والمساء 🌼
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, filter === 'tasbih' && styles.filterChipActive]}
-            onPress={() => setFilter('tasbih')}
-          >
-            <Text style={[styles.filterChipText, filter === 'tasbih' && styles.filterChipTextActive]}>
-              المسبحة والتسابيح 📿
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Adhkar Categories List */}
-        <View style={styles.categoriesList}>
-          {filteredCategories.length > 0 ? (
-            filteredCategories.map((item) => {
-            const isExpanded = expandedId === item.id;
-            const itemsList = getAzkarItemsForCategory(item.categoryKey);
-
-            return (
-              <View key={item.id} style={styles.categoryCard}>
-                <TouchableOpacity
-                  style={styles.cardHeader}
-                  activeOpacity={0.8}
-                  onPress={() => setExpandedId(isExpanded ? null : item.id)}
-                >
-                  <Ionicons
-                    name={isExpanded ? 'chevron-down' : 'chevron-back'}
-                    size={20}
-                    color="#64748b"
-                  />
-
-                  <View style={styles.cardDetails}>
-                    <Text style={styles.categoryTitle}>{item.title}</Text>
-                    <Text style={styles.categorySubtitle}>{item.subtitle}</Text>
-                  </View>
-
-                  <View style={styles.iconCircle}>
-                    <Ionicons name={item.iconName as any} size={22} color="#94a3b8" />
-                  </View>
+        {/* Collapsible Search Input */}
+        {showSearch && (
+          <View style={styles.searchBarWrapper}>
+            <View
+              style={[
+                styles.searchBarContainer,
+                { backgroundColor: colors.cardBg, borderColor: colors.cardBorder },
+              ]}
+            >
+              <Ionicons name="search" size={18} color={colors.subtitle} />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="ابحث عن قسم أو ذكر (صباح، رقية، حج، مسبحة)..."
+                placeholderTextColor={colors.subtitle}
+                style={[styles.searchInput, { color: colors.title }]}
+                textAlign="right"
+                autoFocus
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color={colors.subtitle} />
                 </TouchableOpacity>
-
-                {/* Expanded Details */}
-                {isExpanded && (
-                  <View style={styles.expandedWrapper}>
-                    {item.id === 'tasbih' ? (
-                      /* Interactive Tasbih Counter */
-                      <View style={styles.tasbihInteractiveArea}>
-                        <TouchableOpacity
-                          style={styles.bigTasbihButton}
-                          activeOpacity={0.8}
-                          onPress={handleTasbihPress}
-                        >
-                          <Text style={styles.tasbihCountNum}>{tasbihValue}</Text>
-                          <Text style={styles.tasbihTapHint}>المس للتسبيح</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.tasbihResetBtn}
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            setTasbihValue(0);
-                          }}
-                        >
-                          <Ionicons name="refresh" size={16} color="#94a3b8" />
-                          <Text style={styles.tasbihResetText}>تصفير العداد</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      /* List of Adhkar items */
-                      <View style={styles.azkarItemsList}>
-                        {itemsList.map((azkar, idx) => {
-                          const key = `${item.id}_${idx}`;
-                          const target = parseInt(azkar.count || '1', 10);
-                          const current = dhikrCounts[key] || 0;
-                          const done = current >= target;
-
-                          return (
-                            <TouchableOpacity
-                              key={idx}
-                              style={[
-                                styles.azkarItemBox,
-                                done && styles.azkarItemBoxDone,
-                              ]}
-                              activeOpacity={0.85}
-                              onPress={() => handleDhikrCount(key, target)}
-                            >
-                              <Text style={styles.azkarContentText}>
-                                {azkar.content?.replace(/\\n/g, '').replace(/', '/g, '').trim()}
-                              </Text>
-                              {azkar.description ? (
-                                <Text style={styles.azkarDescText}>{azkar.description}</Text>
-                              ) : null}
-                              <View style={styles.azkarItemFooter}>
-                                <View
-                                  style={[
-                                    styles.countBadge,
-                                    done && styles.countBadgeDone,
-                                  ]}
-                                >
-                                  <Text style={styles.countBadgeText}>
-                                    {current} / {target}
-                                  </Text>
-                                </View>
-                                <Text style={styles.azkarFooterHint}>
-                                  {done ? 'تم بحمد الله ✓' : 'اضغط للتكرار'}
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          })
-        ) : (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyCircleIcon}>
-              <Ionicons name="close" size={26} color="#f8fafc" />
+              )}
             </View>
-            <Text style={styles.emptyTitle}>لا توجد نتائج لما تبحث عنه!</Text>
-            <Text style={styles.emptySubtitle}>
-              لم نعثر على ذكر أو تسبيح باسم &quot;{searchQuery}&quot;
-            </Text>
           </View>
         )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        {/* MAIN SCROLL VIEW */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        >
+          {/* SECTION 1: TOP 3 HORIZONTAL FEATURED CARDS */}
+          <View style={styles.featuredSection}>
+            {filteredFeatured.map((section) => (
+              <TouchableOpacity
+                key={section.id}
+                style={[
+                  styles.featuredCard,
+                  { backgroundColor: colors.cardBg, borderColor: colors.cardBorder },
+                ]}
+                activeOpacity={0.82}
+                onPress={() => handleFeaturedPress(section)}
+              >
+                {/* Left: Chevron */}
+                <Ionicons name="chevron-back" size={20} color={colors.chevron} />
+
+                {/* Middle: Text details */}
+                <View style={styles.featuredDetails}>
+                  <Text style={[styles.featuredTitle, { color: colors.title }]}>
+                    {section.title}
+                  </Text>
+                  <Text style={[styles.featuredSubtitle, { color: colors.subtitle }]}>
+                    {section.subtitle}
+                  </Text>
+                </View>
+
+                {/* Right: Emerald Icon Circle Badge */}
+                <View
+                  style={[
+                    styles.iconBadgeLarge,
+                    {
+                      backgroundColor: colors.iconBadgeBg,
+                      borderColor: colors.iconBadgeBorder,
+                    },
+                  ]}
+                >
+                  <Image
+                    source={section.customIcon}
+                    style={{ width: 26, height: 26, tintColor: colors.iconColor }}
+                    resizeMode="contain"
+                  />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* SECTION 2: 2-COLUMN GRID OF SPECIALIZED DHIKR CARDS */}
+          <View style={styles.gridSection}>
+            {filteredGrid.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.gridCard,
+                  { backgroundColor: colors.cardBg, borderColor: colors.cardBorder },
+                ]}
+                activeOpacity={0.82}
+                onPress={() => handleGridPress(item)}
+              >
+                {/* Top Center: Emerald Icon Badge */}
+                <View
+                  style={[
+                    styles.iconBadgeMedium,
+                    {
+                      backgroundColor: colors.iconBadgeBg,
+                      borderColor: colors.iconBadgeBorder,
+                    },
+                  ]}
+                >
+                  {item.customIcon ? (
+                    <Image
+                      source={item.customIcon}
+                      style={{ width: 22, height: 22, tintColor: colors.iconColor }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Ionicons name={item.icon!} size={22} color={colors.iconColor} />
+                  )}
+                </View>
+
+                {/* Bottom Center: Title & Subtitle */}
+                <View style={styles.gridTextContainer}>
+                  <Text
+                    style={[styles.gridTitle, { color: colors.title }]}
+                    numberOfLines={1}
+                  >
+                    {item.title}
+                  </Text>
+                  <Text
+                    style={[styles.gridSubtitle, { color: colors.subtitle }]}
+                    numberOfLines={2}
+                  >
+                    {item.subtitle}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d1527',
+    backgroundColor: 'transparent',
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 100,
-  },
-  header: {
+
+  /* TOP BAR */
+  topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#162238',
+  screenTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 32,
+    letterSpacing: -0.3,
+  },
+  leftActions: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  headerTitles: {
-    flex: 1,
-    alignItems: 'flex-end',
-    marginRight: 8,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#ffffff',
-    textAlign: 'right',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#94a3b8',
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  searchBar: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    backgroundColor: '#162238',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 16,
     gap: 10,
   },
-  searchInputPlaceholder: {
-    flex: 1,
-    fontSize: 13,
-    color: '#64748b',
-    textAlign: 'right',
-    fontFamily: 'Cairo_600SemiBold',
-  },
-  searchInputActiveText: {
-    color: '#ffffff',
-  },
-  chipsScroll: {
-    flexDirection: 'row-reverse',
-    gap: 8,
-    paddingBottom: 16,
-  },
-  filterChip: {
-    backgroundColor: '#162238',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
+  circleActionBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  filterChipActive: {
-    backgroundColor: '#10b981',
+  circleActionBtnActive: {
     borderColor: '#10b981',
   },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#94a3b8',
+
+  /* SEARCH BAR */
+  searchBarWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
   },
-  filterChipTextActive: {
-    color: '#ffffff',
-    fontWeight: '800',
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
   },
-  categoriesList: {
+  searchInput: {
+    flex: 1,
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 14,
+    padding: 0,
+  },
+
+  /* SCROLL CONTENT */
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 120, // Extra space for floating bottom tab bar
+  },
+
+  /* FEATURED SECTION (TOP 3 HORIZONTAL CARDS) */
+  featuredSection: {
     gap: 12,
+    marginBottom: 14,
   },
-  categoryCard: {
-    backgroundColor: '#162238',
+  featuredCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#1e293b',
-    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 18,
-  },
-  cardDetails: {
+  featuredDetails: {
     flex: 1,
     alignItems: 'flex-end',
-    marginRight: 16,
+    paddingRight: 14,
   },
-  categoryTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#ffffff',
-    textAlign: 'right',
-    marginBottom: 4,
+  featuredTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 17,
+    marginBottom: 2,
   },
-  categorySubtitle: {
-    fontSize: 12,
-    color: '#94a3b8',
-    textAlign: 'right',
+  featuredSubtitle: {
+    fontFamily: 'Cairo_500Medium',
+    fontSize: 12.5,
   },
-  iconCircle: {
+  iconBadgeLarge: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* GRID SECTION (2 COLUMNS) */
+  gridSection: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  gridCard: {
+    width: '48%',
+    minHeight: 140,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  iconBadgeMedium: {
     width: 48,
     height: 48,
-    borderRadius: 16,
-    backgroundColor: '#101a2e',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#1e293b',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
   },
-  expandedWrapper: {
-    paddingHorizontal: 18,
-    paddingBottom: 18,
-    borderTopWidth: 1,
-    borderTopColor: '#1e293b',
-  },
-  tasbihInteractiveArea: {
+  gridTextContainer: {
     alignItems: 'center',
-    paddingVertical: 20,
+    width: '100%',
+    marginTop: 10,
   },
-  bigTasbihButton: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 3,
-    borderColor: '#10b981',
-    alignItems: 'center',
-    justifyContent: 'center',
+  gridTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  gridSubtitle: {
+    fontFamily: 'Cairo_500Medium',
+    fontSize: 11.5,
+    textAlign: 'center',
+    lineHeight: 17,
+  },
+
+  /* MODAL BOTTOM SHEET */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#64748b',
+    alignSelf: 'center',
     marginBottom: 16,
+    opacity: 0.6,
   },
-  tasbihCountNum: {
-    fontSize: 42,
-    fontWeight: '900',
-    color: '#10b981',
-  },
-  tasbihTapHint: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontWeight: '700',
-  },
-  tasbihResetBtn: {
+  modalHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#101a2e',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  tasbihResetText: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontWeight: '600',
-  },
-  azkarItemsList: {
-    gap: 12,
-    paddingTop: 12,
-  },
-  azkarItemBox: {
-    backgroundColor: '#101a2e',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  azkarItemBoxDone: {
-    borderColor: '#10b981',
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-  },
-  azkarContentText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#ffffff',
-    textAlign: 'right',
-    lineHeight: 26,
-  },
-  azkarDescText: {
-    fontSize: 12,
-    color: '#94a3b8',
-    textAlign: 'right',
-    marginTop: 8,
-    lineHeight: 18,
-  },
-  azkarItemFooter: {
-    flexDirection: 'row-reverse',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#1e293b',
+    marginBottom: 18,
   },
-  countBadge: {
-    backgroundColor: '#162238',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  countBadgeDone: {
-    backgroundColor: '#10b981',
-  },
-  countBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#ffffff',
-  },
-  azkarFooterHint: {
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 80,
-    paddingBottom: 140,
-  },
-  emptyCircleIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#162238',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
+  modalSheetTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 19,
-    color: '#ffffff',
-    textAlign: 'center',
-    marginBottom: 8,
   },
-  emptySubtitle: {
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOptionsList: {
+    gap: 10,
+  },
+  modalOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  modalOptionInfo: {
+    flex: 1,
+    alignItems: 'flex-end',
+    paddingRight: 12,
+  },
+  modalOptionTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  modalOptionSub: {
     fontFamily: 'Cairo_500Medium',
-    fontSize: 13,
-    color: '#85998a',
-    textAlign: 'center',
-    lineHeight: 22,
-    maxWidth: 320,
+    fontSize: 12,
+  },
+  modalOptionIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

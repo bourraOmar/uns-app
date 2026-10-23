@@ -15,6 +15,7 @@ import {
   Animated,
   Easing,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { Reciter } from '@/data/reciters';
 import { AnimatedGradientBackground } from '@/components/AnimatedGradientBackground';
+import { VideoBackground } from '@/components/VideoBackground';
 import { getSyncedVerses, SyncedVerse } from '@/services/quranTimingService';
 import surahsData from '@/data/surahs.json';
 import {
@@ -348,8 +350,12 @@ export default function AudioPlayerModal({
   }, []);
 
   const activeBgSound = useMemo(() => {
-    return BACKGROUND_SOUNDS.find((s) => s.id === activeBgSoundId) || BACKGROUND_SOUNDS[0];
+    return backgroundSoundService.getCurrentSound();
   }, [activeBgSoundId]);
+
+  const bgSounds = useMemo(() => {
+    return backgroundSoundService.getSounds();
+  }, []);
 
   const handleQuranVolumeTouch = (evt: GestureResponderEvent) => {
     const pageX = evt.nativeEvent.pageX;
@@ -662,8 +668,12 @@ export default function AudioPlayerModal({
       onRequestClose={onClose}
     >
       <View style={styles.modalBackdrop}>
-        {/* FULLSCREEN VIDEO BACKGROUND */}
-        <AnimatedGradientBackground />
+        {/* FULLSCREEN VIDEO BACKGROUND OR ANIMATED GRADIENT */}
+        {activeBgSound.id !== 'none' && activeBgSound.videoSource ? (
+          <VideoBackground source={activeBgSound.videoSource} overlayOpacity={0.35} />
+        ) : (
+          <AnimatedGradientBackground />
+        )}
 
         {/* Soft veil behind verses so text glows brilliantly over video */}
         {showVerses && <View style={styles.versesOverlayScrim} pointerEvents="none" />}
@@ -680,33 +690,24 @@ export default function AudioPlayerModal({
               <View style={styles.grabberPill} />
             </TouchableOpacity>
 
-            {/* Background Sound Capsule Button - Always displayed */}
+            {/* Background Sound Capsule Button - Matching Screenshot */}
             <TouchableOpacity
-              style={[
-                styles.bgSoundCapsule,
-                activeBgSound.id !== 'none' && styles.bgSoundCapsuleActive,
-              ]}
-              activeOpacity={0.8}
+              style={styles.ambientPill}
+              activeOpacity={0.85}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowBgSoundSheet((prev) => !prev);
+                setShowBgSoundSheet(true);
               }}
             >
               <Ionicons
-                name={showBgSoundSheet ? 'chevron-up' : 'chevron-down'}
-                size={14}
-                color={activeBgSound.id !== 'none' ? '#34d399' : '#ffffff'}
-                style={styles.bgSoundChevron}
+                name={activeBgSound.id !== 'none' ? (activeBgSound.icon as any) : 'rainy-outline'}
+                size={16}
+                color="#ffffff"
+                style={{ marginRight: 6 }}
               />
-              <Text
-                style={[
-                  styles.bgSoundText,
-                  activeBgSound.id !== 'none' && styles.bgSoundTextActive,
-                ]}
-              >
-                {activeBgSound.id !== 'none' ? activeBgSound.nameArabic : 'Background sound'}
+              <Text style={styles.ambientPillText}>
+                {activeBgSound.id !== 'none' ? activeBgSound.name : 'Rain'}
               </Text>
-              {activeBgSound.id !== 'none' && <View style={styles.bgSoundActiveDot} />}
             </TouchableOpacity>
           </View>
 
@@ -1291,38 +1292,42 @@ export default function AudioPlayerModal({
               activeOpacity={1}
               onPress={() => setShowBgSoundSheet(false)}
             />
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 70 : 85}
-              tint="dark"
-              style={styles.bgSoundSheetCard}
-            >
+            <View style={styles.bgSoundSheetCard}>
               {/* Grabber handle */}
               <View style={styles.bgSoundSheetGrabber} />
 
-              {/* Header */}
-              <View style={styles.bgSoundSheetHeader}>
-                <View style={styles.bgSoundSheetHeaderTextGroup}>
-                  <Text style={styles.bgSoundSheetTitle}>أصوات الطبيعة الخلفية</Text>
-                  <Text style={styles.bgSoundSheetSubtitle}>
-                    صوت هادئ ومريح يرافق التلاوة العطرة
-                  </Text>
-                </View>
+              {/* Header: Close (X) - Title - Done (Checkmark) */}
+              <View style={styles.bgSoundHeaderRow}>
                 <TouchableOpacity
-                  style={styles.bgSoundSheetCloseBtn}
+                  style={styles.bgSoundHeaderCloseBtn}
                   activeOpacity={0.7}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setShowBgSoundSheet(false);
                   }}
                 >
-                  <Ionicons name="close" size={20} color="#94a3b8" />
+                  <Ionicons name="close" size={20} color="#ffffff" />
+                </TouchableOpacity>
+
+                <Text style={styles.bgSoundHeaderTitle}>Background sound</Text>
+
+                <TouchableOpacity
+                  style={styles.bgSoundHeaderConfirmBtn}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowBgSoundSheet(false);
+                  }}
+                >
+                  <Ionicons name="checkmark" size={20} color="#000000" />
                 </TouchableOpacity>
               </View>
 
-              {/* Ambient Sounds Grid */}
+              {/* Ambient Sounds Grid: Exactly 2 Rows / Lines */}
               <View style={styles.bgSoundsGrid}>
-                {BACKGROUND_SOUNDS.map((sound) => {
+                {bgSounds.map((sound) => {
                   const isSelected = activeBgSoundId === sound.id;
+
                   return (
                     <TouchableOpacity
                       key={sound.id}
@@ -1336,49 +1341,39 @@ export default function AudioPlayerModal({
                         backgroundSoundService.selectSound(sound.id);
                       }}
                     >
-                      <View
-                        style={[
-                          styles.bgSoundCardIconBox,
-                          isSelected && styles.bgSoundCardIconBoxActive,
-                        ]}
-                      >
-                        {sound.iconFamily === 'material' ? (
-                          <MaterialCommunityIcons
-                            name={sound.icon as any}
-                            size={24}
-                            color={isSelected ? '#34d399' : '#94a3b8'}
-                          />
-                        ) : (
-                          <Ionicons
-                            name={sound.icon as any}
-                            size={24}
-                            color={isSelected ? '#34d399' : '#94a3b8'}
-                          />
-                        )}
+                      {/* Top Right Badges */}
+                      <View style={styles.bgSoundCardBadgeSlot}>
+                        {isSelected ? (
+                          <View style={styles.bgSoundCardSelectedDot}>
+                            <Ionicons name="checkmark" size={12} color="#000000" />
+                          </View>
+                        ) : null}
                       </View>
+
+                      {/* Icon */}
+                      <View style={styles.bgSoundCardIconBox}>
+                        <Ionicons
+                          name={sound.icon as any}
+                          size={28}
+                          color={isSelected ? '#ffffff' : '#e4e4e7'}
+                        />
+                      </View>
+
+                      {/* Label */}
                       <Text
                         style={[
-                          styles.bgSoundCardNameArabic,
-                          isSelected && styles.bgSoundCardNameArabicActive,
+                          styles.bgSoundCardName,
+                          isSelected && styles.bgSoundCardNameActive,
                         ]}
                         numberOfLines={1}
                       >
-                        {sound.nameArabic}
-                      </Text>
-                      <Text style={styles.bgSoundCardNameEnglish} numberOfLines={1}>
                         {sound.name}
                       </Text>
-
-                      {isSelected && (
-                        <View style={styles.bgSoundCardActiveBadge}>
-                          <Ionicons name="checkmark-circle" size={15} color="#34d399" />
-                        </View>
-                      )}
                     </TouchableOpacity>
                   );
                 })}
               </View>
-            </BlurView>
+            </View>
           </View>
         )}
       </View>
@@ -1943,70 +1938,138 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  /* BACKGROUND SOUND BOTTOM SHEET (FROSTED GLASS / GLASSMORPHISM) */
+  /* AMBIENT PILL BUTTON (Matching Screenshot 2) */
+  ambientPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginTop: 8,
+  },
+  ambientPillText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: '#ffffff',
+  },
+
+  /* BACKGROUND SOUND BOTTOM SHEET (Matching Screenshot 1) */
   bgSoundOverlayBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
     zIndex: 100,
   },
   bgSoundSheetCard: {
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(15, 23, 42, 0.62)' : 'rgba(15, 23, 42, 0.88)',
+    backgroundColor: '#09090b',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     borderWidth: 1,
-    borderTopWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-    borderTopColor: 'rgba(255, 255, 255, 0.35)',
+    borderColor: '#27272a',
     overflow: 'hidden',
-    paddingTop: 14,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 26,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
     paddingHorizontal: 20,
+    maxHeight: '82%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.55,
-    shadowRadius: 22,
-    elevation: 26,
+    shadowOpacity: 0.65,
+    shadowRadius: 24,
+    elevation: 28,
   },
   bgSoundSheetGrabber: {
     width: 42,
     height: 4.5,
     borderRadius: 2.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.38)',
+    backgroundColor: '#3f3f46',
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  bgSoundSheetHeader: {
+  bgSoundHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
-  bgSoundSheetHeaderTextGroup: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  bgSoundSheetTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 18,
-    color: '#ffffff',
-  },
-  bgSoundSheetSubtitle: {
-    fontFamily: 'Cairo_500Medium',
-    fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 2,
-  },
-  bgSoundSheetCloseBtn: {
+  bgSoundHeaderCloseBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.16)',
+    backgroundColor: '#27272a',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12,
+  },
+  bgSoundHeaderTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 17,
+    color: '#ffffff',
+  },
+  bgSoundHeaderConfirmBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  /* SOUNDS GRID: 2 LINES OF 3 CARDS */
+  bgSoundsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  bgSoundCard: {
+    width: '30.5%',
+    backgroundColor: 'transparent',
+    borderRadius: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    minHeight: 96,
+  },
+  bgSoundCardActive: {
+    backgroundColor: '#27272a',
+  },
+  bgSoundCardBadgeSlot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bgSoundCardSelectedDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bgSoundCardIconBox: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  bgSoundCardName: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12.5,
+    color: '#d4d4d8',
+    textAlign: 'center',
+  },
+  bgSoundCardNameActive: {
+    color: '#ffffff',
+    fontFamily: 'Cairo_700Bold',
   },
 
   /* DUAL-VOLUME CONTROL CARD (Exact match to screenshot) */
@@ -2072,72 +2135,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 3,
     elevation: 4,
-  },
-
-  /* SOUNDS GRID */
-  bgSoundsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  bgSoundCard: {
-    width: '31%',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderTopWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopColor: 'rgba(255, 255, 255, 0.22)',
-    position: 'relative',
-  },
-  bgSoundCardActive: {
-    backgroundColor: 'rgba(52, 211, 153, 0.16)',
-    borderColor: '#34d399',
-    borderTopColor: '#6ee7b7',
-    shadowColor: '#34d399',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  bgSoundCardIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  bgSoundCardIconBoxActive: {
-    backgroundColor: 'rgba(52, 211, 153, 0.26)',
-    borderColor: 'rgba(52, 211, 153, 0.6)',
-  },
-  bgSoundCardNameArabic: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: '#ffffff',
-    textAlign: 'center',
-  },
-  bgSoundCardNameArabicActive: {
-    color: '#34d399',
-  },
-  bgSoundCardNameEnglish: {
-    fontFamily: 'Cairo_500Medium',
-    fontSize: 10,
-    color: '#94a3b8',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  bgSoundCardActiveBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
   },
 });

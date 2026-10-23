@@ -4,7 +4,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Platform,
   StyleProp,
@@ -74,23 +73,21 @@ export default function MiniAudioPlayer({
           tint="dark"
           style={styles.blurContent}
         >
-          {/* LEFT SIDE: Avatar + Surah & Reciter Details */}
+          {/* LEFT SIDE: Circular Mic Badge + Surah & Reciter Details */}
           <View style={styles.leftInfoSection}>
-            <Image
-              source={require('@/assets/images/reciter_avatar_default.png')}
-              style={styles.avatarImage}
-              resizeMode="cover"
-            />
+            <View style={styles.micCircle}>
+              <Ionicons name="mic" size={18} color="#10b981" />
+            </View>
 
             <View style={styles.textColumn}>
               {/* Surah Number + English Name (Arabic Name) */}
               <Text style={styles.surahTitleText} numberOfLines={1}>
-                {currentSurah.id}. {currentSurah.name_simple}({currentSurah.name_arabic})
+                {currentSurah.id}. {currentSurah.name_simple} ({currentSurah.name_arabic})
               </Text>
 
-              {/* Reciter Name */}
+              {/* Reciter Name - Green text directly underneath */}
               <Text style={styles.reciterNameText} numberOfLines={1}>
-                {currentReciter.englishName || currentReciter.name}
+                {currentReciter.name || currentReciter.englishName}
               </Text>
             </View>
           </View>
@@ -171,28 +168,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  avatarImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 7,
-    backgroundColor: '#1e293b',
+  micCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   textColumn: {
     flex: 1,
     marginLeft: 10,
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   surahTitleText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
     color: '#ffffff',
     lineHeight: 18,
+    textAlign: 'left',
   },
   reciterNameText: {
-    fontFamily: 'Cairo_500Medium',
-    fontSize: 11,
-    color: '#94a3b8',
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11.5,
+    color: '#10b981',
     marginTop: -1,
+    textAlign: 'left',
   },
   controlsRow: {
     flexDirection: 'row',

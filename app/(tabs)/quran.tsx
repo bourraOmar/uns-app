@@ -1,95 +1,25 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   FlatList,
-  TextInput,
   TouchableOpacity,
-  Pressable,
   SafeAreaView,
   StatusBar,
   Image,
   ScrollView,
-  Animated,
   Platform,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import Svg, { Path } from 'react-native-svg';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
+import IslamicBackground from '@/components/IslamicBackground';
 import surahsData from '../../data/surahs.json';
-
-// --- CUSTOM SVG ICONS MATCHING SCREENSHOT EXACTLY ---
-
-// 1. Square Open Book Icon (Used for Mushaf both in circle button and menu pill)
-function MushafSquareBookIcon({ size = 22, color = '#f8fafc' }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M4 6.5H10.5C11.5 6.5 12 7.2 12 8V18.5C11.5 17.8 10.5 17.2 9.5 17.2H4V6.5Z"
-        stroke={color}
-        strokeWidth="2.2"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M20 6.5H13.5C12.5 6.5 12 7.2 12 8V18.5C12.5 17.8 13.5 17.2 14.5 17.2H20V6.5Z"
-        stroke={color}
-        strokeWidth="2.2"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-// 2. Open Book with Radiating Rays Icon (Used for المُشغّل / Player)
-function PlayerBookRaysIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2.5V5.5" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-      <Path d="M6 4.5L8.5 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-      <Path d="M18 4.5L15.5 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-      <Path
-        d="M4.5 10.5H10.5C11.5 10.5 12 11.2 12 12V19.5C11.5 18.8 10.5 18.3 9.5 18.3H4.5V10.5Z"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M19.5 10.5H13.5C12.5 10.5 12 11.2 12 12V19.5C12.5 18.8 13.5 18.3 14.5 18.3H19.5V10.5Z"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-// 3. Mosque / Gate Facade Icon (Used for الخدمات / Services)
-function ServicesMosqueIcon({ size = 22, color = '#cbd5e1' }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M4 21V12C4 10 6 7 12 7C18 7 20 10 20 12V21"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M8.5 21V15C8.5 13.5 10 12.5 12 12.5C14 12.5 15.5 13.5 15.5 15V21"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <Path d="M12 3V7" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <Path d="M2.5 21H21.5" stroke={color} strokeWidth="2" strokeLinecap="round" />
-    </Svg>
-  );
-}
 
 interface SurahItem {
   id: number;
@@ -148,6 +78,174 @@ const INITIAL_RECENT_READINGS: RecentReadingItem[] = [
   },
 ];
 
+interface SwipeableReadingRowProps {
+  item: RecentReadingItem;
+  isLast: boolean;
+  onPress: () => void;
+  onDelete: (id: string) => void;
+}
+
+function SwipeableReadingRow({ item, isLast, onPress, onDelete }: SwipeableReadingRowProps) {
+  const [pan] = useState(() => new Animated.Value(0));
+  const [rowHeight] = useState(() => new Animated.Value(68));
+  const [rowOpacity] = useState(() => new Animated.Value(1));
+  const [isOpen, setIsOpen] = useState(false);
+
+  const resetPosition = useCallback(() => {
+    Animated.spring(pan, {
+      toValue: 0,
+      useNativeDriver: false,
+      bounciness: 4,
+    }).start(() => setIsOpen(false));
+  }, [pan]);
+
+  const openDelete = useCallback(() => {
+    Animated.spring(pan, {
+      toValue: -80,
+      useNativeDriver: false,
+      bounciness: 4,
+    }).start(() => setIsOpen(true));
+  }, [pan]);
+
+  const triggerDelete = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Animated.parallel([
+      Animated.timing(pan, {
+        toValue: -400,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+      Animated.timing(rowOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+    ]).start(() => {
+      Animated.timing(rowHeight, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false,
+      }).start(() => {
+        onDelete(item.id);
+      });
+    });
+  }, [item.id, onDelete, pan, rowHeight, rowOpacity]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return (
+            Math.abs(gestureState.dx) > 10 &&
+            Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
+          );
+        },
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dx < 0) {
+            pan.setValue(Math.max(-120, gestureState.dx + (isOpen ? -80 : 0)));
+          } else if (isOpen && gestureState.dx > 0) {
+            pan.setValue(Math.min(0, -80 + gestureState.dx));
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dx < -110 || gestureState.vx < -0.8) {
+            triggerDelete();
+          } else if (gestureState.dx < -40 || (isOpen && gestureState.dx < 20)) {
+            openDelete();
+          } else {
+            resetPosition();
+          }
+        },
+      }),
+    [isOpen, openDelete, pan, resetPosition, triggerDelete]
+  );
+
+  const handleDeletePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Animated.parallel([
+      Animated.timing(pan, {
+        toValue: -400,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+      Animated.timing(rowOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+    ]).start(() => {
+      Animated.timing(rowHeight, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false,
+      }).start(() => {
+        onDelete(item.id);
+      });
+    });
+  };
+
+  const deleteOpacity = pan.interpolate({
+    inputRange: [-80, -10, 0],
+    outputRange: [1, 0.4, 0],
+    extrapolate: 'clamp',
+  });
+
+  return (
+    <Animated.View style={[styles.swipeableContainer, { height: rowHeight, opacity: rowOpacity }]}>
+      {/* Background Red Delete Button (only revealed when actively swiping left) */}
+      <Animated.View style={[styles.deleteBackground, { opacity: deleteOpacity }]}>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          activeOpacity={0.8}
+          onPress={handleDeletePress}
+        >
+          <Ionicons name="trash-outline" size={20} color="#ffffff" />
+          <Text style={styles.deleteButtonText}>حذف</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Foreground Row */}
+      <Animated.View
+        style={[
+          styles.readingItemRow,
+          !isLast && styles.readingItemBorder,
+          { transform: [{ translateX: pan }] },
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <TouchableOpacity
+          style={styles.readingItemInner}
+          activeOpacity={0.7}
+          onPress={() => {
+            if (isOpen) {
+              resetPosition();
+            } else {
+              onPress();
+            }
+          }}
+        >
+          {/* Left: Page Number with Chevron */}
+          <View style={styles.readingPageWrapper}>
+            <Ionicons name="chevron-back" size={14} color="#64748b" />
+            <Text style={styles.readingPageNumber}>{item.page}</Text>
+          </View>
+
+          {/* Center: Surah Title & Time Ago */}
+          <View style={styles.readingInfoWrapper}>
+            <Text style={styles.readingSurahName}>{item.surahName}</Text>
+            <Text style={styles.readingTimeAgo}>{item.timeAgo}</Text>
+          </View>
+
+          {/* Right: Circular History Clock Icon */}
+          <View style={styles.readingHistoryCircle}>
+            <MaterialCommunityIcons name="history" size={18} color="#34d399" />
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 export default function QuranScreen() {
   const router = useRouter();
   const flatListRef = useRef<FlatList<SurahItem>>(null);
@@ -160,7 +258,10 @@ export default function QuranScreen() {
     isSearchActive,
   } = useScrollCollapse();
 
-  const [activeTab, setActiveTab] = useState<'mushaf' | 'readings'>('mushaf');
+  const searchParams = useLocalSearchParams<{ tab?: string }>();
+  const [selectedTab, setSelectedTab] = useState<'mushaf' | 'readings' | null>(null);
+  const activeTab = selectedTab ?? (searchParams.tab === 'mushaf' ? 'mushaf' : 'readings');
+  const setActiveTab = (tab: 'mushaf' | 'readings') => setSelectedTab(tab);
 
   useEffect(() => {
     setSearchPlaceholder('ابحث عن اسم السورة أو رقمها...');
@@ -168,10 +269,6 @@ export default function QuranScreen() {
 
   // Recent Readings state
   const [recentReadings, setRecentReadings] = useState<RecentReadingItem[]>(INITIAL_RECENT_READINGS);
-
-  useEffect(() => {
-    loadRecentReadings();
-  }, []);
 
   const loadRecentReadings = async () => {
     try {
@@ -181,6 +278,12 @@ export default function QuranScreen() {
       }
     } catch {}
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRecentReadings();
+    }, [])
+  );
 
   const handleOpenSurah = async (surah: SurahItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -197,8 +300,44 @@ export default function QuranScreen() {
     setRecentReadings(updated);
     try {
       await AsyncStorage.setItem('@uns_recent_readings', JSON.stringify(updated));
+      await AsyncStorage.setItem(
+        '@uns_last_read',
+        JSON.stringify({
+          surahId: surah.id,
+          surahName: `سورة ${surah.name_arabic}`,
+          page: surah.start_page,
+          versesCount: surah.verses_count,
+          revelationPlace: surah.revelation_place,
+          timeAgo: 'اليوم',
+        })
+      );
     } catch {}
     router.push({ pathname: '/surah/[id]', params: { id: surah.id.toString() } });
+  };
+
+  const handleDeleteReading = async (id: string) => {
+    const updated = recentReadings.filter((item) => item.id !== id);
+    setRecentReadings(updated);
+    try {
+      await AsyncStorage.setItem('@uns_recent_readings', JSON.stringify(updated));
+      if (updated.length > 0) {
+        const top = updated[0];
+        const surah = (surahsData as any[]).find((s) => s.id === top.surahId);
+        await AsyncStorage.setItem(
+          '@uns_last_read',
+          JSON.stringify({
+            surahId: top.surahId,
+            surahName: top.surahName,
+            page: top.page,
+            versesCount: surah ? surah.verses_count : 7,
+            revelationPlace: surah ? surah.revelation_place : 'makkah',
+            timeAgo: top.timeAgo,
+          })
+        );
+      } else {
+        await AsyncStorage.removeItem('@uns_last_read');
+      }
+    } catch {}
   };
 
   // Filtered Surahs based on search query
@@ -263,27 +402,47 @@ export default function QuranScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+    <View style={styles.safeArea}>
+      <IslamicBackground />
+      <SafeAreaView style={{ flex: 1 }}>
+        <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
 
-      {/* TOP HEADER */}
+      {/* TOP HEADER MATCHING DHIKR PAGE */}
       <View style={styles.header}>
-        {/* Left Action Buttons */}
+        {/* Left Action Buttons: Profile, Bookmarks/Readings, Search */}
         <View style={styles.headerActionsLeft}>
-          {/* Profile Button (Emerald Circle) */}
-          <TouchableOpacity style={styles.profileCircleButton} activeOpacity={0.8}>
-            <Ionicons name="person" size={16} color="#ffffff" />
+          {/* Profile / Services shortcut */}
+          <TouchableOpacity
+            style={styles.headerCircleButton}
+            activeOpacity={0.75}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/(tabs)/duas' as any);
+            }}
+          >
+            <Ionicons name="person-outline" size={18} color="#f8fafc" />
           </TouchableOpacity>
 
-          {/* Bookmarks Button */}
-          <TouchableOpacity style={styles.headerCircleButton} activeOpacity={0.8}>
-            <Ionicons name="bookmark-outline" size={17} color="#cbd5e1" />
+          {/* Bookmarks / Readings Button */}
+          <TouchableOpacity
+            style={[styles.headerCircleButton, activeTab === 'readings' && styles.headerCircleButtonActive]}
+            activeOpacity={0.75}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setActiveTab(activeTab === 'readings' ? 'mushaf' : 'readings');
+            }}
+          >
+            <Ionicons
+              name={activeTab === 'readings' ? 'bookmark' : 'bookmark-outline'}
+              size={18}
+              color={activeTab === 'readings' ? '#10b981' : '#f8fafc'}
+            />
           </TouchableOpacity>
 
           {/* Search Toggle Button */}
           <TouchableOpacity
             style={[styles.headerCircleButton, isSearchActive && styles.headerCircleButtonActive]}
-            activeOpacity={0.8}
+            activeOpacity={0.75}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               if (isSearchActive) {
@@ -294,25 +453,15 @@ export default function QuranScreen() {
             }}
           >
             <Ionicons
-              name={isSearchActive ? 'close' : 'search'}
-              size={17}
-              color={isSearchActive ? '#34d399' : '#cbd5e1'}
+              name={isSearchActive ? 'close' : 'search-outline'}
+              size={18}
+              color={isSearchActive ? '#10b981' : '#f8fafc'}
             />
           </TouchableOpacity>
         </View>
 
-        {/* Right Title + Back Button */}
-        <View style={styles.headerTitleRight}>
-          <Text style={styles.headerTitle}>المصحف</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="chevron-forward" size={20} color="#f8fafc" />
-          </TouchableOpacity>
-        </View>
+        {/* Right: Title "المصحف" */}
+        <Text style={styles.headerTitle}>المصحف</Text>
       </View>
 
       {/* SEGMENTED PILL TABS ("المصحف" / "قراءاتي") */}
@@ -358,42 +507,13 @@ export default function QuranScreen() {
         </View>
       </View>
 
-      {/* TAB 1: قراءاتي (READINGS & HISTORY TAB) matching screenshot */}
+      {/* TAB 1: قراءاتي (READINGS & HISTORY TAB) */}
       {activeTab === 'readings' ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.readingsScrollContent}
         >
-          {/* Section 1: ختماتي */}
-          <View style={styles.sectionHeaderRow}>
-            <TouchableOpacity style={styles.seeAllButton} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={14} color="#94a3b8" />
-              <Text style={styles.seeAllText}>عرض الكل</Text>
-            </TouchableOpacity>
-            <Text style={styles.sectionHeaderTitle}>ختماتي</Text>
-          </View>
-
-          {/* Start New Khatmah Card */}
-          <TouchableOpacity style={styles.newKhatmahCard} activeOpacity={0.8}>
-            {/* Left: Plus icon */}
-            <View style={styles.plusIconWrapper}>
-              <Ionicons name="add" size={24} color="#cbd5e1" />
-            </View>
-
-            {/* Center: Title */}
-            <Text style={styles.newKhatmahTitle}>ابدأ بـ ختمة جديدة</Text>
-
-            {/* Right: Circular Calligraphy Emblem */}
-            <View style={styles.khatmahCalligraphyWrapper}>
-              <Image
-                source={require('../../assets/images/quran_circle_emblem.png')}
-                style={styles.khatmahCalligraphyImage}
-                resizeMode="cover"
-              />
-            </View>
-          </TouchableOpacity>
-
-          {/* Section 2: آخر قراءاتي */}
+          {/* Section: آخر قراءاتي */}
           <View style={styles.sectionHeaderRow}>
             <TouchableOpacity style={styles.seeAllButton} activeOpacity={0.7}>
               <Ionicons name="chevron-back" size={14} color="#94a3b8" />
@@ -404,37 +524,34 @@ export default function QuranScreen() {
 
           {/* Recent Readings List Card Container */}
           <View style={styles.readingsListCard}>
-            {recentReadings.map((item, index) => {
-              const isLast = index === recentReadings.length - 1;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.readingItemRow, !isLast && styles.readingItemBorder]}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push({ pathname: '/surah/[id]', params: { id: item.surahId.toString() } });
-                  }}
-                >
-                  {/* Left: Page Number with Chevron */}
-                  <View style={styles.readingPageWrapper}>
-                    <Ionicons name="chevron-back" size={14} color="#64748b" />
-                    <Text style={styles.readingPageNumber}>{item.page}</Text>
-                  </View>
-
-                  {/* Center: Surah Title & Time Ago */}
-                  <View style={styles.readingInfoWrapper}>
-                    <Text style={styles.readingSurahName}>{item.surahName}</Text>
-                    <Text style={styles.readingTimeAgo}>{item.timeAgo}</Text>
-                  </View>
-
-                  {/* Right: Circular History Clock Icon */}
-                  <View style={styles.readingHistoryCircle}>
-                    <MaterialCommunityIcons name="history" size={18} color="#34d399" />
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            {recentReadings.length > 0 ? (
+              recentReadings.map((item, index) => {
+                const isLast = index === recentReadings.length - 1;
+                return (
+                  <SwipeableReadingRow
+                    key={item.id}
+                    item={item}
+                    isLast={isLast}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push({
+                        pathname: '/surah/[id]',
+                        params: { id: item.surahId.toString() },
+                      });
+                    }}
+                    onDelete={handleDeleteReading}
+                  />
+                );
+              })
+            ) : (
+              <View style={styles.emptyHistoryBox}>
+                <MaterialCommunityIcons name="history" size={34} color="#64748b" />
+                <Text style={styles.emptyHistoryText}>لا توجد قراءات في السجل</Text>
+                <Text style={styles.emptyHistorySubText}>
+                  السور التي تقرؤها ستظهر هنا تلقائياً
+                </Text>
+              </View>
+            )}
           </View>
         </ScrollView>
       ) : (
@@ -487,76 +604,55 @@ export default function QuranScreen() {
           </View>
         </>
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: 'transparent',
   },
 
-  /* HEADER */
+  /* HEADER MATCHING DHIKR PAGE */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 8,
-  },
-  headerTitleRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    paddingBottom: 14,
   },
   headerTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 26,
+    fontSize: 32,
     color: '#f8fafc',
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    alignItems: 'center',
-    justifyContent: 'center',
+    letterSpacing: -0.3,
   },
   headerActionsLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  profileCircleButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#0f8e5d',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#0f8e5d',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
-    elevation: 3,
-  },
   headerCircleButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1e293b',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(30, 41, 59, 0.75)',
     borderWidth: 1,
     borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerCircleButtonActive: {
-    borderColor: '#34d399',
-    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    borderColor: '#10b981',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
   },
 
   /* SEARCH BAR */
@@ -654,52 +750,6 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
   },
 
-  /* New Khatmah Card */
-  newKhatmahCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  khatmahCalligraphyWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  khatmahCalligraphyImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  newKhatmahTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
-    color: '#f8fafc',
-    flex: 1,
-    textAlign: 'right',
-    paddingRight: 14,
-  },
-  plusIconWrapper: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   /* Recent Readings Card Container */
   readingsListCard: {
     backgroundColor: '#1e293b',
@@ -714,16 +764,70 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  swipeableContainer: {
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#1e293b',
+  },
+  deleteBackground: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 80,
+    backgroundColor: '#dc2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 0,
+    outlineWidth: 0,
+  },
+  deleteButton: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 3,
+    borderWidth: 0,
+    outlineWidth: 0,
+  },
+  deleteButtonText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: '#ffffff',
+  },
   readingItemRow: {
+    backgroundColor: '#1e293b',
+    width: '100%',
+    zIndex: 2,
+  },
+  readingItemInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
+    outlineWidth: 0,
   },
   readingItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(51, 65, 85, 0.45)',
+    borderBottomColor: '#334155',
+  },
+  emptyHistoryBox: {
+    paddingVertical: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  emptyHistoryText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: '#94a3b8',
+    marginTop: 4,
+  },
+  emptyHistorySubText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: '#64748b',
   },
   readingHistoryCircle: {
     width: 32,

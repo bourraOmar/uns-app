@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,19 +6,30 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  StatusBar,
   Image,
   ImageSourcePropType,
-  Dimensions,
-  Modal,
-  TextInput,
   Share,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { AnimatedGradientBackground } from '@/components/AnimatedGradientBackground';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import IslamicBackground from '@/components/IslamicBackground';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
+import surahsData from '../../data/surahs.json';
+import {
+  getPrayerTimesForDate,
+  getUserLocation,
+  calculateUpcomingPrayer,
+  formatTo12HourArabic,
+  formatSecondsToCountdown,
+  formatRemainingArabicText,
+  CityLocation,
+} from '@/services/prayerTimesService';
+import { getDailyInspirations } from '@/data/dailyInspirations';
+import { getSmartIslamicGreeting, getHijriNumericDate } from '@/services/smartIslamicGreetingService';
+import LocationModal from '@/components/LocationModal';
+import { ALL_DAILY_APPS, DEFAULT_DAILY_APP_IDS, DailyAppItem } from '@/data/dailyAppsData';
 // Custom icons using pure React Native components (no external SVG dependency)
 function TasbihBeadsIcon({ size = 22, color = '#ffffff' }: { size?: number; color?: string }) {
   const radius = (size - 6) / 2;
@@ -75,14 +86,21 @@ function MorningSunIcon({ size = 20, color = '#483852' }: { size?: number; color
   );
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 44;
+interface LastReadSurah {
+  surahId: number;
+  surahName: string;
+  page: number;
+  versesCount: number;
+  revelationPlace?: string;
+}
 
-const SEAL_DURATIONS = [
-  { days: 30, label: '30 يوماً', sub: 'جزء يومياً (20 ص)' },
-  { days: 60, label: '60 يوماً', sub: 'نصف جزء (10 ص)' },
-  { days: 15, label: '15 يوماً', sub: 'جزأين (40 ص)' },
-];
+const DEFAULT_LAST_READ: LastReadSurah = {
+  surahId: 1,
+  surahName: 'سورة الفاتحة',
+  page: 1,
+  versesCount: 7,
+  revelationPlace: 'makkah',
+};
 
 const PRAYER_ICONS = {
   fajrShines: require('@/assets/icons/fajr_shines.png'),
@@ -91,13 +109,6 @@ const PRAYER_ICONS = {
   sunriseRays: require('@/assets/icons/sunrise_rays.png'),
   sunriseSimple: require('@/assets/icons/sunrise_simple.png'),
   moonStars: require('@/assets/icons/moon_stars.png'),
-};
-
-const DAILY_APP_ICONS = {
-  tasbih: require('@/assets/icons/app_tasbih.png'),
-  qibla: require('@/assets/icons/app_qibla.png'),
-  salat: require('@/assets/icons/app_salat.png'),
-  tv: require('@/assets/icons/app_tv.png'),
 };
 
 interface PrayerItem {
@@ -166,34 +177,294 @@ function InspirationRibbonBadge({ type }: RibbonBadgeProps) {
   );
 }
 
+const ARABIC_WEEKDAYS = [
+  'الأَحَدُ',
+  'الإِثْنَيْنُ',
+  'الثُّلَاثَاءُ',
+  'الأَرْبِعَاءُ',
+  'الخَمِيسُ',
+  'الجُمُعَةُ',
+  'السَّبْتُ',
+];
+
+const GREGORIAN_MONTHS = [
+  'يناير',
+  'فبراير',
+  'مارس',
+  'أبريل',
+  'مايو',
+  'يونيو',
+  'يوليو',
+  'أغسطس',
+  'سبتمبر',
+  'أكتوبر',
+  'نوفمبر',
+  'ديسمبر',
+];
+
+function getLiveCalendarDates(now: Date = new Date()) {
+  const weekdayName = ARABIC_WEEKDAYS[now.getDay()];
+  const gregDay = now.getDate();
+  const gregMonth = GREGORIAN_MONTHS[now.getMonth()];
+  const gregYear = now.getFullYear();
+
+  let hijriDay = '1';
+  let hijriMonth = 'جمادى الأولى';
+  let hijriYear = '1448';
+
+  try {
+    const formatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const parts = formatter.formatToParts(now);
+    parts.forEach((p) => {
+      if (p.type === 'day') hijriDay = p.value;
+      if (p.type === 'month') hijriMonth = p.value;
+      if (p.type === 'year') hijriYear = p.value;
+    });
+  } catch {}
+
+  return {
+    weekdayName,
+    gregDay,
+    gregMonth,
+    gregYear,
+    hijriDay,
+    hijriMonth,
+    hijriYear,
+  };
+}
+
+function getTodayDateKey(date: Date = new Date()) {
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+}
+
+// Determines if a prayer's time has already entered today
+function hasPrayerTimeArrived(
+  prayerId: string,
+  rawTimes: Record<string, string>,
+  now: Date = new Date()
+): boolean {
+  // Sunrise and Midnight are astronomical markers, not obligatory prayers
+  if (prayerId === 'Sunrise' || prayerId === 'Midnight') return false;
+
+  const timeStr = rawTimes[prayerId];
+  if (!timeStr) return false;
+
+  const [h, m] = timeStr.split(':').map((n) => parseInt(n, 10));
+  const pDate = new Date(now);
+  pDate.setHours(h, m, 0, 0);
+
+  return now.getTime() >= pDate.getTime();
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { onScroll, openSearch } = useScrollCollapse();
 
-  const [locationCity] = useState('آسفي، المغرب');
-  const [activePrayerId, setActivePrayerId] = useState('Asr'); // Active prayer (e.g. Asr)
-  const [countdown] = useState('01:52:05');
+  // 1. Live Calendar State
+  const [calendar, setCalendar] = useState(() => getLiveCalendarDates(new Date()));
 
-  // Quran Seal (Khatmah) State
-  const [currentKhatmah, setCurrentKhatmah] = useState({
-    surahName: 'الأنفال',
-    page: 177,
-    progress: 29, // 177 / 604
+  // 2. Location State
+  const [userLocation, setUserLocation] = useState<CityLocation>({
+    city: 'آسفي، المغرب',
+    country: 'المغرب',
+    latitude: 32.2994,
+    longitude: -9.2372,
   });
-  const [activeSealIndex, setActiveSealIndex] = useState(0);
-  const [showNewSealModal, setShowNewSealModal] = useState(false);
-  const [newSealName, setNewSealName] = useState('ختمة القرآن الكريم');
-  const [selectedDuration, setSelectedDuration] = useState(30);
-  const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
-  const handleStartNewSeal = () => {
-    setCurrentKhatmah({
-      surahName: 'الفاتحة',
-      page: 1,
-      progress: 1,
-    });
-    setShowNewSealModal(false);
+  const handleApplyLocation = async (newLoc: CityLocation) => {
+    setUserLocation(newLoc);
+    const times = await getPrayerTimesForDate(new Date(), newLoc);
+    setPrayerRawTimes(times);
   };
+
+  // 3. Prayer Times & Live Countdown State
+  const [prayerRawTimes, setPrayerRawTimes] = useState<Record<string, string>>({
+    Fajr: '05:17',
+    Sunrise: '06:38',
+    Dhuhr: '12:24',
+    Asr: '15:39',
+    Maghrib: '18:08',
+    Isha: '19:25',
+    Midnight: '23:43',
+  });
+  const [activePrayerId, setActivePrayerId] = useState<string>('Asr');
+  const [countdown, setCountdown] = useState('01:52:05');
+  const [remainingBadgeText, setRemainingBadgeText] = useState('ساعة و52 د');
+  const [upcomingPrayerName, setUpcomingPrayerName] = useState('العصر');
+
+  // 4. Prayed Prayers Tracker State (الصلوات المؤداة بالحد الأخضر مع إعادة الضبط التلقائي)
+  const [prayedPrayers, setPrayedPrayers] = useState<Record<string, boolean>>({});
+  const [currentCycleDate, setCurrentCycleDate] = useState<string>(() => getTodayDateKey());
+
+  const loadPrayedPrayers = async () => {
+    try {
+      const todayKey = getTodayDateKey();
+      const savedStr = await AsyncStorage.getItem('@uns_prayed_prayers');
+      if (savedStr) {
+        const saved = JSON.parse(savedStr);
+        if (saved && saved.date === todayKey) {
+          setPrayedPrayers(saved.prayers || {});
+          setCurrentCycleDate(todayKey);
+          return;
+        }
+      }
+      setPrayedPrayers({});
+      setCurrentCycleDate(todayKey);
+      await AsyncStorage.setItem(
+        '@uns_prayed_prayers',
+        JSON.stringify({ date: todayKey, prayers: {} })
+      );
+    } catch {}
+  };
+
+  const togglePrayedPrayer = async (id: string) => {
+    // 1. Sunrise and Midnight are completely unselectable
+    if (id === 'Sunrise' || id === 'Midnight') {
+      return;
+    }
+
+    // 2. Only prayers whose time has already arrived today can be marked as prayed
+    const hasArrived = hasPrayerTimeArrived(id, prayerRawTimes, new Date());
+    if (!hasArrived) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const todayKey = getTodayDateKey();
+    const updated = {
+      ...prayedPrayers,
+      [id]: !prayedPrayers[id],
+    };
+    setPrayedPrayers(updated);
+    try {
+      await AsyncStorage.setItem(
+        '@uns_prayed_prayers',
+        JSON.stringify({ date: todayKey, prayers: updated })
+      );
+    } catch {}
+  };
+
+  // 5. Smart Time & Islamic Event Greeting
+  const [greeting, setGreeting] = useState(() => getSmartIslamicGreeting(new Date(), 'Asr'));
+
+  // 6. Daily Inspirations
+  const [dailyInspirations, setDailyInspirations] = useState(() => getDailyInspirations(new Date()));
+
+  // 7. Last Read Surah State
+  const [lastRead, setLastRead] = useState<LastReadSurah>(DEFAULT_LAST_READ);
+
+  // 8. Custom Daily Apps State
+  const [dailyAppIds, setDailyAppIds] = useState<string[]>(DEFAULT_DAILY_APP_IDS);
+
+  const loadDailyApps = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('@uns_custom_daily_apps');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const valid = parsed.filter((id) => ALL_DAILY_APPS.some((app) => app.id === id));
+          setDailyAppIds(valid.length > 0 ? valid : DEFAULT_DAILY_APP_IDS);
+          return;
+        }
+      }
+      setDailyAppIds(DEFAULT_DAILY_APP_IDS);
+    } catch {}
+  };
+
+  const loadLastRead = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('@uns_last_read');
+      if (saved) {
+        setLastRead(JSON.parse(saved));
+        return;
+      }
+      const savedRecent = await AsyncStorage.getItem('@uns_recent_readings');
+      if (savedRecent) {
+        const list = JSON.parse(savedRecent);
+        if (list && list.length > 0) {
+          const top = list[0];
+          const surah = (surahsData as any[]).find((s) => s.id === top.surahId);
+          setLastRead({
+            surahId: top.surahId,
+            surahName: top.surahName || (surah ? `سورة ${surah.name_arabic}` : 'سورة الفاتحة'),
+            page: top.page || (surah ? surah.start_page : 1),
+            versesCount: surah ? surah.verses_count : 7,
+            revelationPlace: surah ? surah.revelation_place : 'makkah',
+          });
+        }
+      }
+    } catch {}
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadLastRead();
+      loadPrayedPrayers();
+      loadDailyApps();
+    }, [])
+  );
+
+  // Initialize location & prayer times
+  useEffect(() => {
+    let isMounted = true;
+
+    getUserLocation().then((loc) => {
+      if (!isMounted) return;
+      setUserLocation(loc);
+      getPrayerTimesForDate(new Date(), loc).then((times) => {
+        if (!isMounted) return;
+        setPrayerRawTimes(times);
+      });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Live 1-second countdown and prayer tracking ticker
+  useEffect(() => {
+    const updateTicker = () => {
+      const now = new Date();
+      setCalendar(getLiveCalendarDates(now));
+      setDailyInspirations(getDailyInspirations(now));
+
+      const { upcomingId, secondsRemaining, nextPrayerName } = calculateUpcomingPrayer(
+        prayerRawTimes,
+        now
+      );
+
+      setUpcomingPrayerName(nextPrayerName);
+      // Highlight the next upcoming prayer automatically
+      setActivePrayerId(upcomingId);
+      setGreeting(getSmartIslamicGreeting(now, upcomingId, getHijriNumericDate(now)));
+
+      // The top hero badge ALWAYS shows the remaining time to the upcoming prayer!
+      setRemainingBadgeText(formatRemainingArabicText(secondsRemaining));
+      setCountdown(formatSecondsToCountdown(secondsRemaining));
+
+      // Reset prayers when a new day/cycle begins
+      const todayKey = getTodayDateKey(now);
+      if (todayKey !== currentCycleDate) {
+        setCurrentCycleDate(todayKey);
+        setPrayedPrayers({});
+        AsyncStorage.setItem(
+          '@uns_prayed_prayers',
+          JSON.stringify({ date: todayKey, prayers: {} })
+        ).catch(() => {});
+      }
+    };
+
+    updateTicker();
+    const interval = setInterval(updateTicker, 1000);
+    return () => clearInterval(interval);
+  }, [prayerRawTimes, currentCycleDate]);
 
   const handleShare = async (message: string) => {
     try {
@@ -207,48 +478,95 @@ export default function HomeScreen() {
 
   // Row 1: Fajr -> Sunrise -> Dhuhr -> Asr
   const row1Prayers: PrayerItem[] = [
-    { id: 'Fajr', name: 'الفجر', time: '5:17 ص', icon: PRAYER_ICONS.fajrShines },
-    { id: 'Sunrise', name: 'الشروق', time: '6:38 ص', icon: PRAYER_ICONS.sunriseRays },
-    { id: 'Dhuhr', name: 'الظهر', time: '12:24 م', icon: PRAYER_ICONS.sunSolid },
-    { id: 'Asr', name: 'العصر', time: '3:39 م', icon: PRAYER_ICONS.sunOutline },
+    {
+      id: 'Fajr',
+      name: 'الفجر',
+      time: formatTo12HourArabic(prayerRawTimes.Fajr) || '5:17 ص',
+      icon: PRAYER_ICONS.fajrShines,
+    },
+    {
+      id: 'Sunrise',
+      name: 'الشروق',
+      time: formatTo12HourArabic(prayerRawTimes.Sunrise) || '6:38 ص',
+      icon: PRAYER_ICONS.sunriseRays,
+    },
+    {
+      id: 'Dhuhr',
+      name: 'الظهر',
+      time: formatTo12HourArabic(prayerRawTimes.Dhuhr) || '12:24 م',
+      icon: PRAYER_ICONS.sunSolid,
+    },
+    {
+      id: 'Asr',
+      name: 'العصر',
+      time: formatTo12HourArabic(prayerRawTimes.Asr) || '3:39 م',
+      icon: PRAYER_ICONS.sunOutline,
+    },
   ];
 
   // Row 2: Maghrib -> Isha -> Midnight
   const row2Prayers: PrayerItem[] = [
-    { id: 'Maghrib', name: 'المغرب', time: '6:08 م', icon: PRAYER_ICONS.sunriseRays },
-    { id: 'Isha', name: 'العشاء', time: '7:25 م', icon: PRAYER_ICONS.moonStars },
-    { id: 'Midnight', name: 'منتصف الليل', time: '11:43 م', icon: PRAYER_ICONS.fajrShines },
+    {
+      id: 'Maghrib',
+      name: 'المغرب',
+      time: formatTo12HourArabic(prayerRawTimes.Maghrib) || '6:08 م',
+      icon: PRAYER_ICONS.sunriseRays,
+    },
+    {
+      id: 'Isha',
+      name: 'العشاء',
+      time: formatTo12HourArabic(prayerRawTimes.Isha) || '7:25 م',
+      icon: PRAYER_ICONS.moonStars,
+    },
+    {
+      id: 'Midnight',
+      name: 'منتصف الليل',
+      time: formatTo12HourArabic(prayerRawTimes.Midnight) || '11:43 م',
+      icon: PRAYER_ICONS.fajrShines,
+    },
   ];
 
   const renderPrayerCard = (p: PrayerItem) => {
-    const isActive = p.id === activePrayerId;
+    const isUpcoming = p.id === activePrayerId;
+    const isAstronomical = p.id === 'Sunrise' || p.id === 'Midnight';
+    const hasArrived = hasPrayerTimeArrived(p.id, prayerRawTimes, new Date());
+    const isPrayed = !isAstronomical && !!prayedPrayers[p.id];
+    const canSelect = !isAstronomical && hasArrived;
 
-    if (isActive) {
-      // Wide Highlight Card (Mint Green)
+    if (isUpcoming) {
+      const noticeText = isAstronomical ? 'المتبقي' : 'تبقى للأذان';
+
+      // Wide Highlight Card (Mint Green) for the upcoming prayer
       return (
-        <TouchableOpacity
+        <View
           key={p.id}
           style={styles.prayerCardHighlight}
-          activeOpacity={0.85}
-          onPress={() => setActivePrayerId(p.id)}
         >
           {/* Left Column: Countdown */}
           <View style={styles.highlightCountdownCol}>
-            <Text style={styles.countdownNotice}>تبقى على الأذان</Text>
-            <Text style={styles.countdownDigits}>{countdown}</Text>
+            <Text style={styles.countdownNotice} numberOfLines={1}>
+              {noticeText}
+            </Text>
+            <Text style={styles.countdownDigits} numberOfLines={1}>
+              {countdown}
+            </Text>
           </View>
 
           {/* Right Column: Icon on Top, Name + Time below */}
           <View style={styles.highlightInfoCol}>
             <Image
               source={p.icon}
-              style={[styles.prayerIconImg, { tintColor: '#15803d' }]}
+              style={[styles.prayerIconImgHighlight, { tintColor: '#15803d' }]}
               resizeMode="contain"
             />
-            <Text style={styles.highlightNameText}>{p.name}</Text>
-            <Text style={styles.highlightTimeText}>{p.time}</Text>
+            <Text style={styles.highlightNameText} numberOfLines={1}>
+              {p.name}
+            </Text>
+            <Text style={styles.highlightTimeText} numberOfLines={1}>
+              {p.time}
+            </Text>
           </View>
-        </TouchableOpacity>
+        </View>
       );
     }
 
@@ -256,25 +574,66 @@ export default function HomeScreen() {
     return (
       <TouchableOpacity
         key={p.id}
-        style={styles.prayerCardNormal}
-        activeOpacity={0.8}
-        onPress={() => setActivePrayerId(p.id)}
+        style={[
+          styles.prayerCardNormal,
+          isPrayed && styles.prayerCardNormalPrayed,
+        ]}
+        activeOpacity={canSelect ? 0.75 : 1}
+        onPress={() => togglePrayedPrayer(p.id)}
       >
+        {/* Top Checkmark if prayed */}
+        {isPrayed && (
+          <View style={styles.prayedCheckBadgeNormal}>
+            <Ionicons name="checkmark-circle" size={14} color="#34d399" />
+          </View>
+        )}
+
         <Image
           source={p.icon}
-          style={[styles.prayerIconImg, { tintColor: '#94a3b8' }]}
+          style={[
+            styles.prayerIconImg,
+            { tintColor: isPrayed ? '#34d399' : '#94a3b8' },
+          ]}
           resizeMode="contain"
         />
-        <Text style={styles.prayerCardName}>{p.name}</Text>
+        <Text style={[styles.prayerCardName, isPrayed && styles.prayerCardNamePrayed]}>
+          {p.name}
+        </Text>
         <Text style={styles.prayerCardTime}>{p.time}</Text>
       </TouchableOpacity>
     );
   };
 
+  const renderDailyAppIcon = (app: DailyAppItem) => {
+    const size = 26;
+    if (app.iconType === 'custom' && app.customIcon) {
+      return (
+        <Image
+          source={app.customIcon}
+          style={{ width: size, height: size, tintColor: app.iconColor }}
+          resizeMode="contain"
+        />
+      );
+    }
+    if (app.iconType === 'material') {
+      return <MaterialCommunityIcons name={app.iconName as any} size={size} color={app.iconColor} />;
+    }
+    if (app.iconType === 'fontAwesome') {
+      return <FontAwesome5 name={app.iconName as any} size={size - 2} color={app.iconColor} />;
+    }
+    return <Ionicons name={app.iconName as any} size={size} color={app.iconColor} />;
+  };
+
+  const activeDailyApps = (
+    dailyAppIds.length > 0 ? dailyAppIds : DEFAULT_DAILY_APP_IDS
+  )
+    .map((id) => ALL_DAILY_APPS.find((app) => app.id === id))
+    .filter(Boolean) as DailyAppItem[];
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#080d19" />
-      <AnimatedGradientBackground />
+    <View style={styles.container}>
+      <IslamicBackground />
+      <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -285,10 +644,24 @@ export default function HomeScreen() {
         <View style={styles.topHeader}>
           {/* Left Action Icons */}
           <View style={styles.headerActionIcons}>
-            <TouchableOpacity style={styles.profileIconButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.profileIconButton}
+              activeOpacity={0.7}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/(tabs)/duas' as any);
+              }}
+            >
               <Ionicons name="person" size={18} color="#4ade80" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              activeOpacity={0.7}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({ pathname: '/(tabs)/quran', params: { tab: 'readings' } } as any);
+              }}
+            >
               <Ionicons name="bookmark" size={18} color="#8ba7c0" />
             </TouchableOpacity>
             <TouchableOpacity
@@ -311,18 +684,18 @@ export default function HomeScreen() {
         <View style={styles.heroSectionRow}>
           {/* Left: Calendar Card */}
           <View style={styles.calendarCard}>
-            <Text style={styles.calendarDayTitle}>الإِثْنَيْنُ</Text>
+            <Text style={styles.calendarDayTitle}>{calendar.weekdayName}</Text>
             <View style={styles.calendarDivider} />
             <View style={styles.calendarColumnsRow}>
               <View style={styles.calendarCol}>
-                <Text style={styles.calendarColLabel}>جمادى الأولى</Text>
-                <Text style={styles.calendarColNumber}>1</Text>
-                <Text style={styles.calendarColYear}>1448</Text>
+                <Text style={styles.calendarColLabel} numberOfLines={1}>{calendar.hijriMonth}</Text>
+                <Text style={styles.calendarColNumber}>{calendar.hijriDay}</Text>
+                <Text style={styles.calendarColYear}>{calendar.hijriYear}</Text>
               </View>
               <View style={styles.calendarCol}>
-                <Text style={styles.calendarColLabel}>أكتوبر</Text>
-                <Text style={styles.calendarColNumber}>12</Text>
-                <Text style={styles.calendarColYear}>2026</Text>
+                <Text style={styles.calendarColLabel} numberOfLines={1}>{calendar.gregMonth}</Text>
+                <Text style={styles.calendarColNumber}>{calendar.gregDay}</Text>
+                <Text style={styles.calendarColYear}>{calendar.gregYear}</Text>
               </View>
             </View>
           </View>
@@ -330,27 +703,32 @@ export default function HomeScreen() {
           {/* Right: Greetings and Action */}
           <View style={styles.greetingSection}>
             <View style={styles.greetingTitleRow}>
-              <Text style={styles.rosaryIcon}>📿</Text>
-              <Text style={styles.greetingTitle}>وقت مبارك</Text>
+              <Text style={styles.greetingTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {greeting.title}
+              </Text>
+              <Text style={styles.rosaryIcon}>{greeting.icon}</Text>
             </View>
 
             <TouchableOpacity
               style={styles.actionPillButton}
               activeOpacity={0.8}
-              onPress={() => router.push('/adhkar' as any)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push(greeting.route as any);
+              }}
             >
-              <Text style={styles.actionPillText}>لتسبح الله</Text>
+              <Text style={styles.actionPillText}>{greeting.buttonText}</Text>
             </TouchableOpacity>
 
             <View style={styles.prayerCountdownRow}>
               <View style={styles.limeBadge}>
-                <Text style={styles.limeBadgeText}>ساعة و52 د</Text>
+                <Text style={styles.limeBadgeText}>{remainingBadgeText}</Text>
               </View>
 
               <View style={styles.prayerLabelWithIcon}>
-                <Text style={styles.prayerLabelText}>: صلاة العصر بعد</Text>
+                <Text style={styles.prayerLabelText} numberOfLines={1}>: صلاة {upcomingPrayerName} بعد</Text>
                 <View style={styles.mosqueIconCircle}>
-                  <MaterialCommunityIcons name="mosque" size={15} color="#84cc16" />
+                  <MaterialCommunityIcons name="mosque" size={13} color="#a3e635" />
                 </View>
               </View>
             </View>
@@ -360,10 +738,17 @@ export default function HomeScreen() {
         {/* ================= 3. Prayer Times Section ================= */}
         {/* Header: Location on Left, "أوقات الصلاة" on Right */}
         <View style={styles.prayerSectionHeader}>
-          <View style={styles.locationTagRow}>
+          <TouchableOpacity
+            style={styles.locationTagRow}
+            activeOpacity={0.7}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowLocationModal(true);
+            }}
+          >
             <Ionicons name="location-outline" size={16} color="#0f8e5d" />
-            <Text style={styles.locationCityText}>{locationCity}</Text>
-          </View>
+            <Text style={styles.locationCityText}>{userLocation.city}</Text>
+          </TouchableOpacity>
           <Text style={styles.prayerSectionTitle}>أوقات الصلاة</Text>
         </View>
 
@@ -382,151 +767,124 @@ export default function HomeScreen() {
 
         {/* ================= 4. Daily Apps Section ================= */}
         <View style={styles.sectionTitleRow}>
-          <TouchableOpacity style={styles.customizeButton} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.customizeButton}
+            activeOpacity={0.7}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/custom-daily-apps' as any);
+            }}
+          >
             <Ionicons name="pencil-outline" size={14} color="#8ba7c0" />
             <Text style={styles.customizeText}>تخصيص</Text>
           </TouchableOpacity>
           <Text style={styles.sectionHeaderTitle}>تطبيقاتك اليومية</Text>
         </View>
 
-        <View style={styles.quickAppsRow}>
-          {/* App 1 (Right): Tasbih */}
-          <TouchableOpacity
-            style={styles.quickAppItem}
-            activeOpacity={0.8}
-            onPress={() => router.push('/adhkar' as any)}
-          >
-            <View style={[styles.quickAppCircle, { backgroundColor: 'rgba(15, 142, 93, 0.15)' }]}>
-              <Image
-                source={DAILY_APP_ICONS.tasbih}
-                style={[styles.quickAppIconImg, { tintColor: '#34d399' }]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.quickAppTitle}>المسبحة</Text>
-          </TouchableOpacity>
-
-          {/* App 2: Qibla */}
-          <TouchableOpacity
-            style={styles.quickAppItem}
-            activeOpacity={0.8}
-            onPress={() => router.push('/qibla' as any)}
-          >
-            <View style={[styles.quickAppCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
-              <Image
-                source={DAILY_APP_ICONS.qibla}
-                style={[styles.quickAppIconImg, styles.qiblaIconBig, { tintColor: '#c084fc' }]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.quickAppTitle}>اتجاه القبلة</Text>
-          </TouchableOpacity>
-
-          {/* App 3: Post Prayer Adhkar */}
-          <TouchableOpacity
-            style={styles.quickAppItem}
-            activeOpacity={0.8}
-            onPress={() => router.push('/adhkar' as any)}
-          >
-            <View style={[styles.quickAppCircle, { backgroundColor: 'rgba(15, 142, 93, 0.15)' }]}>
-              <Image
-                source={DAILY_APP_ICONS.salat}
-                style={[styles.quickAppIconImg, { tintColor: '#34d399' }]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.quickAppTitle}>أذكار بعد الصلاة</Text>
-          </TouchableOpacity>
-
-          {/* App 4 (Left): Live Stream */}
-          <TouchableOpacity
-            style={styles.quickAppItem}
-            activeOpacity={0.8}
-            onPress={() => router.push('/reciters' as any)}
-          >
-            <View style={[styles.quickAppCircle, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-              <Image
-                source={DAILY_APP_ICONS.tv}
-                style={[styles.quickAppIconImg, { tintColor: '#f87171' }]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.quickAppTitle}>البث المباشر</Text>
-            <Text style={styles.quickAppSubTitle}>للقرآن الكريم</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ================= 5. Quran Seal / Khatmah Carousel Section ================= */}
-        <View style={styles.sealCarouselWrapper}>
+        {activeDailyApps.length <= 4 ? (
+          <View style={styles.quickAppsRow}>
+            {activeDailyApps.map((app) => (
+              <TouchableOpacity
+                key={app.id}
+                style={styles.quickAppItem}
+                activeOpacity={0.8}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push(app.route as any);
+                }}
+              >
+                <View style={[styles.quickAppCircle, { backgroundColor: app.bgColor }]}>
+                  {renderDailyAppIcon(app)}
+                </View>
+                <Text style={styles.quickAppTitle} numberOfLines={1}>{app.title}</Text>
+                {app.subTitle ? (
+                  <Text style={styles.quickAppSubTitle} numberOfLines={1}>{app.subTitle}</Text>
+                ) : null}
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.sealScrollContent}
-            snapToInterval={CARD_WIDTH + 12}
-            decelerationRate="fast"
-            onScroll={(e) => {
-              const x = e.nativeEvent.contentOffset.x;
-              const idx = Math.round(x / (CARD_WIDTH + 12));
-              setActiveSealIndex(idx);
-            }}
-            scrollEventThrottle={16}
+            contentContainerStyle={styles.quickAppsScroll}
           >
-            {/* Card 1: Resume Quran Reading (Khatmah Progress) */}
-            <TouchableOpacity
-              style={[styles.sealCard, { width: CARD_WIDTH }]}
-              activeOpacity={0.88}
-              onPress={() => router.push('/quran' as any)}
-            >
-              <Ionicons name="chevron-back" size={20} color="#8ba7c0" style={styles.sealChevron} />
-
-              <View style={styles.sealTextCol}>
-                <Text style={styles.sealMainTitle}>متابعة المصحف من حيث توقفت</Text>
-                <Text style={styles.sealSubTitle}>
-                  {currentKhatmah.surahName} - الصفحة {currentKhatmah.page}
-                </Text>
-                <View style={styles.sealProgressTrack}>
-                  <View style={[styles.sealProgressFill, { width: `${currentKhatmah.progress}%` }]} />
+            {activeDailyApps.map((app) => (
+              <TouchableOpacity
+                key={app.id}
+                style={styles.quickAppItemScroll}
+                activeOpacity={0.8}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push(app.route as any);
+                }}
+              >
+                <View style={[styles.quickAppCircle, { backgroundColor: app.bgColor }]}>
+                  {renderDailyAppIcon(app)}
                 </View>
-              </View>
-
-              <View style={styles.sealBadgeCircle}>
-                <Image
-                  source={require('@/assets/images/quran-calligraphy.png')}
-                  style={styles.sealBadgeImg}
-                  resizeMode="cover"
-                />
-              </View>
-            </TouchableOpacity>
-
-            {/* Card 2: Start a New Quran Seal (Khatmah) */}
-            <TouchableOpacity
-              style={[styles.sealCard, { width: CARD_WIDTH }]}
-              activeOpacity={0.88}
-              onPress={() => setShowNewSealModal(true)}
-            >
-              <View style={styles.sealPlusBox}>
-                <Ionicons name="add" size={24} color="#8ba7c0" />
-              </View>
-
-              <View style={styles.sealTextColCenter}>
-                <Text style={styles.sealMainTitleCenter}>ابدأ بـ ختمة جديدة</Text>
-              </View>
-
-              <View style={styles.sealBadgeCircle}>
-                <Image
-                  source={require('@/assets/images/quran-calligraphy.png')}
-                  style={styles.sealBadgeImg}
-                  resizeMode="cover"
-                />
-              </View>
-            </TouchableOpacity>
+                <Text style={styles.quickAppTitle} numberOfLines={1}>{app.title}</Text>
+                {app.subTitle ? (
+                  <Text style={styles.quickAppSubTitle} numberOfLines={1}>{app.subTitle}</Text>
+                ) : null}
+              </TouchableOpacity>
+            ))}
           </ScrollView>
+        )}
 
-          {/* Pagination Dots */}
-          <View style={styles.sealPaginationDots}>
-            <View style={[styles.sealDot, activeSealIndex === 0 && styles.sealDotActive]} />
-            <View style={[styles.sealDot, activeSealIndex === 1 && styles.sealDotActive]} />
-          </View>
+        {/* ================= 5. Last Read / Resume Quran Section ================= */}
+        <View style={styles.lastReadSectionWrapper}>
+          <TouchableOpacity
+            style={styles.lastReadCard}
+            activeOpacity={0.88}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: '/surah/[id]',
+                params: { id: lastRead.surahId.toString() },
+              });
+            }}
+          >
+            {/* Left Column: Arrow Chevron & Page Pill */}
+            <View style={styles.lastReadLeftCol}>
+              <View style={styles.lastReadArrowCircle}>
+                <Ionicons name="chevron-back" size={16} color="#f8fafc" />
+              </View>
+              <View style={styles.lastReadPagePill}>
+                <Text style={styles.lastReadPageText}>ص {lastRead.page}</Text>
+              </View>
+            </View>
+
+            {/* Center Column: Section Title, Surah Title, Meta */}
+            <View style={styles.lastReadCenterCol}>
+              <View style={styles.lastReadBadgeRow}>
+                <View style={styles.lastReadLiveIndicator} />
+                <Text style={styles.lastReadBadgeText}>آخر قراءة • متابعة المصحف</Text>
+              </View>
+
+              <Text style={styles.lastReadSurahTitle} numberOfLines={1}>
+                {lastRead.surahName}
+              </Text>
+
+              <View style={styles.lastReadMetaRow}>
+                <Text style={styles.lastReadMetaText}>
+                  {lastRead.revelationPlace === 'makkah' ? 'مكية' : 'مدنية'}
+                </Text>
+                <Text style={styles.lastReadMetaDot}>•</Text>
+                <Text style={styles.lastReadMetaText}>{lastRead.versesCount} آية</Text>
+                <Text style={styles.lastReadMetaDot}>•</Text>
+                <Text style={styles.lastReadMetaHighlight}>اضغط للمتابعة</Text>
+              </View>
+            </View>
+
+            {/* Right Column: Quran Calligraphy Circle Emblem */}
+            <View style={styles.lastReadEmblemWrapper}>
+              <Image
+                source={require('@/assets/images/quran_circle_emblem.png')}
+                style={styles.lastReadEmblemImg}
+                resizeMode="cover"
+              />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* ================= 6. Recent Activities Section (أنشطتك الأخيرة) ================= */}
@@ -542,7 +900,10 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[styles.activityPill, { backgroundColor: '#9eb2ea' }]}
               activeOpacity={0.82}
-              onPress={() => router.push('/adhkar' as any)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/tasbih' as any);
+              }}
             >
               <TasbihBeadsIcon size={20} color="#ffffff" />
               <Text style={[styles.activityPillText, { color: '#1e293b' }]}>السبحة</Text>
@@ -552,7 +913,10 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[styles.activityPill, { backgroundColor: '#eedff2' }]}
               activeOpacity={0.82}
-              onPress={() => router.push('/duas' as any)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/duas' as any);
+              }}
             >
               <QuranStandIcon size={20} color="#483852" />
               <Text style={[styles.activityPillText, { color: '#2c1e34' }]}>أدعية من القرآن</Text>
@@ -562,7 +926,10 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[styles.activityPill, { backgroundColor: '#f3e8f5' }]}
               activeOpacity={0.82}
-              onPress={() => router.push('/adhkar' as any)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/dhikr/morning' as any);
+              }}
             >
               <MorningSunIcon size={20} color="#483852" />
               <Text style={[styles.activityPillText, { color: '#2c1e34' }]}>أذكار الصباح</Text>
@@ -572,7 +939,10 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[styles.activityPill, { backgroundColor: '#dceddd' }]}
               activeOpacity={0.82}
-              onPress={() => router.push('/quran' as any)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({ pathname: '/surah/[id]', params: { id: '18' } } as any);
+              }}
             >
               <Ionicons name="book-outline" size={18} color="#274431" />
               <Text style={[styles.activityPillText, { color: '#162e1f' }]}>سورة الكهف</Text>
@@ -583,17 +953,28 @@ export default function HomeScreen() {
         {/* ================= 7. Daily Inspirations (آية اليوم، حديث اليوم، دعاء اليوم) ================= */}
         <View style={styles.dailyInspirationsSection}>
           {/* Card 1: آية اليوم */}
-          <View style={styles.compactInspirationCard}>
+          <TouchableOpacity
+            style={styles.compactInspirationCard}
+            activeOpacity={0.88}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: '/surah/[id]',
+                params: { id: dailyInspirations.ayah.surahId.toString() },
+              } as any);
+            }}
+          >
             <View style={styles.cardMainRow}>
               {/* Left: Share Icon */}
               <TouchableOpacity
                 style={styles.cleanShareBtn}
                 activeOpacity={0.7}
-                onPress={() =>
+                onPress={(e) => {
+                  e.stopPropagation?.();
                   handleShare(
-                    '﴿ قُلْ يَا عِبَادِيَ الَّذِينَ أَسْرَفُوا عَلَىٰ أَنفُسِهِمْ لَا تَقْنَطُوا مِن رَّحْمَةِ اللَّهِ ۚ إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا ۚ إِنَّهُ هُوَ الْغَفُورُ الرَّحِيمُ ﴾ [الزمر: 53]'
-                  )
-                }
+                    `﴿ ${dailyInspirations.ayah.text} ﴾ [${dailyInspirations.ayah.reference}]`
+                  );
+                }}
               >
                 <Ionicons name="share-outline" size={17} color="#86efac" />
               </TouchableOpacity>
@@ -601,8 +982,10 @@ export default function HomeScreen() {
               {/* Center: Verse Text */}
               <View style={styles.cardCenterCol}>
                 <Text style={styles.ayahTextInline}>
-                  قُلْ يَا عِبَادِيَ الَّذِينَ أَسْرَفُوا عَلَىٰ أَنفُسِهِمْ لَا تَقْنَطُوا مِن رَّحْمَةِ اللَّهِ ۚ إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا ۚ إِنَّهُ هُوَ الْغَفُورُ الرَّحِيمُ{' '}
-                  <Text style={styles.ayahBadgeInline}>﴿٥٣﴾</Text>
+                  {dailyInspirations.ayah.text}{' '}
+                  <Text style={styles.ayahBadgeInline}>
+                    ﴿{dailyInspirations.ayah.arabicVerseNumber}﴾
+                  </Text>
                 </Text>
               </View>
 
@@ -612,9 +995,9 @@ export default function HomeScreen() {
 
             {/* Bottom Row: Reference */}
             <View style={styles.cardBottomRow}>
-              <Text style={styles.referenceTextSimple}>الزمر: 53</Text>
+              <Text style={styles.referenceTextSimple}>{dailyInspirations.ayah.reference}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* Card 2: حديث اليوم */}
           <View style={styles.compactInspirationCard}>
@@ -625,7 +1008,7 @@ export default function HomeScreen() {
                 activeOpacity={0.7}
                 onPress={() =>
                   handleShare(
-                    'قَالَ النَّبِيُّ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ: «يَسِّرُوا وَلَا تُعَسِّرُوا، وَسَكِّنُوا وَلَا تُنَفِّرُوا».'
+                    `${dailyInspirations.hadith.text}\n(${dailyInspirations.hadith.source})`
                   )
                 }
               >
@@ -635,13 +1018,20 @@ export default function HomeScreen() {
               {/* Center: Hadith Text */}
               <View style={styles.cardCenterCol}>
                 <Text style={styles.hadithTextInline}>
-                  قَالَ النَّبِيُّ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ: «يَسِّرُوا وَلَا تُعَسِّرُوا، وَسَكِّنُوا وَلَا تُنَفِّرُوا».
+                  {dailyInspirations.hadith.text}
                 </Text>
               </View>
 
               {/* Right: Ribbon Badge */}
               <InspirationRibbonBadge type="hadith" />
             </View>
+
+            {/* Bottom Row: Source */}
+            {dailyInspirations.hadith.source ? (
+              <View style={styles.cardBottomRow}>
+                <Text style={styles.referenceTextSimple}>{dailyInspirations.hadith.source}</Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Card 3: دعاء اليوم */}
@@ -653,7 +1043,7 @@ export default function HomeScreen() {
                 activeOpacity={0.7}
                 onPress={() =>
                   handleShare(
-                    'رب أسألك توبة تجب ما قبلها من الذنوب وتصلح ما بعدها من الأعمال.'
+                    `${dailyInspirations.dua.text}\n(${dailyInspirations.dua.source})`
                   )
                 }
               >
@@ -663,141 +1053,40 @@ export default function HomeScreen() {
               {/* Center: Dua Text */}
               <View style={styles.cardCenterCol}>
                 <Text style={styles.duaTextInline}>
-                  رب أسألك توبة تجب ما قبلها من الذنوب وتصلح ما بعدها من الأعمال.
+                  {dailyInspirations.dua.text}
                 </Text>
               </View>
 
               {/* Right: Ribbon Badge */}
               <InspirationRibbonBadge type="dua" />
             </View>
+
+            {/* Bottom Row: Source */}
+            {dailyInspirations.dua.source ? (
+              <View style={styles.cardBottomRow}>
+                <Text style={styles.referenceTextSimple}>{dailyInspirations.dua.source}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
       </ScrollView>
+      </SafeAreaView>
 
-      {/* ================= Modal: New Quran Seal (ختمة جديدة) ================= */}
-      <Modal
-        visible={showNewSealModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowNewSealModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                onPress={() => setShowNewSealModal(false)}
-              >
-                <Ionicons name="close" size={20} color="#94a3b8" />
-              </TouchableOpacity>
-              <View style={styles.modalTitleRow}>
-                <Text style={styles.modalTitle}>بدء ختمة جديدة</Text>
-                <Image
-                  source={require('@/assets/images/quran-calligraphy.png')}
-                  style={styles.modalTitleIcon}
-                  resizeMode="cover"
-                />
-              </View>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Field 1: Khatmah Name */}
-              <Text style={styles.modalFieldLabel}>اسم الختمة</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={newSealName}
-                onChangeText={setNewSealName}
-                placeholder="مثال: ختمة رجب المبارك"
-                placeholderTextColor="#64748b"
-                textAlign="right"
-              />
-
-              {/* Field 2: Target Duration */}
-              <Text style={styles.modalFieldLabel}>مدة الختمة المحددة</Text>
-              <View style={styles.durationChipsRow}>
-                {SEAL_DURATIONS.map((d) => (
-                  <TouchableOpacity
-                    key={d.days}
-                    style={[
-                      styles.durationChip,
-                      selectedDuration === d.days && styles.durationChipActive,
-                    ]}
-                    onPress={() => setSelectedDuration(d.days)}
-                  >
-                    <Text
-                      style={[
-                        styles.durationChipText,
-                        selectedDuration === d.days && styles.durationChipTextActive,
-                      ]}
-                    >
-                      {d.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.durationChipSub,
-                        selectedDuration === d.days && styles.durationChipSubActive,
-                      ]}
-                    >
-                      {d.sub}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Field 3: Starting Point Info */}
-              <View style={styles.startingPointBox}>
-                <View style={styles.startingPointTextCol}>
-                  <Text style={styles.startingPointTitle}>نقطة البداية</Text>
-                  <Text style={styles.startingPointSub}>من أول سورة الفاتحة (الصفحة 1)</Text>
-                </View>
-                <View style={styles.startingPointIconCircle}>
-                  <Ionicons name="book-outline" size={18} color="#34d399" />
-                </View>
-              </View>
-
-              {/* Field 4: Daily Reminder Toggle */}
-              <View style={styles.reminderRow}>
-                <TouchableOpacity
-                  style={[styles.checkboxCircle, reminderEnabled && styles.checkboxCircleActive]}
-                  onPress={() => setReminderEnabled(!reminderEnabled)}
-                >
-                  {reminderEnabled && <Ionicons name="checkmark" size={14} color="#ffffff" />}
-                </TouchableOpacity>
-                <View style={styles.reminderTextCol}>
-                  <Text style={styles.reminderTitle}>تفعيل التذكير اليومي للورد</Text>
-                  <Text style={styles.reminderSub}>تنبيهك يومياً لمتابعة ورد الختمة</Text>
-                </View>
-                <Ionicons name="notifications-outline" size={20} color="#34d399" />
-              </View>
-
-              {/* Action Buttons */}
-              <TouchableOpacity
-                style={styles.modalPrimaryBtn}
-                activeOpacity={0.85}
-                onPress={handleStartNewSeal}
-              >
-                <Text style={styles.modalPrimaryBtnText}>ابدأ الختمة الآن</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setShowNewSealModal(false)}
-              >
-                <Text style={styles.modalCancelBtnText}>إلغاء</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+      {/* Location Settings Modal */}
+      <LocationModal
+        visible={showLocationModal}
+        currentLocation={userLocation}
+        onClose={() => setShowLocationModal(false)}
+        onApplyLocation={handleApplyLocation}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#080d19',
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -853,13 +1142,13 @@ const styles = StyleSheet.create({
 
   /* Calendar Card on the Left */
   calendarCard: {
-    width: 160,
+    width: 138,
     backgroundColor: '#1e293b',
     borderRadius: 22,
     borderWidth: 1,
     borderColor: '#334155',
     paddingVertical: 14,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     justifyContent: 'space-between',
     alignItems: 'center',
     shadowColor: '#000',
@@ -869,8 +1158,8 @@ const styles = StyleSheet.create({
   },
   calendarDayTitle: {
     fontFamily: 'Rakkas_400Regular',
-    fontSize: 36,
-    lineHeight: 46,
+    fontSize: 32,
+    lineHeight: 42,
     color: '#a7f3d0',
     textAlign: 'center',
     paddingTop: 2,
@@ -885,7 +1174,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: 2,
+    paddingHorizontal: 0,
   },
   calendarCol: {
     alignItems: 'center',
@@ -893,18 +1182,18 @@ const styles = StyleSheet.create({
   },
   calendarColLabel: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#8ba7c0',
     marginBottom: 2,
   },
   calendarColNumber: {
     fontFamily: 'Cairo_800ExtraBold',
-    fontSize: 22,
+    fontSize: 21,
     color: '#f8fafc',
   },
   calendarColYear: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#64748b',
   },
 
@@ -918,24 +1207,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 8,
-    marginBottom: 10,
+    gap: 6,
+    marginBottom: 8,
   },
   greetingTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 23,
-    color: '#f8fafc',
+    fontSize: 16,
+    color: '#e2e8f0',
     textAlign: 'right',
+    flexShrink: 1,
   },
   rosaryIcon: {
-    fontSize: 20,
+    fontSize: 17,
   },
   actionPillButton: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#15251d',
     borderRadius: 28,
     borderWidth: 1,
-    borderColor: '#334155',
-    paddingVertical: 13,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -947,44 +1237,46 @@ const styles = StyleSheet.create({
   },
   actionPillText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15.5,
+    fontSize: 15,
     color: '#ffffff',
   },
   prayerCountdownRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 4,
   },
   limeBadge: {
     backgroundColor: '#65a30d',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   limeBadgeText: {
     fontFamily: 'Cairo_800ExtraBold',
-    fontSize: 12,
+    fontSize: 11,
     color: '#ffffff',
   },
   prayerLabelWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+    flexShrink: 1,
   },
   prayerLabelText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
+    fontSize: 11,
     color: '#94a3b8',
   },
   mosqueIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#1e293b',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#15251d',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1017,7 +1309,7 @@ const styles = StyleSheet.create({
   },
   prayerRow: {
     flexDirection: 'row-reverse',
-    gap: 10,
+    gap: 8,
   },
   prayerCardNormal: {
     flex: 1,
@@ -1025,8 +1317,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#334155',
-    paddingVertical: 14,
-    paddingHorizontal: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1053,48 +1345,79 @@ const styles = StyleSheet.create({
 
   /* Wide Highlighted Card (Mint green) */
   prayerCardHighlight: {
-    flex: 2,
+    flex: 2.1,
     backgroundColor: '#cbf4dc',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(15, 142, 93, 0.3)',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    overflow: 'hidden',
   },
   highlightCountdownCol: {
     alignItems: 'flex-start',
     justifyContent: 'center',
+    flexShrink: 1,
   },
   countdownNotice: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 12,
+    fontSize: 10,
     color: '#065f46',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   countdownDigits: {
     fontFamily: 'Cairo_800ExtraBold',
-    fontSize: 19,
+    fontSize: 15,
     color: '#065f46',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   highlightInfoCol: {
     alignItems: 'flex-end',
     justifyContent: 'center',
+    marginLeft: 4,
+  },
+  prayerIconImgHighlight: {
+    width: 19,
+    height: 19,
   },
   highlightNameText: {
     fontFamily: 'Cairo_800ExtraBold',
-    fontSize: 14,
+    fontSize: 12,
     color: '#065f46',
     marginTop: 2,
   },
   highlightTimeText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 11,
+    fontSize: 10,
     color: '#065f46',
     marginTop: 1,
+  },
+  prayerCardNormalPrayed: {
+    borderWidth: 2,
+    borderColor: '#34d399',
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+  },
+  prayerCardNamePrayed: {
+    color: '#34d399',
+  },
+  prayedCheckBadgeNormal: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    zIndex: 2,
+  },
+  prayerCardHighlightPrayed: {
+    borderWidth: 2.5,
+    borderColor: '#059669',
+  },
+  prayedCheckBadgeHighlight: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    zIndex: 2,
   },
 
   /* 4. Daily Apps Section */
@@ -1124,9 +1447,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 24,
   },
+  quickAppsScroll: {
+    flexDirection: 'row-reverse',
+    alignItems: 'flex-start',
+    gap: 16,
+    paddingBottom: 4,
+    marginBottom: 20,
+  },
   quickAppItem: {
     alignItems: 'center',
     flex: 1,
+    maxWidth: 80,
+  },
+  quickAppItemScroll: {
+    alignItems: 'center',
+    width: 72,
   },
   quickAppCircle: {
     width: 60,
@@ -1160,320 +1495,116 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
 
-  /* 5. Quran Seal / Khatmah Carousel Section */
-  sealCarouselWrapper: {
-    marginTop: 8,
+  /* 5. Last Read / Resume Quran Section */
+  lastReadSectionWrapper: {
+    marginTop: 10,
     marginBottom: 8,
   },
-  sealScrollContent: {
-    paddingHorizontal: 0,
-    gap: 12,
-  },
-  sealCard: {
+  lastReadCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1e293b',
-    borderRadius: 20,
+    backgroundColor: '#122026',
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     paddingVertical: 14,
     paddingHorizontal: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 3,
   },
-  sealBadgeCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(74, 107, 140, 0.2)',
+  lastReadLeftCol: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  lastReadArrowCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#1e333d',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  sealBadgeImg: {
-    width: 48,
-    height: 48,
+  lastReadPagePill: {
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.25)',
   },
-  sealTextCol: {
+  lastReadPageText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 10.5,
+    color: '#34d399',
+  },
+  lastReadCenterCol: {
     flex: 1,
     alignItems: 'flex-end',
     marginRight: 14,
     marginLeft: 10,
   },
-  sealMainTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14.5,
-    color: '#f8fafc',
-    textAlign: 'right',
-  },
-  sealSubTitle: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
-    color: '#94a3b8',
-    textAlign: 'right',
-    marginTop: 2,
-    marginBottom: 6,
-  },
-  sealProgressTrack: {
-    width: '100%',
-    height: 4.5,
-    borderRadius: 3,
-    backgroundColor: '#0f172a',
-    overflow: 'hidden',
+  lastReadBadgeRow: {
     flexDirection: 'row-reverse',
-  },
-  sealProgressFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: '#0f8e5d',
-  },
-  sealChevron: {
-    marginLeft: 2,
-  },
-  sealPlusBox: {
-    width: 30,
-    height: 30,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 5,
+    marginBottom: 2,
   },
-  sealTextColCenter: {
-    flex: 1,
-    alignItems: 'flex-end',
-    marginRight: 16,
-  },
-  sealMainTitleCenter: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15.5,
-    color: '#f8fafc',
-    textAlign: 'right',
-  },
-  sealPaginationDots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-  },
-  sealDot: {
+  lastReadLiveIndicator: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#334155',
+    backgroundColor: '#34d399',
   },
-  sealDotActive: {
-    width: 18,
-    backgroundColor: '#0f8e5d',
-  },
-
-  /* Modal: New Quran Seal */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: '#1e293b',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: '#334155',
-    maxHeight: '85%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  modalTitleRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-  },
-  modalTitle: {
-    fontFamily: 'Cairo_800ExtraBold',
-    fontSize: 18,
-    color: '#f8fafc',
-  },
-  modalTitleIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  modalCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalFieldLabel: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: '#f8fafc',
-    textAlign: 'right',
-    marginBottom: 8,
-    marginTop: 12,
-  },
-  modalInput: {
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#f8fafc',
+  lastReadBadgeText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 14,
+    fontSize: 11.5,
+    color: '#34d399',
   },
-  durationChipsRow: {
-    flexDirection: 'row-reverse',
-    gap: 8,
-  },
-  durationChip: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    borderRadius: 14,
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
-    alignItems: 'center',
-  },
-  durationChipActive: {
-    borderColor: '#0f8e5d',
-    backgroundColor: 'rgba(15, 142, 93, 0.2)',
-  },
-  durationChipText: {
+  lastReadSurahTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 12,
-    color: '#8ba7c0',
-  },
-  durationChipTextActive: {
-    color: '#4ade80',
-  },
-  durationChipSub: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 9,
-    color: '#64748b',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  durationChipSubActive: {
-    color: '#86efac',
-  },
-  startingPointBox: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-    padding: 14,
-    marginTop: 14,
-  },
-  startingPointTextCol: {
-    flex: 1,
-    alignItems: 'flex-end',
-    marginRight: 12,
-  },
-  startingPointTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: '#f8fafc',
-  },
-  startingPointSub: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: '#8ba7c0',
-    marginTop: 2,
-  },
-  startingPointIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(15, 142, 93, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(15, 142, 93, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reminderRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-    padding: 14,
-    marginTop: 12,
-    marginBottom: 20,
-  },
-  checkboxCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#334155',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxCircleActive: {
-    backgroundColor: '#0f8e5d',
-    borderColor: '#0f8e5d',
-  },
-  reminderTextCol: {
-    flex: 1,
-    alignItems: 'flex-end',
-    marginRight: 12,
-    marginLeft: 8,
-  },
-  reminderTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: '#f8fafc',
-  },
-  reminderSub: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: '#8ba7c0',
-    marginTop: 2,
-  },
-  modalPrimaryBtn: {
-    backgroundColor: '#4a6b8c',
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-    shadowColor: '#4a6b8c',
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  modalPrimaryBtnText: {
-    fontFamily: 'Cairo_800ExtraBold',
-    fontSize: 15,
+    fontSize: 16.5,
     color: '#ffffff',
+    textAlign: 'right',
   },
-  modalCancelBtn: {
-    paddingVertical: 10,
+  lastReadMetaRow: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
   },
-  modalCancelBtnText: {
+  lastReadMetaText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11.5,
+    color: '#94a3b8',
+  },
+  lastReadMetaDot: {
+    color: '#64748b',
+    fontSize: 10,
+  },
+  lastReadMetaHighlight: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: '#8ba7c0',
+    fontSize: 11,
+    color: '#6ee7b7',
+  },
+  lastReadEmblemWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#304a3f',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lastReadEmblemImg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
 
   /* 6. Recent Activities Section */

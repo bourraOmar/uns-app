@@ -17,6 +17,7 @@ import { RECITERS_DATA, Reciter } from '@/data/reciters';
 import surahsData from '@/data/surahs.json';
 import { useAudioPlayer, SurahItem } from '@/context/AudioPlayerContext';
 import MiniAudioPlayer from '@/components/MiniAudioPlayer';
+import IslamicBackground from '@/components/IslamicBackground';
 
 export default function ReciterProfileScreen() {
   const router = useRouter();
@@ -145,42 +146,49 @@ export default function ReciterProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="light-content" />
+    <View style={styles.container}>
+      <IslamicBackground />
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* TOP NAVIGATION BAR */}
-      <View style={styles.topNavBar}>
-        <View style={{ width: 40 }} />
+        {/* TOP NAVIGATION BAR */}
+        <View style={styles.topNavBar}>
+          <View style={{ width: 40 }} />
 
-        {/* Right: Circular Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          activeOpacity={0.75}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.back();
-          }}
-        >
-          <Ionicons name="chevron-forward" size={20} color="#f8fafc" />
-        </TouchableOpacity>
-      </View>
+          {/* Right: Circular Back Button */}
+          <TouchableOpacity
+            style={styles.backButton}
+            activeOpacity={0.75}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/reciters' as any);
+              }
+            }}
+          >
+            <Ionicons name="chevron-forward" size={20} color="#f8fafc" />
+          </TouchableOpacity>
+        </View>
 
-      {/* SURAHS LIST / TRACKS TABLE */}
-      <FlatList
-        data={surahsData as SurahItem[]}
-        keyExtractor={(item) => item.id.toString()}
-        ListHeaderComponent={renderHeader}
-        renderItem={renderSurahTrack}
-        contentContainerStyle={[
-          styles.listContent,
-          currentSurah ? { paddingBottom: 110 } : { paddingBottom: 40 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      />
+        {/* SURAHS LIST / TRACKS TABLE */}
+        <FlatList
+          data={surahsData as SurahItem[]}
+          keyExtractor={(item) => item.id.toString()}
+          ListHeaderComponent={renderHeader}
+          renderItem={renderSurahTrack}
+          contentContainerStyle={[
+            styles.listContent,
+            currentSurah ? { paddingBottom: 110 } : { paddingBottom: 40 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        />
 
-      {/* SPOTIFY-STYLE FLOATING MINI-PLAYER (MATCHING SCREENSHOT) */}
-      <MiniAudioPlayer bottomOffset={Platform.OS === 'ios' ? 24 : 16} />
-    </SafeAreaView>
+        {/* SPOTIFY-STYLE FLOATING MINI-PLAYER (MATCHING SCREENSHOT) */}
+        <MiniAudioPlayer bottomOffset={Platform.OS === 'ios' ? 24 : 16} />
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -217,7 +225,7 @@ function useMemoReciter(params: {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a', // Spotify dark slate navy matching screenshot
+    backgroundColor: 'transparent',
   },
 
   /* TOP NAVIGATION */

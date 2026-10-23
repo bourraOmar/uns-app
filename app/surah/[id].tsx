@@ -5,7 +5,6 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
   StatusBar,
   Share,
@@ -18,11 +17,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 
 import surahsData from '@/data/surahs.json';
+import quranUthmaniData from '@/data/quran_uthmani.json';
 import { toEasternArabicNumerals } from '@/data/quranPages';
 import { SurahItem } from '@/context/AudioPlayerContext';
 import AyahFrame from '@/components/quran/AyahFrame';
 import VerseFloatingMenu from '@/components/quran/VerseFloatingMenu';
 import TafsirModal from '@/components/quran/TafsirModal';
+import IslamicBackground from '@/components/IslamicBackground';
 
 interface VerseData {
   id: number;
@@ -49,10 +50,17 @@ export default function SurahReaderScreen() {
   const currentSurah = (surahsData as SurahItem[]).find((s) => s.id === surahId) || (surahsData[0] as SurahItem);
   const nextSurah = (surahsData as SurahItem[]).find((s) => s.id === surahId + 1);
 
-  const [verses, setVerses] = useState<VerseData[]>(
-    surahId === 1 ? OFFLINE_FATIHA_VERSES : []
-  );
-  const [isLoading, setIsLoading] = useState<boolean>(surahId !== 1);
+  const getOfflineVerses = (chapterId: number): VerseData[] => {
+    const rawList = (quranUthmaniData as Record<string, string[]>)[chapterId.toString()];
+    if (!rawList || rawList.length === 0) return OFFLINE_FATIHA_VERSES;
+    return rawList.map((text, idx) => ({
+      id: idx + 1,
+      verse_number: idx + 1,
+      text_uthmani: text,
+    }));
+  };
+
+  const [verses, setVerses] = useState<VerseData[]>(() => getOfflineVerses(surahId));
 
   // Selected verse state for floating menu
   const [selectedVerse, setSelectedVerse] = useState<VerseData | null>(null);
@@ -68,12 +76,43 @@ export default function SurahReaderScreen() {
   const [playingVerseNum, setPlayingVerseNum] = useState<number | null>(null);
   const [isLoadingAudio, setIsLoadingAudio] = useState<boolean>(false);
 
+  const loadBookmarks = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('@uns_verse_bookmarks');
+      if (saved) setBookmarkedVerses(JSON.parse(saved));
+    } catch {}
+  };
+
   useEffect(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-    setSelectedVerse(null);
-    loadSurahVerses(surahId);
-    loadBookmarks();
-  }, [surahId]);
+    const timer = setTimeout(() => {
+      setVerses(getOfflineVerses(surahId));
+      loadBookmarks();
+
+      if (currentSurah) {
+        const item = {
+          surahId: currentSurah.id,
+          surahName: `سورة ${currentSurah.name_arabic}`,
+          page: currentSurah.start_page,
+          versesCount: currentSurah.verses_count,
+          revelationPlace: currentSurah.revelation_place,
+          timeAgo: 'اليوم',
+        };
+        AsyncStorage.setItem('@uns_last_read', JSON.stringify(item)).catch(() => {});
+        AsyncStorage.getItem('@uns_recent_readings')
+          .then((saved) => {
+            const list = saved ? JSON.parse(saved) : [];
+            const filtered = list.filter((r: any) => r.surahId !== currentSurah.id);
+            AsyncStorage.setItem(
+              '@uns_recent_readings',
+              JSON.stringify([{ id: currentSurah.id.toString(), ...item }, ...filtered].slice(0, 10))
+            ).catch(() => {});
+          })
+          .catch(() => {});
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [surahId, currentSurah]);
 
   useEffect(() => {
     return () => {
@@ -83,55 +122,34 @@ export default function SurahReaderScreen() {
     };
   }, [verseSound]);
 
-  const loadBookmarks = async () => {
-    try {
-      const saved = await AsyncStorage.getItem('@uns_verse_bookmarks');
-      if (saved) setBookmarkedVerses(JSON.parse(saved));
-    } catch {}
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressActiveRef = useRef(false);
+
+  const startVerseLongPress = (verse: VerseData) => {
+    isLongPressActiveRef.current = false;
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressActiveRef.current = true;
+      handleVerseLongPress(verse);
+    }, 320);
   };
 
-  const loadSurahVerses = async (chapterId: number) => {
-    if (chapterId === 1) {
-      setVerses(OFFLINE_FATIHA_VERSES);
-      setIsLoading(false);
-      return;
+  const cancelVerseLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
+  };
 
-    const cacheKey = `@uns_surah_verses_v1_${chapterId}`;
-    try {
-      const cached = await AsyncStorage.getItem(cacheKey);
-      if (cached) {
-        setVerses(JSON.parse(cached));
-        setIsLoading(false);
-        return;
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
       }
-    } catch {}
-
-    setIsLoading(true);
-    try {
-      const res = await fetch(
-        `https://api.quran.com/api/v4/verses/by_chapter/${chapterId}?fields=text_uthmani&per_page=300`
-      );
-      if (!res.ok) throw new Error('Failed to fetch verses');
-      const data = await res.json();
-      const rawVerses: any[] = data.verses || [];
-
-      const formatted: VerseData[] = rawVerses.map((v) => ({
-        id: v.id,
-        verse_number: v.verse_number,
-        text_uthmani: v.text_uthmani,
-      }));
-
-      setVerses(formatted);
-      try {
-        await AsyncStorage.setItem(cacheKey, JSON.stringify(formatted));
-      } catch {}
-    } catch {
-      // Keep silent fallback
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+  }, []);
 
   const handleNextSurah = () => {
     if (nextSurah) {
@@ -140,12 +158,18 @@ export default function SurahReaderScreen() {
     }
   };
 
-  const handleVersePress = (verse: VerseData) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (selectedVerse?.verse_number === verse.verse_number) {
+  const handleVerseLongPress = (verse: VerseData) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedVerse(verse);
+  };
+
+  const handleVersePress = () => {
+    if (isLongPressActiveRef.current) {
+      isLongPressActiveRef.current = false;
+      return;
+    }
+    if (selectedVerse) {
       setSelectedVerse(null);
-    } else {
-      setSelectedVerse(verse);
     }
   };
 
@@ -210,190 +234,255 @@ export default function SurahReaderScreen() {
   const isSelectedBookmark = selectedVerse
     ? bookmarkedVerses.includes(`${surahId}:${selectedVerse.verse_number}`)
     : false;
+  const isSmallSurah = currentSurah.verses_count <= 11;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+    <View style={styles.safeArea}>
+      <IslamicBackground />
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* FLOATING CONTEXT MENU OVERLAY (MATCHING SCREENSHOT WITH MENU BAR FROSTED GLASS BACKGROUND) */}
-      {selectedVerse && (
-        <View style={styles.floatingMenuBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setSelectedVerse(null)}
-          />
-          <View style={styles.floatingMenuFloatingBox}>
-            <VerseFloatingMenu
-              visible={true}
-              onTafsir={() => setIsTafsirVisible(true)}
-              onBookmark={() => handleToggleBookmark(selectedVerse)}
-              onPlay={() => handlePlayVerse(selectedVerse)}
-              onShare={() => handleShareVerse(selectedVerse)}
-              isBookmarked={isSelectedBookmark}
-              isPlaying={playingVerseNum === selectedVerse.verse_number}
-              isLoadingAudio={isLoadingAudio}
-            />
-          </View>
-        </View>
-      )}
+        <ScrollView
+          ref={scrollViewRef}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isSmallSurah && styles.smallSurahScrollContent,
+          ]}
+        >
+          {/* HEADER BLOCK (Matching Website Header Block) */}
+          <View style={styles.headerCard}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/quran' as any))}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="chevron-forward" size={22} color="#f8fafc" />
+            </TouchableOpacity>
 
-      {/* TAFSIR MODAL */}
-      {selectedVerse && (
-        <TafsirModal
-          visible={isTafsirVisible}
-          onClose={() => setIsTafsirVisible(false)}
-          surahName={currentSurah.name_arabic}
-          surahId={currentSurah.id}
-          verseNumber={selectedVerse.verse_number}
-          verseText={selectedVerse.text_uthmani}
-        />
-      )}
-
-      <ScrollView
-        ref={scrollViewRef}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* HEADER BLOCK (Matching Website Header Block) */}
-        <View style={styles.headerCard}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="chevron-forward" size={22} color="#f8fafc" />
-          </TouchableOpacity>
-
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>سورة {currentSurah.name_arabic}</Text>
-            <View style={styles.headerMetaRow}>
-              <View style={styles.revelationBadge}>
-                <Text style={styles.revelationBadgeText}>
-                  {currentSurah.revelation_place === 'makkah' ? 'مكية' : 'مدنية'}
+            <View style={styles.headerInfo}>
+              <Text style={styles.headerTitle}>سورة {currentSurah.name_arabic}</Text>
+              <View style={styles.headerMetaRow}>
+                <View style={styles.revelationBadge}>
+                  <Text style={styles.revelationBadgeText}>
+                    {currentSurah.revelation_place === 'makkah' ? 'مكية' : 'مدنية'}
+                  </Text>
+                </View>
+                <Text style={styles.headerMetaText}>
+                  رقم {currentSurah.id} • {currentSurah.verses_count} آية
                 </Text>
               </View>
-              <Text style={styles.headerMetaText}>
-                رقم {currentSurah.id} • {currentSurah.verses_count} آية
-              </Text>
             </View>
           </View>
-        </View>
 
-        {/* MAIN SURAH TEXT CARD */}
-        <View style={styles.surahTextCard}>
-          {/* Basmalah for Surahs other than Al-Fatiha and At-Tawbah */}
-          {showBasmalahHeader && (
-            <View style={styles.basmalahWrapper}>
-              <Image
-                source={require('@/assets/images/basmalah.png')}
-                style={styles.basmalahImage}
-                resizeMode="contain"
+          <View style={isSmallSurah ? styles.smallSurahWrapper : undefined}>
+            <View style={isSmallSurah ? styles.smallSurahCenterCard : undefined}>
+              {/* MAIN SURAH TEXT CARD */}
+              <View style={[styles.surahTextCard, isSmallSurah && { marginBottom: 0 }]}>
+                {/* Basmalah for Surahs other than Al-Fatiha and At-Tawbah */}
+                {showBasmalahHeader && (
+                  <View style={styles.basmalahWrapper}>
+                    <Image
+                      source={require('@/assets/images/basmalah.png')}
+                      style={styles.basmalahImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                )}
+
+                {/* Verses List */}
+                <View style={styles.versesWrapper}>
+                  {/* For Surah Al-Fatihah: Verse 1 is Basmalah */}
+                  {isFatiha && (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPressIn={() => startVerseLongPress(verses[0])}
+                      onPressOut={cancelVerseLongPress}
+                      onPress={() => {
+                        if (isLongPressActiveRef.current) {
+                          isLongPressActiveRef.current = false;
+                          return;
+                        }
+                        if (selectedVerse) {
+                          setSelectedVerse(selectedVerse.verse_number === 1 ? null : verses[0]);
+                        }
+                      }}
+                      onLongPress={() => handleVerseLongPress(verses[0])}
+                      delayLongPress={320}
+                      style={[
+                        styles.fatihaBasmalahWrapper,
+                        selectedVerse?.verse_number === 1 && styles.selectedBasmalahWrapper,
+                      ]}
+                    >
+                      <Image
+                        source={require('@/assets/images/basmalah.png')}
+                        style={styles.fatihaBasmalahImage}
+                        resizeMode="contain"
+                      />
+                      <AyahFrame number={1} />
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Quran Continuous Flow Paragraph with Interactive Highlight on Long Press */}
+                  <Text
+                    style={styles.surahParagraph}
+                    onPress={handleVersePress}
+                  >
+                    {verses.map((verse) => {
+                      if (isFatiha && verse.verse_number === 1) return null;
+                      const isSelected = selectedVerse?.verse_number === verse.verse_number;
+                      return (
+                        <React.Fragment key={verse.id || verse.verse_number}>
+                          <Text
+                            onPressIn={() => startVerseLongPress(verse)}
+                            onPressOut={cancelVerseLongPress}
+                            onPress={() => {
+                              if (isLongPressActiveRef.current) {
+                                isLongPressActiveRef.current = false;
+                                return;
+                              }
+                              if (selectedVerse) {
+                                setSelectedVerse(
+                                  selectedVerse.verse_number === verse.verse_number ? null : verse
+                                );
+                              }
+                            }}
+                            onLongPress={() => handleVerseLongPress(verse)}
+                            suppressHighlighting={false}
+                            style={[
+                              styles.verseText,
+                              isSelected && styles.selectedVerseHighlight,
+                            ]}
+                          >
+                            {verse.text_uthmani}
+                          </Text>
+                          <Text> </Text>
+                          <Text
+                            onPressIn={() => startVerseLongPress(verse)}
+                            onPressOut={cancelVerseLongPress}
+                            onPress={() => {
+                              if (isLongPressActiveRef.current) {
+                                isLongPressActiveRef.current = false;
+                                return;
+                              }
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setSelectedVerse(
+                                selectedVerse?.verse_number === verse.verse_number ? null : verse
+                              );
+                            }}
+                            onLongPress={() => handleVerseLongPress(verse)}
+                          >
+                            <AyahFrame number={verse.verse_number} />
+                          </Text>
+                          <Text> </Text>
+                        </React.Fragment>
+                      );
+                    })}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* BUTTON TO CONTINUE READING NEXT SURAH */}
+            {nextSurah ? (
+              <TouchableOpacity
+                style={styles.nextSurahButton}
+                activeOpacity={0.85}
+                onPress={handleNextSurah}
+              >
+                <View style={styles.nextSurahArrowCircle}>
+                  <Ionicons name="arrow-back" size={20} color="#ffffff" />
+                </View>
+
+                <View style={styles.nextSurahTextWrapper}>
+                  <Text style={styles.nextSurahSubtitle}>السورة التالية</Text>
+                  <Text style={styles.nextSurahTitle}>
+                    قراءة سورة {nextSurah.name_arabic}
+                  </Text>
+                </View>
+
+                <View style={styles.nextSurahBadge}>
+                  <Ionicons name="book-outline" size={20} color="#4ade80" />
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.finishSurahsButton}
+                activeOpacity={0.85}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/dua-khatm');
+                }}
+              >
+                <Ionicons name="checkmark-circle-outline" size={22} color="#4ade80" />
+                <Text style={styles.finishSurahsText}>
+                  ختام القرآن الكريم • دعاء الختم
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* FLOATING CONTEXT MENU OVERLAY (Rendered ON TOP of ScrollView with highest elevation & soft backdrop) */}
+        {selectedVerse && (
+          <View style={styles.floatingMenuBackdrop}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setSelectedVerse(null)}
+            />
+            <View style={styles.floatingMenuFloatingBox}>
+              <VerseFloatingMenu
+                visible={true}
+                onTafsir={() => setIsTafsirVisible(true)}
+                onBookmark={() => handleToggleBookmark(selectedVerse)}
+                onPlay={() => handlePlayVerse(selectedVerse)}
+                onShare={() => handleShareVerse(selectedVerse)}
+                isBookmarked={isSelectedBookmark}
+                isPlaying={playingVerseNum === selectedVerse.verse_number}
+                isLoadingAudio={isLoadingAudio}
               />
             </View>
-          )}
-
-          {/* Loading Indicator */}
-          {isLoading ? (
-            <View style={styles.loadingWrapper}>
-              <ActivityIndicator size="large" color="#10b981" />
-              <Text style={styles.loadingText}>جاري تحميل الآيات...</Text>
-            </View>
-          ) : (
-            <View style={styles.versesWrapper}>
-              {/* For Surah Al-Fatihah: Verse 1 is Basmalah */}
-              {isFatiha && (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => handleVersePress(verses[0])}
-                  style={[
-                    styles.fatihaBasmalahWrapper,
-                    selectedVerse?.verse_number === 1 && styles.selectedBasmalahWrapper,
-                  ]}
-                >
-                  <Image
-                    source={require('@/assets/images/basmalah.png')}
-                    style={styles.fatihaBasmalahImage}
-                    resizeMode="contain"
-                  />
-                  <AyahFrame number={1} />
-                </TouchableOpacity>
-              )}
-
-              {/* Quran Continuous Flow Paragraph with Interactive Highlight */}
-              <Text style={styles.surahParagraph}>
-                {verses.map((verse) => {
-                  if (isFatiha && verse.verse_number === 1) return null;
-                  const isSelected = selectedVerse?.verse_number === verse.verse_number;
-                  return (
-                    <React.Fragment key={verse.id || verse.verse_number}>
-                      <Text
-                        onPress={() => handleVersePress(verse)}
-                        style={[
-                          styles.verseText,
-                          isSelected && styles.selectedVerseHighlight,
-                        ]}
-                      >
-                        {verse.text_uthmani}
-                      </Text>
-                      <Text> </Text>
-                      <AyahFrame number={verse.verse_number} />
-                      <Text> </Text>
-                    </React.Fragment>
-                  );
-                })}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* BUTTON TO CONTINUE READING NEXT SURAH */}
-        {nextSurah ? (
-          <TouchableOpacity
-            style={styles.nextSurahButton}
-            activeOpacity={0.85}
-            onPress={handleNextSurah}
-          >
-            <View style={styles.nextSurahArrowCircle}>
-              <Ionicons name="arrow-back" size={20} color="#ffffff" />
-            </View>
-
-            <View style={styles.nextSurahTextWrapper}>
-              <Text style={styles.nextSurahSubtitle}>السورة التالية</Text>
-              <Text style={styles.nextSurahTitle}>
-                قراءة سورة {nextSurah.name_arabic}
-              </Text>
-            </View>
-
-            <View style={styles.nextSurahBadge}>
-              <Ionicons name="book-outline" size={20} color="#4ade80" />
-            </View>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.finishSurahsButton}
-            activeOpacity={0.85}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="checkmark-circle-outline" size={22} color="#4ade80" />
-            <Text style={styles.finishSurahsText}>
-              ختام القرآن الكريم • العودة للفهرس
-            </Text>
-          </TouchableOpacity>
+          </View>
         )}
-      </ScrollView>
-    </SafeAreaView>
+
+        {/* TAFSIR MODAL */}
+        {selectedVerse && (
+          <TafsirModal
+            visible={isTafsirVisible}
+            onClose={() => setIsTafsirVisible(false)}
+            surahName={currentSurah.name_arabic}
+            surahId={currentSurah.id}
+            verseNumber={selectedVerse.verse_number}
+            verseText={selectedVerse.text_uthmani}
+          />
+        )}
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     paddingBottom: 96,
+  },
+  smallSurahScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+  smallSurahWrapper: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  smallSurahCenterCard: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 12,
   },
 
   /* FLOATING MENU BACKDROP & POSITIONING */
@@ -401,12 +490,16 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 9999,
+    elevation: 9999,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
   },
   floatingMenuFloatingBox: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 40,
+    zIndex: 10000,
+    elevation: 10000,
   },
 
   /* HEADER BLOCK */

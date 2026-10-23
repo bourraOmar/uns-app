@@ -1,412 +1,754 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  Share,
+  Modal,
+  Pressable,
+  Switch,
+  Linking,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
-import { DUA_CATEGORIES, DuaCategory, DuaItem } from '@/data/duas';
+import { useAppTheme } from '@/context/ThemeContext';
+import IslamicBackground from '@/components/IslamicBackground';
 
-type FilterTab = 'all' | 'quran' | 'prophet';
+interface ServiceItem {
+  id: string;
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  action: () => void;
+  badge?: string;
+}
 
-export default function DuasScreen() {
+export default function ServicesScreen() {
   const router = useRouter();
-  const { onScroll, searchQuery, setSearchPlaceholder, openSearch } = useScrollCollapse();
-  const [selectedFilter, setSelectedFilter] = useState<FilterTab>('all');
-  const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
+  const { onScroll } = useScrollCollapse();
+  const { isDark, toggleTheme } = useAppTheme();
 
-  useEffect(() => {
-    setSearchPlaceholder('ابحث عن دعاء أو مناسبة (سفر، شفاء، استخارة...)...');
-  }, [setSearchPlaceholder]);
+  // Modals for settings and information
+  const [activeModal, setActiveModal] = useState<
+    'notifications' | 'about' | 'privacy' | 'social' | 'feedback' | null
+  >(null);
 
-  const filteredCategories = DUA_CATEGORIES.filter((cat) => {
-    // Filter by tab
-    if (selectedFilter === 'quran' && cat.group !== 'quran') return false;
-    if (selectedFilter === 'prophet' && cat.group !== 'prophet') return false;
+  // Notifications states
+  const [morningNotification, setMorningNotification] = useState(true);
+  const [eveningNotification, setEveningNotification] = useState(true);
+  const [prayerNotification, setPrayerNotification] = useState(true);
 
-    // Filter by search
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.trim().toLowerCase();
-    const matchesTitle = cat.title.toLowerCase().includes(query) || cat.subtitle.toLowerCase().includes(query);
-    const matchesItem = cat.duas.some(
-      (d) => d.content.toLowerCase().includes(query) || d.title.toLowerCase().includes(query)
+  const colors = {
+    title: isDark ? '#ffffff' : '#0f172a',
+    subtitle: isDark ? '#94a3b8' : '#64748b',
+    headerBtnBg: isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(241, 245, 249, 0.85)',
+    headerBtnBorder: isDark ? '#334155' : '#cbd5e1',
+    headerBtnIcon: isDark ? '#f8fafc' : '#1e293b',
+    cardBg: isDark ? 'rgba(26, 38, 57, 0.82)' : 'rgba(255, 255, 255, 0.9)',
+    cardBorder: isDark ? 'rgba(51, 65, 85, 0.55)' : 'rgba(226, 232, 240, 0.85)',
+    iconColor: isDark ? '#34d399' : '#059669',
+    chevron: isDark ? '#64748b' : '#94a3b8',
+    bottomBtnBg: isDark ? 'rgba(26, 38, 57, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+    bottomBtnBorder: isDark ? 'rgba(51, 65, 85, 0.7)' : 'rgba(203, 213, 225, 0.9)',
+    sheetBg: isDark ? '#1e293b' : '#ffffff',
+    sheetBorder: isDark ? '#334155' : '#e2e8f0',
+  };
+
+  const handleShareApp = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await Share.share({
+        message:
+          'تطبيق أُنس - رفيقك اليومي للقرآن الكريم، الأذكار النبوية، مواقيت الصلاة والمسبحة الذكية.\nحمّل التطبيق الآن وشاركه كصدقة جارية 🌿',
+      });
+    } catch {
+      // Ignore
+    }
+  };
+
+  const handleRateApp = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert(
+      'تقييم تطبيق أُنس',
+      'جزاكم الله خيراً لدعمكم! يسعدنا ترك تقييمك الطيب لمساعدتنا في نشر الخير.',
+      [{ text: 'شكراً لكم', style: 'default' }]
     );
-    return matchesTitle || matchesItem;
-  });
+  };
 
-  const totalDuasCount = DUA_CATEGORIES.reduce((acc, cat) => {
-    const num = parseInt(cat.countText, 10) || cat.duas.length;
-    return acc + num;
-  }, 0);
+  const SERVICES_LIST: ServiceItem[] = [
+    {
+      id: 'customize_home',
+      title: 'تخصيص الصفحة الرئيسية',
+      icon: 'layers-outline',
+      action: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push('/(tabs)/' as any);
+      },
+    },
+    {
+      id: 'prayer_settings',
+      title: 'إعدادات مواقيت الصلاة',
+      icon: 'time-outline',
+      action: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push('/(tabs)/qibla' as any);
+      },
+    },
+    {
+      id: 'notifications_settings',
+      title: 'إعدادات التنبيهات',
+      icon: 'notifications-outline',
+      action: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setActiveModal('notifications');
+      },
+    },
+    {
+      id: 'download_manager',
+      title: 'مدير التحميل',
+      icon: 'folder-outline',
+      action: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push('/(tabs)/reciters' as any);
+      },
+    },
+    {
+      id: 'appearance_language',
+      title: isDark ? 'المظهر (الوضع الليلي نشط)' : 'المظهر (الوضع النهاري نشط)',
+      icon: isDark ? 'moon-outline' : 'sunny-outline',
+      action: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        toggleTheme();
+      },
+      badge: isDark ? 'ليلي' : 'نهاري',
+    },
+    {
+      id: 'about_app',
+      title: 'عن التطبيق',
+      icon: 'information-circle-outline',
+      action: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setActiveModal('about');
+      },
+    },
+    {
+      id: 'privacy_policy',
+      title: 'سياسة الخصوصية',
+      icon: 'shield-checkmark-outline',
+      action: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setActiveModal('privacy');
+      },
+    },
+    {
+      id: 'social_media',
+      title: 'تابع أُنس على الشبكات الاجتماعية',
+      icon: 'share-social-outline',
+      action: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setActiveModal('social');
+      },
+    },
+    {
+      id: 'feedback_report',
+      title: 'الإبلاغ عن خلل / اقتراح تحسين',
+      icon: 'alert-circle-outline',
+      action: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setActiveModal('feedback');
+      },
+    },
+  ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-      >
-        {/* Top Header */}
-        <View style={styles.header}>
+    <View style={styles.container}>
+      <IslamicBackground />
+      <SafeAreaView style={{ flex: 1 }}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+
+        {/* TOP HEADER MATCHING SCREENSHOT 2 */}
+        <View style={styles.topHeader}>
+          {/* Circular Navigation / Back Button on Left */}
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
+            style={[
+              styles.circleNavBtn,
+              { backgroundColor: colors.headerBtnBg, borderColor: colors.headerBtnBorder },
+            ]}
+            activeOpacity={0.75}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/' as any);
+              }
+            }}
           >
-            <Ionicons name="chevron-forward" size={22} color="#ffffff" />
+            <Ionicons name="chevron-forward" size={20} color={colors.headerBtnIcon} />
           </TouchableOpacity>
-          <View style={styles.headerTitles}>
-            <Text style={styles.headerTitle}>قسم الأدعية</Text>
-            <Text style={styles.headerSubtitle}>أدعية مباركة من القرآن الكريم والسنة النبوية</Text>
-          </View>
+
+          {/* Title on the Right: "الحساب" / "الخدمات" */}
+          <Text style={[styles.screenTitle, { color: colors.title }]}>الخدمات</Text>
         </View>
 
-        {/* Search Bar Trigger */}
-        <TouchableOpacity
-          style={styles.searchBar}
-          activeOpacity={0.8}
-          onPress={openSearch}
-        >
-          <Ionicons name="search" size={20} color="#64748b" />
-          <Text style={[styles.searchInputPlaceholder, !!searchQuery && styles.searchInputActiveText]}>
-            {searchQuery || 'ابحث عن دعاء أو مناسبة (سفر، شفاء، استخارة...)'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Filter Chips */}
+        {/* MAIN SCROLLABLE LIST */}
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsScroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
         >
-          <TouchableOpacity
-            style={[
-              styles.filterChip,
-              selectedFilter === 'all' && styles.filterChipActiveGreen,
-            ]}
-            onPress={() => setSelectedFilter('all')}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                selectedFilter === 'all' && styles.filterChipTextActiveGreen,
-              ]}
-            >
-              الكل ({DUA_CATEGORIES.length})
-            </Text>
-          </TouchableOpacity>
+          {/* LIST OF SERVICES PILLS */}
+          <View style={styles.servicesList}>
+            {SERVICES_LIST.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.servicePill,
+                  { backgroundColor: colors.cardBg, borderColor: colors.cardBorder },
+                ]}
+                activeOpacity={0.78}
+                onPress={item.action}
+              >
+                {/* Left: Chevron */}
+                <Ionicons name="chevron-back" size={18} color={colors.chevron} />
 
-          <TouchableOpacity
-            style={[
-              styles.filterChip,
-              selectedFilter === 'quran' && styles.filterChipActiveGreen,
-            ]}
-            onPress={() => setSelectedFilter('quran')}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                selectedFilter === 'quran' && styles.filterChipTextActiveGreen,
-              ]}
-            >
-              📖 أدعية من القرآن
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.filterChip,
-              selectedFilter === 'prophet' && styles.filterChipActiveGreen,
-            ]}
-            onPress={() => setSelectedFilter('prophet')}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                selectedFilter === 'prophet' && styles.filterChipTextActiveGreen,
-              ]}
-            >
-              🕌 الأدعية النبوية
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Duas Category Cards List */}
-        <View style={styles.cardsList}>
-          {filteredCategories.length > 0 ? (
-            filteredCategories.map((category) => {
-              const isExpanded = expandedCatId === category.id;
-              return (
-                <View key={category.id} style={styles.cardWrapper}>
-                  <TouchableOpacity
-                    style={styles.cardHeader}
-                    activeOpacity={0.8}
-                    onPress={() => setExpandedCatId(isExpanded ? null : category.id)}
-                  >
-                    {/* Left chevron indicator */}
-                    <Ionicons
-                      name={isExpanded ? 'chevron-down' : 'chevron-back'}
-                      size={20}
-                      color="#64748b"
-                    />
-
-                    {/* Middle Info */}
-                    <View style={styles.cardInfo}>
-                      <Text style={styles.cardTitle}>{category.title}</Text>
-                      <Text style={styles.cardSubtitle}>
-                        {category.countText} • {category.subtitle}
-                      </Text>
-                    </View>
-
-                    {/* Right Icon Box */}
-                    <View style={styles.cardIconBox}>
-                      <Ionicons name={category.iconName as any} size={22} color="#94a3b8" />
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* Expanded Duas List */}
-                  {isExpanded && (
-                    <View style={styles.expandedContent}>
-                      {category.duas.map((dua) => (
-                        <View key={dua.id} style={styles.duaItem}>
-                          <Text style={styles.duaItemTitle}>{dua.title}</Text>
-                          <Text style={styles.duaItemText}>{dua.content}</Text>
-                          {dua.reference ? (
-                            <Text style={styles.duaItemRef}>{dua.reference}</Text>
-                          ) : null}
-                        </View>
-                      ))}
+                {/* Right: Icon + Label (in RTL layout) */}
+                <View style={styles.servicePillInfo}>
+                  {item.badge && (
+                    <View style={styles.badgePill}>
+                      <Text style={styles.badgePillText}>{item.badge}</Text>
                     </View>
                   )}
+                  <Text style={[styles.serviceTitle, { color: colors.title }]}>
+                    {item.title}
+                  </Text>
+                  <Ionicons name={item.icon} size={22} color={colors.iconColor} />
                 </View>
-              );
-            })
-          ) : (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyCircleIcon}>
-                <Ionicons name="close" size={26} color="#f8fafc" />
-              </View>
-              <Text style={styles.emptyTitle}>لا توجد نتائج لما تبحث عنه!</Text>
-              <Text style={styles.emptySubtitle}>
-                لم نعثر على دعاء باسم &quot;{searchQuery}&quot;
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* BOTTOM ACTIONS: RATE APP & SHARE APP (MATCHING SCREENSHOT 2) */}
+          <View style={styles.bottomButtonsRow}>
+            {/* Left Button: قيّم التطبيق */}
+            <TouchableOpacity
+              style={[
+                styles.bottomActionCard,
+                { backgroundColor: colors.bottomBtnBg, borderColor: colors.bottomBtnBorder },
+              ]}
+              activeOpacity={0.8}
+              onPress={handleRateApp}
+            >
+              <Ionicons name="open-outline" size={16} color={colors.iconColor} />
+              <Text style={[styles.bottomActionText, { color: colors.title }]}>
+                قيّم التطبيق
               </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+              <Ionicons name="star" size={18} color={colors.iconColor} />
+            </TouchableOpacity>
+
+            {/* Right Button: شارك التطبيق */}
+            <TouchableOpacity
+              style={[
+                styles.bottomActionCard,
+                { backgroundColor: colors.bottomBtnBg, borderColor: colors.bottomBtnBorder },
+              ]}
+              activeOpacity={0.8}
+              onPress={handleShareApp}
+            >
+              <Ionicons name="arrow-up-outline" size={16} color={colors.iconColor} />
+              <Text style={[styles.bottomActionText, { color: colors.title }]}>
+                شارك التطبيق
+              </Text>
+              <Ionicons name="share-social-outline" size={19} color={colors.iconColor} />
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+
+        {/* MODAL: NOTIFICATIONS SETTINGS */}
+        <Modal
+          visible={activeModal === 'notifications'}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setActiveModal(null)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setActiveModal(null)}>
+            <Pressable
+              style={[
+                styles.modalSheet,
+                { backgroundColor: colors.sheetBg, borderColor: colors.sheetBorder },
+              ]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.dragHandle} />
+              <View style={styles.modalHeaderRow}>
+                <TouchableOpacity
+                  style={[styles.modalCloseBtn, { borderColor: colors.sheetBorder }]}
+                  onPress={() => setActiveModal(null)}
+                >
+                  <Ionicons name="close" size={18} color={colors.title} />
+                </TouchableOpacity>
+                <Text style={[styles.modalSheetTitle, { color: colors.title }]}>
+                  إعدادات التنبيهات
+                </Text>
+              </View>
+
+              <View style={styles.toggleRow}>
+                <Switch
+                  value={morningNotification}
+                  onValueChange={setMorningNotification}
+                  trackColor={{ false: '#64748b', true: '#10b981' }}
+                  thumbColor="#ffffff"
+                />
+                <Text style={[styles.toggleLabel, { color: colors.title }]}>
+                  تذكير أذكار الصباح (شروق الشمس)
+                </Text>
+              </View>
+
+              <View style={styles.toggleRow}>
+                <Switch
+                  value={eveningNotification}
+                  onValueChange={setEveningNotification}
+                  trackColor={{ false: '#64748b', true: '#10b981' }}
+                  thumbColor="#ffffff"
+                />
+                <Text style={[styles.toggleLabel, { color: colors.title }]}>
+                  تذكير أذكار المساء (بعد العصر)
+                </Text>
+              </View>
+
+              <View style={styles.toggleRow}>
+                <Switch
+                  value={prayerNotification}
+                  onValueChange={setPrayerNotification}
+                  trackColor={{ false: '#64748b', true: '#10b981' }}
+                  thumbColor="#ffffff"
+                />
+                <Text style={[styles.toggleLabel, { color: colors.title }]}>
+                  تنبيهات مواقيت الصلاة والأذان
+                </Text>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* MODAL: ABOUT APP */}
+        <Modal
+          visible={activeModal === 'about'}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setActiveModal(null)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setActiveModal(null)}>
+            <Pressable
+              style={[
+                styles.modalSheet,
+                { backgroundColor: colors.sheetBg, borderColor: colors.sheetBorder },
+              ]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.dragHandle} />
+              <View style={styles.modalHeaderRow}>
+                <TouchableOpacity
+                  style={[styles.modalCloseBtn, { borderColor: colors.sheetBorder }]}
+                  onPress={() => setActiveModal(null)}
+                >
+                  <Ionicons name="close" size={18} color={colors.title} />
+                </TouchableOpacity>
+                <Text style={[styles.modalSheetTitle, { color: colors.title }]}>
+                  عن تطبيق أُنس
+                </Text>
+              </View>
+
+              <Text style={[styles.dialogBodyText, { color: colors.subtitle }]}>
+                تطبيق «أُنس» هو رفيقك الرقمي اليومي المبارك للقرآن الكريم كاملاً برواية حفص،
+                مع باقة وافية من الأذكار النبوية الموثوقة، وتلاوات كبار قراء العالم الإسلامي،
+                والسبحة التفاعلية الذكية وبوصلة القبلة الدقيقة.
+                {'\n\n'}
+                هذا العمل وقفٌ إسلامي خالص لوجه الله تعالى وصدقة جارية لكل من ساهم في نشره
+                وقراءته.
+              </Text>
+              <Text style={[styles.versionText, { color: colors.iconColor }]}>
+                الإصدار 1.0.0 • صُنع بحب وإخلاص
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* MODAL: PRIVACY POLICY */}
+        <Modal
+          visible={activeModal === 'privacy'}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setActiveModal(null)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setActiveModal(null)}>
+            <Pressable
+              style={[
+                styles.modalSheet,
+                { backgroundColor: colors.sheetBg, borderColor: colors.sheetBorder },
+              ]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.dragHandle} />
+              <View style={styles.modalHeaderRow}>
+                <TouchableOpacity
+                  style={[styles.modalCloseBtn, { borderColor: colors.sheetBorder }]}
+                  onPress={() => setActiveModal(null)}
+                >
+                  <Ionicons name="close" size={18} color={colors.title} />
+                </TouchableOpacity>
+                <Text style={[styles.modalSheetTitle, { color: colors.title }]}>
+                  سياسة الخصوصية
+                </Text>
+              </View>
+
+              <Text style={[styles.dialogBodyText, { color: colors.subtitle }]}>
+                نحن في تطبيق أُنس نحترم خصوصيتك احتراماً تاماً:
+                {'\n\n'}
+                • لا نقوم بجمع أي بيانات شخصية أو تخزينها على خوادم خارجية.
+                {'\n'}
+                • كافة محفوظاتك من ختمات وعدادات الأذكار والتفضيلات تُحفظ محلياً على جهازك
+                فقط.
+                {'\n'}
+                • صلاحيات الموقع الجغرافي تُستخدم حصرياً لحساب اتجاه القبلة ومواقيت الصلاة
+                محلياً دون إرسالها إلى أي جهة.
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* MODAL: SOCIAL MEDIA */}
+        <Modal
+          visible={activeModal === 'social'}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setActiveModal(null)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setActiveModal(null)}>
+            <Pressable
+              style={[
+                styles.modalSheet,
+                { backgroundColor: colors.sheetBg, borderColor: colors.sheetBorder },
+              ]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.dragHandle} />
+              <View style={styles.modalHeaderRow}>
+                <TouchableOpacity
+                  style={[styles.modalCloseBtn, { borderColor: colors.sheetBorder }]}
+                  onPress={() => setActiveModal(null)}
+                >
+                  <Ionicons name="close" size={18} color={colors.title} />
+                </TouchableOpacity>
+                <Text style={[styles.modalSheetTitle, { color: colors.title }]}>
+                  تابع أُنس
+                </Text>
+              </View>
+
+              <Text style={[styles.dialogBodyText, { color: colors.subtitle, textAlign: 'center' }]}>
+                انضم إلى مجتمع أُنس القرآني للحصول على الجديد من الفوائد والتحديثات المباركة:
+              </Text>
+
+              <View style={styles.socialButtonsContainer}>
+                <TouchableOpacity
+                  style={[styles.socialRowBtn, { borderColor: colors.cardBorder }]}
+                  onPress={() => {
+                    Linking.openURL('https://x.com');
+                  }}
+                >
+                  <Ionicons name="logo-twitter" size={20} color="#38bdf8" />
+                  <Text style={[styles.socialBtnText, { color: colors.title }]}>
+                    منصة إكس (تويتر سابقاً)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.socialRowBtn, { borderColor: colors.cardBorder }]}
+                  onPress={() => {
+                    Linking.openURL('https://t.me');
+                  }}
+                >
+                  <Ionicons name="paper-plane" size={20} color="#38bdf8" />
+                  <Text style={[styles.socialBtnText, { color: colors.title }]}>
+                    قناة تيليجرام
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* MODAL: FEEDBACK */}
+        <Modal
+          visible={activeModal === 'feedback'}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setActiveModal(null)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setActiveModal(null)}>
+            <Pressable
+              style={[
+                styles.modalSheet,
+                { backgroundColor: colors.sheetBg, borderColor: colors.sheetBorder },
+              ]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.dragHandle} />
+              <View style={styles.modalHeaderRow}>
+                <TouchableOpacity
+                  style={[styles.modalCloseBtn, { borderColor: colors.sheetBorder }]}
+                  onPress={() => setActiveModal(null)}
+                >
+                  <Ionicons name="close" size={18} color={colors.title} />
+                </TouchableOpacity>
+                <Text style={[styles.modalSheetTitle, { color: colors.title }]}>
+                  اقتراح أو إبلاغ عن خلل
+                </Text>
+              </View>
+
+              <Text style={[styles.dialogBodyText, { color: colors.subtitle }]}>
+                رأيكم واقتراحاتكم محل عنايتنا وتقديرنا الكبير. إذا واجهتكم أي مشكلة تقنية أو
+                لديكم فكرة لتطوير تطبيق أُنس، نسعد بتواصلكم المباشر.
+              </Text>
+
+              <TouchableOpacity
+                style={styles.feedbackActionBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setActiveModal(null);
+                  Linking.openURL('mailto:support@unsapp.com?subject=اقتراح%20لتطبيق%20أُنس');
+                }}
+              >
+                <Ionicons name="mail-outline" size={18} color="#ffffff" />
+                <Text style={styles.feedbackActionText}>مراسلة فريق التطوير عبر البريد</Text>
+              </TouchableOpacity>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d1527',
+    backgroundColor: 'transparent',
   },
+
+  /* TOP HEADER */
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 14,
+  },
+  screenTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 32,
+    letterSpacing: -0.3,
+  },
+  circleNavBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  /* SCROLL CONTENT */
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 100,
+    paddingBottom: 120, // Space for floating bottom tab bar
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+
+  /* SERVICES PILL LIST */
+  servicesList: {
+    gap: 8,
     marginBottom: 20,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#162238',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  headerTitles: {
-    flex: 1,
-    alignItems: 'flex-end',
-    marginRight: 8,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#ffffff',
-    textAlign: 'right',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#94a3b8',
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  searchBar: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    backgroundColor: '#162238',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 16,
-    gap: 10,
-  },
-  searchInputPlaceholder: {
-    flex: 1,
-    fontSize: 13,
-    color: '#64748b',
-    textAlign: 'right',
-    fontFamily: 'Cairo_600SemiBold',
-  },
-  searchInputActiveText: {
-    color: '#ffffff',
-  },
-  chipsScroll: {
-    flexDirection: 'row-reverse',
-    gap: 8,
-    paddingBottom: 16,
-  },
-  filterChip: {
-    backgroundColor: '#162238',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  filterChipActiveGreen: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#94a3b8',
-  },
-  filterChipTextActiveGreen: {
-    color: '#ffffff',
-    fontWeight: '800',
-  },
-  cardsList: {
-    gap: 12,
-  },
-  cardWrapper: {
-    backgroundColor: '#162238',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    overflow: 'hidden',
-  },
-  cardHeader: {
+  servicePill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  cardInfo: {
+  servicePillInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     flex: 1,
-    alignItems: 'flex-end',
-    marginRight: 16,
+    justifyContent: 'flex-end',
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#ffffff',
-    textAlign: 'right',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 12,
-    color: '#94a3b8',
+  serviceTitle: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 15,
     textAlign: 'right',
   },
-  cardIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#101a2e',
-    borderWidth: 1,
-    borderColor: '#1e293b',
+  badgePill: {
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginRight: 4,
+  },
+  badgePillText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11,
+    color: '#34d399',
+  },
+
+  /* BOTTOM BUTTONS ROW */
+  bottomButtonsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 12,
+    marginTop: 4,
   },
-  expandedContent: {
-    paddingHorizontal: 18,
-    paddingBottom: 18,
-    borderTopWidth: 1,
-    borderTopColor: '#1e293b',
-    gap: 14,
-  },
-  duaItem: {
-    backgroundColor: '#101a2e',
-    borderRadius: 16,
-    padding: 16,
+  bottomActionCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  duaItemTitle: {
+  bottomActionText: {
+    fontFamily: 'Cairo_700Bold',
     fontSize: 14,
-    fontWeight: '800',
-    color: '#10b981',
-    textAlign: 'right',
-    marginBottom: 8,
+    textAlign: 'center',
   },
-  duaItemText: {
-    fontSize: 16,
-    color: '#ffffff',
-    textAlign: 'right',
-    lineHeight: 26,
-    fontWeight: '600',
+
+  /* MODALS & SHEETS */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
   },
-  duaItemRef: {
-    fontSize: 12,
-    color: '#64748b',
-    textAlign: 'right',
-    marginTop: 8,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 80,
-    paddingBottom: 140,
-  },
-  emptyCircleIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#162238',
+  modalSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderBottomWidth: 0,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 36,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#64748b',
+    alignSelf: 'center',
+    marginBottom: 16,
+    opacity: 0.6,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
-  emptyTitle: {
+  modalSheetTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 19,
-    color: '#ffffff',
-    textAlign: 'center',
-    marginBottom: 8,
   },
-  emptySubtitle: {
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 116, 139, 0.2)',
+  },
+  toggleLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 14,
+    textAlign: 'right',
+    flex: 1,
+    marginRight: 12,
+  },
+  dialogBodyText: {
     fontFamily: 'Cairo_500Medium',
+    fontSize: 14,
+    lineHeight: 24,
+    textAlign: 'right',
+    marginBottom: 16,
+  },
+  versionText: {
+    fontFamily: 'Cairo_700Bold',
     fontSize: 13,
-    color: '#85998a',
     textAlign: 'center',
-    lineHeight: 22,
-    maxWidth: 320,
+    marginTop: 8,
+  },
+  socialButtonsContainer: {
+    gap: 10,
+    marginTop: 10,
+  },
+  socialRowBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  socialBtnText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 14,
+  },
+  feedbackActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#10b981',
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  feedbackActionText: {
+    fontFamily: 'Cairo_700Bold',
+    color: '#ffffff',
+    fontSize: 14,
   },
 });
