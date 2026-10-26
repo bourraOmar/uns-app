@@ -11,7 +11,7 @@ interface ThemeContextType {
   setTheme: (mode: ThemeMode) => void;
 }
 
-const THEME_STORAGE_KEY = '@app_theme_mode_v1';
+const THEME_STORAGE_KEY = '@app_theme_mode_v2';
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'dark',
@@ -21,23 +21,19 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
-  const deviceScheme = useDeviceColorScheme();
   const [theme, setThemeState] = useState<ThemeMode>('dark');
 
   useEffect(() => {
     (async () => {
       try {
-        const saved = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-        if (saved === 'light' || saved === 'dark') {
-          setThemeState(saved);
-        } else if (deviceScheme === 'light') {
-          setThemeState('light');
-        }
+        // Enforce dark mode as the default for all screens in the app
+        await AsyncStorage.setItem(THEME_STORAGE_KEY, 'dark');
+        setThemeState('dark');
       } catch (e) {
-        // Fallback to dark
+        setThemeState('dark');
       }
     })();
-  }, [deviceScheme]);
+  }, []);
 
   const setTheme = async (mode: ThemeMode) => {
     setThemeState(mode);

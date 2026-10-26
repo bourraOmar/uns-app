@@ -18,7 +18,6 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAppTheme } from '@/context/ThemeContext';
 import IslamicBackground from '@/components/IslamicBackground';
 
 interface DhikrItem {
@@ -52,7 +51,8 @@ const STORAGE_KEYS = {
 
 export default function TasbihScreen() {
   const router = useRouter();
-  const { isDark, toggleTheme } = useAppTheme();
+  const [isDark, setIsDark] = useState(true);
+  const toggleTheme = () => setIsDark((prev) => !prev);
 
   const [activeDhikrIndex, setActiveDhikrIndex] = useState(0);
   const [counts, setCounts] = useState<Record<string, number>>({});
