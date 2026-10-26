@@ -15,6 +15,7 @@ import { useRouter, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import IslamicBackground from '@/components/IslamicBackground';
+import { useAppTheme } from '@/context/ThemeContext';
 import {
   ALL_DAILY_APPS,
   DEFAULT_DAILY_APP_IDS,
@@ -25,8 +26,30 @@ const MAX_DAILY_APPS = 8;
 
 export default function CustomDailyAppsScreen() {
   const router = useRouter();
+  const { isDark } = useAppTheme();
   const [selectedIds, setSelectedIds] = useState<string[]>(DEFAULT_DAILY_APP_IDS);
   const [showLimitWarning, setShowLimitWarning] = useState(false);
+
+  const colors = {
+    bg: isDark ? '#0c1712' : '#f8fafc',
+    title: isDark ? '#a7f3d0' : '#065f46',
+    description: isDark ? '#94a3b8' : '#475569',
+    backBtnBg: isDark ? '#1b2c24' : 'rgba(255, 255, 255, 0.95)',
+    backBtnBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.95)',
+    backBtnIcon: isDark ? '#ffffff' : '#0f172a',
+    sectionTitle: isDark ? '#f8fafc' : '#0f172a',
+    resetBtnText: isDark ? '#8ba7c0' : '#059669',
+    cardSelectedBg: isDark ? '#122019' : 'rgba(255, 255, 255, 0.96)',
+    cardSelectedBorder: isDark ? '#243a2e' : 'rgba(16, 185, 129, 0.5)',
+    cardUnselectedBg: isDark ? 'transparent' : 'rgba(255, 255, 255, 0.65)',
+    cardUnselectedBorder: isDark ? 'transparent' : 'rgba(226, 232, 240, 0.75)',
+    appTitle: isDark ? '#f8fafc' : '#0f172a',
+    bottomBarBg: isDark ? 'rgba(10, 19, 14, 0.92)' : 'rgba(255, 255, 255, 0.95)',
+    bottomBarBorder: isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(226, 232, 240, 0.95)',
+    countBadgeBg: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.1)',
+    countBadgeBorder: isDark ? 'rgba(52, 211, 153, 0.25)' : 'rgba(16, 185, 129, 0.35)',
+    countBadgeText: isDark ? '#86efac' : '#047857',
+  };
 
   useEffect(() => {
     AsyncStorage.getItem('@uns_custom_daily_apps').then((saved) => {
@@ -127,7 +150,13 @@ export default function CustomDailyAppsScreen() {
     return (
       <TouchableOpacity
         key={app.id}
-        style={[styles.appCard, isSelected && styles.appCardSelected]}
+        style={[
+          styles.appCard,
+          {
+            backgroundColor: isSelected ? colors.cardSelectedBg : colors.cardUnselectedBg,
+            borderColor: isSelected ? colors.cardSelectedBorder : colors.cardUnselectedBorder,
+          },
+        ]}
         activeOpacity={0.75}
         onPress={() => handleToggleApp(app.id)}
       >
@@ -144,7 +173,7 @@ export default function CustomDailyAppsScreen() {
         </View>
 
         {/* App Title */}
-        <Text style={styles.appTitle} numberOfLines={2}>
+        <Text style={[styles.appTitle, { color: colors.appTitle }]} numberOfLines={2}>
           {app.title}
         </Text>
       </TouchableOpacity>
@@ -152,19 +181,22 @@ export default function CustomDailyAppsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <IslamicBackground />
       <SafeAreaView style={{ flex: 1 }}>
         {/* Top Header Row with Back Button */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[
+              styles.backButton,
+              { backgroundColor: colors.backBtnBg, borderColor: colors.backBtnBorder },
+            ]}
             activeOpacity={0.7}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-forward" size={20} color="#ffffff" />
+            <Ionicons name="chevron-forward" size={20} color={colors.backBtnIcon} />
           </TouchableOpacity>
         </View>
 
@@ -173,8 +205,8 @@ export default function CustomDailyAppsScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Main Title & Description */}
-          <Text style={styles.screenMainTitle}>تطبيقاتك اليومية</Text>
-          <Text style={styles.screenDescription}>
+          <Text style={[styles.screenMainTitle, { color: colors.title }]}>تطبيقاتك اليومية</Text>
+          <Text style={[styles.screenDescription, { color: colors.description }]}>
             خصص التطبيقات التي تستخدمها بشكل يومي ومتكرر حتى تظهر في الرئيسية وتبقى أمام عينيك
           </Text>
 
@@ -191,10 +223,14 @@ export default function CustomDailyAppsScreen() {
               <View
                 style={[
                   styles.countBadge,
+                  {
+                    backgroundColor: colors.countBadgeBg,
+                    borderColor: colors.countBadgeBorder,
+                  },
                   selectedIds.length === MAX_DAILY_APPS && styles.countBadgeFull,
                 ]}
               >
-                <Text style={styles.countBadgeText}>
+                <Text style={[styles.countBadgeText, { color: colors.countBadgeText }]}>
                   تم اختيار {selectedIds.length} من {MAX_DAILY_APPS} تطبيقات
                 </Text>
               </View>
@@ -208,10 +244,10 @@ export default function CustomDailyAppsScreen() {
               activeOpacity={0.7}
               onPress={handleReset}
             >
-              <Text style={styles.resetButtonText}>إعادة التعيين</Text>
+              <Text style={[styles.resetButtonText, { color: colors.resetBtnText }]}>إعادة التعيين</Text>
             </TouchableOpacity>
 
-            <Text style={styles.sectionTitle}>أهم التطبيقات</Text>
+            <Text style={[styles.sectionTitle, { color: colors.sectionTitle }]}>أهم التطبيقات</Text>
           </View>
 
           <View style={styles.appsGrid}>
@@ -221,7 +257,7 @@ export default function CustomDailyAppsScreen() {
           {/* Section 2: تطبيقات أخرى */}
           <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
             <View style={{ width: 60 }} />
-            <Text style={styles.sectionTitle}>تطبيقات أخرى</Text>
+            <Text style={[styles.sectionTitle, { color: colors.sectionTitle }]}>تطبيقات أخرى</Text>
           </View>
 
           <View style={styles.appsGrid}>
@@ -233,7 +269,15 @@ export default function CustomDailyAppsScreen() {
         </ScrollView>
 
         {/* Fixed Bottom Save Button */}
-        <View style={styles.bottomBar}>
+        <View
+          style={[
+            styles.bottomBar,
+            {
+              backgroundColor: colors.bottomBarBg,
+              borderTopColor: colors.bottomBarBorder,
+            },
+          ]}
+        >
           <TouchableOpacity
             style={styles.saveBtnTouch}
             activeOpacity={0.85}

@@ -24,6 +24,7 @@ import AyahFrame from '@/components/quran/AyahFrame';
 import VerseFloatingMenu from '@/components/quran/VerseFloatingMenu';
 import TafsirModal from '@/components/quran/TafsirModal';
 import IslamicBackground from '@/components/IslamicBackground';
+import { useAppTheme } from '@/context/ThemeContext';
 
 interface VerseData {
   id: number;
@@ -229,6 +230,31 @@ export default function SurahReaderScreen() {
     } catch {}
   };
 
+  const { isDark } = useAppTheme();
+
+  const colors = {
+    headerCardBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.94)',
+    headerCardBorder: isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(226, 232, 240, 0.95)',
+    backBtnBg: isDark ? '#0f172a' : 'rgba(241, 245, 249, 0.95)',
+    backBtnBorder: isDark ? 'rgba(51, 65, 85, 0.7)' : 'rgba(203, 213, 225, 0.9)',
+    backBtnIcon: isDark ? '#f8fafc' : '#0f172a',
+    headerTitle: isDark ? '#f8fafc' : '#0f172a',
+    headerMetaText: isDark ? '#94a3b8' : '#64748b',
+    surahCardBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)',
+    surahCardBorder: isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(226, 232, 240, 0.95)',
+    verseText: isDark ? '#f8fafc' : '#0f172a',
+    basmalahTint: isDark ? '#f8fafc' : '#0f172a',
+    nextSurahBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)',
+    nextSurahBorder: isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(16, 185, 129, 0.45)',
+    nextSurahTitle: isDark ? '#f8fafc' : '#0f172a',
+    nextSurahSubtitle: isDark ? '#4ade80' : '#059669',
+    finishSurahsBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)',
+    finishSurahsBorder: isDark ? '#334155' : '#cbd5e1',
+    finishSurahsText: isDark ? '#f8fafc' : '#0f172a',
+    revelationBadgeBg: isDark ? 'rgba(15, 142, 93, 0.15)' : 'rgba(16, 185, 129, 0.12)',
+    revelationBadgeText: isDark ? '#4ade80' : '#047857',
+  };
+
   const isFatiha = currentSurah.id === 1;
   const showBasmalahHeader = currentSurah.id !== 1 && currentSurah.id !== 9;
   const isSelectedBookmark = selectedVerse
@@ -240,7 +266,11 @@ export default function SurahReaderScreen() {
     <View style={styles.safeArea}>
       <IslamicBackground />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          translucent
+          backgroundColor="transparent"
+        />
 
         <ScrollView
           ref={scrollViewRef}
@@ -251,25 +281,45 @@ export default function SurahReaderScreen() {
           ]}
         >
           {/* HEADER BLOCK (Matching Website Header Block) */}
-          <View style={styles.headerCard}>
+          <View
+            style={[
+              styles.headerCard,
+              { backgroundColor: colors.headerCardBg, borderColor: colors.headerCardBorder },
+            ]}
+          >
             <TouchableOpacity
-              style={styles.backButton}
+              style={[
+                styles.backButton,
+                { backgroundColor: colors.backBtnBg, borderColor: colors.backBtnBorder },
+              ]}
               onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/quran' as any))}
               activeOpacity={0.7}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="chevron-forward" size={22} color="#f8fafc" />
+              <Ionicons name="chevron-forward" size={22} color={colors.backBtnIcon} />
             </TouchableOpacity>
 
             <View style={styles.headerInfo}>
-              <Text style={styles.headerTitle}>سورة {currentSurah.name_arabic}</Text>
+              <Text style={[styles.headerTitle, { color: colors.headerTitle }]}>
+                سورة {currentSurah.name_arabic}
+              </Text>
               <View style={styles.headerMetaRow}>
-                <View style={styles.revelationBadge}>
-                  <Text style={styles.revelationBadgeText}>
+                <View
+                  style={[
+                    styles.revelationBadge,
+                    { backgroundColor: colors.revelationBadgeBg },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.revelationBadgeText,
+                      { color: colors.revelationBadgeText },
+                    ]}
+                  >
                     {currentSurah.revelation_place === 'makkah' ? 'مكية' : 'مدنية'}
                   </Text>
                 </View>
-                <Text style={styles.headerMetaText}>
+                <Text style={[styles.headerMetaText, { color: colors.headerMetaText }]}>
                   رقم {currentSurah.id} • {currentSurah.verses_count} آية
                 </Text>
               </View>
@@ -279,13 +329,19 @@ export default function SurahReaderScreen() {
           <View style={isSmallSurah ? styles.smallSurahWrapper : undefined}>
             <View style={isSmallSurah ? styles.smallSurahCenterCard : undefined}>
               {/* MAIN SURAH TEXT CARD */}
-              <View style={[styles.surahTextCard, isSmallSurah && { marginBottom: 0 }]}>
+              <View
+                style={[
+                  styles.surahTextCard,
+                  { backgroundColor: colors.surahCardBg, borderColor: colors.surahCardBorder },
+                  isSmallSurah && { marginBottom: 0 },
+                ]}
+              >
                 {/* Basmalah for Surahs other than Al-Fatiha and At-Tawbah */}
                 {showBasmalahHeader && (
                   <View style={styles.basmalahWrapper}>
                     <Image
                       source={require('@/assets/images/basmalah.png')}
-                      style={styles.basmalahImage}
+                      style={[styles.basmalahImage, { tintColor: colors.basmalahTint }]}
                       resizeMode="contain"
                     />
                   </View>
@@ -317,7 +373,7 @@ export default function SurahReaderScreen() {
                     >
                       <Image
                         source={require('@/assets/images/basmalah.png')}
-                        style={styles.fatihaBasmalahImage}
+                        style={[styles.fatihaBasmalahImage, { tintColor: colors.basmalahTint }]}
                         resizeMode="contain"
                       />
                       <AyahFrame number={1} />
@@ -326,7 +382,7 @@ export default function SurahReaderScreen() {
 
                   {/* Quran Continuous Flow Paragraph with Interactive Highlight on Long Press */}
                   <Text
-                    style={styles.surahParagraph}
+                    style={[styles.surahParagraph, { color: colors.verseText }]}
                     onPress={handleVersePress}
                   >
                     {verses.map((verse) => {
@@ -352,6 +408,7 @@ export default function SurahReaderScreen() {
                             suppressHighlighting={false}
                             style={[
                               styles.verseText,
+                              { color: colors.verseText },
                               isSelected && styles.selectedVerseHighlight,
                             ]}
                           >
@@ -387,7 +444,10 @@ export default function SurahReaderScreen() {
             {/* BUTTON TO CONTINUE READING NEXT SURAH */}
             {nextSurah ? (
               <TouchableOpacity
-                style={styles.nextSurahButton}
+                style={[
+                  styles.nextSurahButton,
+                  { backgroundColor: colors.nextSurahBg, borderColor: colors.nextSurahBorder },
+                ]}
                 activeOpacity={0.85}
                 onPress={handleNextSurah}
               >
@@ -396,27 +456,36 @@ export default function SurahReaderScreen() {
                 </View>
 
                 <View style={styles.nextSurahTextWrapper}>
-                  <Text style={styles.nextSurahSubtitle}>السورة التالية</Text>
-                  <Text style={styles.nextSurahTitle}>
+                  <Text style={[styles.nextSurahSubtitle, { color: colors.nextSurahSubtitle }]}>
+                    السورة التالية
+                  </Text>
+                  <Text style={[styles.nextSurahTitle, { color: colors.nextSurahTitle }]}>
                     قراءة سورة {nextSurah.name_arabic}
                   </Text>
                 </View>
 
                 <View style={styles.nextSurahBadge}>
-                  <Ionicons name="book-outline" size={20} color="#4ade80" />
+                  <Ionicons
+                    name="book-outline"
+                    size={20}
+                    color={colors.nextSurahSubtitle}
+                  />
                 </View>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={styles.finishSurahsButton}
+                style={[
+                  styles.finishSurahsButton,
+                  { backgroundColor: colors.finishSurahsBg, borderColor: colors.finishSurahsBorder },
+                ]}
                 activeOpacity={0.85}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   router.push('/dua-khatm');
                 }}
               >
-                <Ionicons name="checkmark-circle-outline" size={22} color="#4ade80" />
-                <Text style={styles.finishSurahsText}>
+                <Ionicons name="checkmark-circle-outline" size={22} color="#10b981" />
+                <Text style={[styles.finishSurahsText, { color: colors.finishSurahsText }]}>
                   ختام القرآن الكريم • دعاء الختم
                 </Text>
               </TouchableOpacity>

@@ -18,9 +18,11 @@ import surahsData from '@/data/surahs.json';
 import { useAudioPlayer, SurahItem } from '@/context/AudioPlayerContext';
 import MiniAudioPlayer from '@/components/MiniAudioPlayer';
 import IslamicBackground from '@/components/IslamicBackground';
+import { useAppTheme } from '@/context/ThemeContext';
 
 export default function ReciterProfileScreen() {
   const router = useRouter();
+  const { isDark } = useAppTheme();
   const params = useLocalSearchParams<{
     id: string;
     name?: string;
@@ -42,6 +44,27 @@ export default function ReciterProfileScreen() {
     openPlayerModal,
   } = useAudioPlayer();
 
+  const colors = {
+    coverBg: isDark ? '#172235' : 'rgba(255, 255, 255, 0.95)',
+    coverBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(226, 232, 240, 0.95)',
+    coverIcon: isDark ? '#94a3b8' : '#64748b',
+    reciterName: isDark ? '#ffffff' : '#0f172a',
+    tag: isDark ? '#94a3b8' : '#64748b',
+    stats: isDark ? '#94a3b8' : '#64748b',
+    divider: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.85)',
+    colHeader: isDark ? '#64748b' : '#94a3b8',
+    colSurahHeader: isDark ? '#94a3b8' : '#475569',
+    trackBorder: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(226, 232, 240, 0.65)',
+    trackActiveBg: isDark ? 'rgba(52, 211, 153, 0.08)' : 'rgba(16, 185, 129, 0.12)',
+    trackNumber: isDark ? '#64748b' : '#94a3b8',
+    surahNameArabic: isDark ? '#ffffff' : '#0f172a',
+    surahNameSimple: isDark ? '#64748b' : '#64748b',
+    colMeta: isDark ? '#94a3b8' : '#64748b',
+    backBtnBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)',
+    backBtnBorder: isDark ? '#334155' : 'rgba(226, 232, 240, 0.95)',
+    backBtnIcon: isDark ? '#f8fafc' : '#0f172a',
+  };
+
   // Master Big Play/Pause button in Spotify header
   const handleToggleMasterPlay = () => {
     if (currentSurah && currentReciter.id === reciter.id) {
@@ -56,19 +79,24 @@ export default function ReciterProfileScreen() {
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       {/* 1. Large Spotify Album Cover Container */}
-      <View style={styles.albumCoverBox}>
-        <Ionicons name="mic-outline" size={80} color="#94a3b8" />
+      <View
+        style={[
+          styles.albumCoverBox,
+          { backgroundColor: colors.coverBg, borderColor: colors.coverBorder },
+        ]}
+      >
+        <Ionicons name="mic-outline" size={80} color={colors.coverIcon} />
       </View>
 
       {/* 2. Playlist / Reciter Metadata */}
-      <Text style={styles.playlistTag}>قائمة التشغيل</Text>
-      <Text style={styles.reciterName}>{reciter.name}</Text>
-      <Text style={styles.reciterStats}>
+      <Text style={[styles.playlistTag, { color: colors.tag }]}>قائمة التشغيل</Text>
+      <Text style={[styles.reciterName, { color: colors.reciterName }]}>{reciter.name}</Text>
+      <Text style={[styles.reciterStats, { color: colors.stats }]}>
         برواية {reciter.rewaya.replace(' - مرتل', '')} ▪ {surahsData.length} سورة
       </Text>
 
       {/* 3. Spotify Control Actions Row (Big Play Button on the Right) */}
-      <View style={styles.controlsRow}>
+      <View style={[styles.controlsRow, { borderBottomColor: colors.divider }]}>
         <TouchableOpacity
           style={styles.bigPlayButton}
           activeOpacity={0.85}
@@ -88,11 +116,11 @@ export default function ReciterProfileScreen() {
       </View>
 
       {/* 4. Spotify Tracks Table Columns Header */}
-      <View style={styles.tableHeaderRow}>
-        <Text style={styles.colVersesHeader}>VERSES</Text>
-        <Text style={styles.colRevelationHeader}>REVELATION</Text>
-        <Text style={styles.colSurahHeader}>السورة</Text>
-        <Text style={styles.colNumberHeader}>#</Text>
+      <View style={[styles.tableHeaderRow, { borderBottomColor: colors.divider }]}>
+        <Text style={[styles.colVersesHeader, { color: colors.colHeader }]}>VERSES</Text>
+        <Text style={[styles.colRevelationHeader, { color: colors.colHeader }]}>REVELATION</Text>
+        <Text style={[styles.colSurahHeader, { color: colors.colSurahHeader }]}>السورة</Text>
+        <Text style={[styles.colNumberHeader, { color: colors.colHeader }]}>#</Text>
       </View>
     </View>
   );
@@ -104,7 +132,11 @@ export default function ReciterProfileScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.trackRow, isCurrentPlaying && styles.trackRowActive]}
+        style={[
+          styles.trackRow,
+          { borderBottomColor: colors.trackBorder },
+          isCurrentPlaying && { backgroundColor: colors.trackActiveBg },
+        ]}
         activeOpacity={0.75}
         onPress={() => {
           playSurah(item.id, reciter);
@@ -112,21 +144,41 @@ export default function ReciterProfileScreen() {
         }}
       >
         {/* Column 4: Verses Count */}
-        <Text style={[styles.colVersesText, isCurrentPlaying && styles.textActive]}>
+        <Text
+          style={[
+            styles.colVersesText,
+            { color: colors.colMeta },
+            isCurrentPlaying && styles.textActive,
+          ]}
+        >
           {item.verses_count}
         </Text>
 
         {/* Column 3: Revelation Place */}
-        <Text style={[styles.colRevelationText, isCurrentPlaying && styles.textActive]}>
+        <Text
+          style={[
+            styles.colRevelationText,
+            { color: colors.colMeta },
+            isCurrentPlaying && styles.textActive,
+          ]}
+        >
           {revelation}
         </Text>
 
         {/* Column 2: Surah Names (Arabic bold + English simple) */}
         <View style={styles.colSurahInfo}>
-          <Text style={[styles.surahNameArabic, isCurrentPlaying && styles.textActive]}>
+          <Text
+            style={[
+              styles.surahNameArabic,
+              { color: colors.surahNameArabic },
+              isCurrentPlaying && styles.textActive,
+            ]}
+          >
             {item.name_arabic}
           </Text>
-          <Text style={styles.surahNameSimple}>{item.name_simple}</Text>
+          <Text style={[styles.surahNameSimple, { color: colors.surahNameSimple }]}>
+            {item.name_simple}
+          </Text>
         </View>
 
         {/* Column 1: Track Number or Playing Equalizer Icon */}
@@ -136,7 +188,13 @@ export default function ReciterProfileScreen() {
           ) : isCurrentPlaying && isPlaying ? (
             <Ionicons name="volume-high" size={16} color="#34d399" />
           ) : (
-            <Text style={[styles.trackNumberText, isCurrentPlaying && styles.textActive]}>
+            <Text
+              style={[
+                styles.trackNumberText,
+                { color: colors.trackNumber },
+                isCurrentPlaying && styles.textActive,
+              ]}
+            >
               {item.id}
             </Text>
           )}
@@ -149,7 +207,11 @@ export default function ReciterProfileScreen() {
     <View style={styles.container}>
       <IslamicBackground />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          translucent
+          backgroundColor="transparent"
+        />
 
         {/* TOP NAVIGATION BAR */}
         <View style={styles.topNavBar}>
@@ -157,7 +219,10 @@ export default function ReciterProfileScreen() {
 
           {/* Right: Circular Back Button */}
           <TouchableOpacity
-            style={styles.backButton}
+            style={[
+              styles.backButton,
+              { backgroundColor: colors.backBtnBg, borderColor: colors.backBtnBorder },
+            ]}
             activeOpacity={0.75}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -168,7 +233,7 @@ export default function ReciterProfileScreen() {
               }
             }}
           >
-            <Ionicons name="chevron-forward" size={20} color="#f8fafc" />
+            <Ionicons name="chevron-forward" size={20} color={colors.backBtnIcon} />
           </TouchableOpacity>
         </View>
 

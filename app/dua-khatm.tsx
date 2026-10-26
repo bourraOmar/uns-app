@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import IslamicBackground from '@/components/IslamicBackground';
+import { useAppTheme } from '@/context/ThemeContext';
 
 const DUA_KHATM_PARAGRAPHS = [
   {
@@ -69,8 +70,29 @@ const DUA_KHATM_PARAGRAPHS = [
 
 export default function DuaKhatmScreen() {
   const router = useRouter();
+  const { isDark } = useAppTheme();
   const [copied, setCopied] = useState<boolean>(false);
   const [fontSize, setFontSize] = useState<number>(20);
+
+  const colors = {
+    headerTitle: isDark ? '#f8fafc' : '#0f172a',
+    headerBtnBg: isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.95)',
+    headerBtnBorder: isDark ? '#334155' : 'rgba(226, 232, 240, 0.95)',
+    headerBtnIcon: isDark ? '#f8fafc' : '#0f172a',
+    bannerCardBg: isDark ? '#122026' : 'rgba(255, 255, 255, 0.94)',
+    bannerCardBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.95)',
+    bannerMainTitle: isDark ? '#ffffff' : '#0f172a',
+    bannerSubTitle: isDark ? '#94a3b8' : '#64748b',
+    controlPillBg: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.95)',
+    controlPillBorder: isDark ? 'rgba(51, 65, 85, 0.7)' : 'rgba(203, 213, 225, 0.9)',
+    controlPillText: isDark ? '#cbd5e1' : '#475569',
+    duaCardBg: isDark ? '#122026' : 'rgba(255, 255, 255, 0.95)',
+    duaCardBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.95)',
+    duaText: isDark ? '#f8fafc' : '#0f172a',
+    secondaryRestartBg: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.95)',
+    secondaryRestartBorder: isDark ? 'rgba(51, 65, 85, 0.8)' : 'rgba(226, 232, 240, 0.95)',
+    secondaryRestartText: isDark ? '#34d399' : '#059669',
+  };
 
   const fullText = DUA_KHATM_PARAGRAPHS.map((p) => p.text).join('\n\n');
 
@@ -94,39 +116,52 @@ export default function DuaKhatmScreen() {
     <View style={styles.safeArea}>
       <IslamicBackground />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          translucent
+          backgroundColor="transparent"
+        />
 
         {/* TOP HEADER */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.headerBtn}
+            style={[
+              styles.headerBtn,
+              { backgroundColor: colors.headerBtnBg, borderColor: colors.headerBtnBorder },
+            ]}
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/quran' as any))}
             activeOpacity={0.75}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="chevron-forward" size={22} color="#f8fafc" />
+            <Ionicons name="chevron-forward" size={22} color={colors.headerBtnIcon} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>دعاء ختم القرآن الكريم</Text>
+          <Text style={[styles.headerTitle, { color: colors.headerTitle }]}>دعاء ختم القرآن الكريم</Text>
 
           <View style={styles.headerActionsRight}>
             <TouchableOpacity
-              style={styles.headerCircleBtn}
+              style={[
+                styles.headerCircleBtn,
+                { backgroundColor: colors.headerBtnBg, borderColor: colors.headerBtnBorder },
+              ]}
               activeOpacity={0.75}
               onPress={handleShare}
             >
-              <Ionicons name="share-social-outline" size={18} color="#f8fafc" />
+              <Ionicons name="share-social-outline" size={18} color={colors.headerBtnIcon} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.headerCircleBtn}
+              style={[
+                styles.headerCircleBtn,
+                { backgroundColor: colors.headerBtnBg, borderColor: colors.headerBtnBorder },
+              ]}
               activeOpacity={0.75}
               onPress={handleCopy}
             >
               <Ionicons
                 name={copied ? 'checkmark' : 'copy-outline'}
                 size={17}
-                color={copied ? '#34d399' : '#f8fafc'}
+                color={copied ? '#34d399' : colors.headerBtnIcon}
               />
             </TouchableOpacity>
           </View>
@@ -138,7 +173,12 @@ export default function DuaKhatmScreen() {
           contentContainerStyle={styles.scrollContent}
         >
           {/* BANNER CARD */}
-          <View style={styles.bannerCard}>
+          <View
+            style={[
+              styles.bannerCard,
+              { backgroundColor: colors.bannerCardBg, borderColor: colors.bannerCardBorder },
+            ]}
+          >
             <View style={styles.bannerEmblemWrapper}>
               <Image
                 source={require('@/assets/images/quran_circle_emblem.png')}
@@ -147,40 +187,50 @@ export default function DuaKhatmScreen() {
               />
             </View>
 
-            <Text style={styles.bannerMainTitle}>دعاء ختم القرآن الكريم</Text>
-            <Text style={styles.bannerSubTitle}>
+            <Text style={[styles.bannerMainTitle, { color: colors.bannerMainTitle }]}>دعاء ختم القرآن الكريم</Text>
+            <Text style={[styles.bannerSubTitle, { color: colors.bannerSubTitle }]}>
               تقبل الله منكم صالح الأعمال، وجعل القرآن ربيع قلوبكم ونور صدوركم وجلاء أحزانكم
             </Text>
 
             {/* FONT SIZE CONTROLS & COPY PILL */}
             <View style={styles.controlsRow}>
               <TouchableOpacity
-                style={styles.controlPill}
+                style={[
+                  styles.controlPill,
+                  { backgroundColor: colors.controlPillBg, borderColor: colors.controlPillBorder },
+                ]}
                 onPress={() => setFontSize((prev) => Math.min(28, prev + 2))}
                 activeOpacity={0.75}
               >
-                <Text style={styles.controlPillText}>+ أ</Text>
+                <Text style={[styles.controlPillText, { color: colors.controlPillText }]}>+ أ</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.controlPill}
+                style={[
+                  styles.controlPill,
+                  { backgroundColor: colors.controlPillBg, borderColor: colors.controlPillBorder },
+                ]}
                 onPress={() => setFontSize((prev) => Math.max(16, prev - 2))}
                 activeOpacity={0.75}
               >
-                <Text style={styles.controlPillText}>- أ</Text>
+                <Text style={[styles.controlPillText, { color: colors.controlPillText }]}>- أ</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.controlPill, copied && styles.controlPillActive]}
+                style={[
+                  styles.controlPill,
+                  { backgroundColor: colors.controlPillBg, borderColor: colors.controlPillBorder },
+                  copied && styles.controlPillActive,
+                ]}
                 onPress={handleCopy}
                 activeOpacity={0.75}
               >
                 <Ionicons
                   name={copied ? 'checkmark' : 'copy-outline'}
                   size={14}
-                  color={copied ? '#34d399' : '#94a3b8'}
+                  color={copied ? '#34d399' : colors.controlPillText}
                 />
-                <Text style={[styles.controlPillText, copied && { color: '#34d399' }]}>
+                <Text style={[styles.controlPillText, { color: colors.controlPillText }, copied && { color: '#34d399' }]}>
                   {copied ? 'تم النسخ' : 'نسخ الدعاء'}
                 </Text>
               </TouchableOpacity>
@@ -188,10 +238,20 @@ export default function DuaKhatmScreen() {
           </View>
 
           {/* DUA TEXT CARD */}
-          <View style={styles.duaTextCard}>
+          <View
+            style={[
+              styles.duaTextCard,
+              { backgroundColor: colors.duaCardBg, borderColor: colors.duaCardBorder },
+            ]}
+          >
             {DUA_KHATM_PARAGRAPHS.map((item, index) => (
               <View key={item.id} style={styles.paragraphWrapper}>
-                <Text style={[styles.duaParagraphText, { fontSize, lineHeight: fontSize * 1.85 }]}>
+                <Text
+                  style={[
+                    styles.duaParagraphText,
+                    { color: colors.duaText, fontSize, lineHeight: fontSize * 1.85 },
+                  ]}
+                >
                   {item.text}
                 </Text>
 
@@ -221,15 +281,28 @@ export default function DuaKhatmScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.secondaryRestartBtn}
+              style={[
+                styles.secondaryRestartBtn,
+                {
+                  backgroundColor: colors.secondaryRestartBg,
+                  borderColor: colors.secondaryRestartBorder,
+                },
+              ]}
               activeOpacity={0.85}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.replace({ pathname: '/surah/[id]', params: { id: '1' } });
               }}
             >
-              <Ionicons name="book-outline" size={18} color="#34d399" />
-              <Text style={styles.secondaryRestartBtnText}>بدء ختمة جديدة من سورة الفاتحة</Text>
+              <Ionicons name="book-outline" size={18} color={colors.secondaryRestartText} />
+              <Text
+                style={[
+                  styles.secondaryRestartBtnText,
+                  { color: colors.secondaryRestartText },
+                ]}
+              >
+                بدء ختمة جديدة من سورة الفاتحة
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

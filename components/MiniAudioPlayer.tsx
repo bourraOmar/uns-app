@@ -13,6 +13,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
+import { useAppTheme } from '@/context/ThemeContext';
 
 interface MiniAudioPlayerProps {
   bottomOffset?: number;
@@ -23,6 +24,7 @@ export default function MiniAudioPlayer({
   bottomOffset = Platform.OS === 'ios' ? 100 : 92,
   style,
 }: MiniAudioPlayerProps) {
+  const { isDark } = useAppTheme();
   const {
     currentSurah,
     currentReciter,
@@ -54,6 +56,14 @@ export default function MiniAudioPlayer({
     nextSurah();
   };
 
+  const blurBg = isDark
+    ? Platform.OS === 'ios' ? 'rgba(17, 24, 39, 0.72)' : 'rgba(15, 23, 42, 0.92)'
+    : Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.95)';
+  const borderColor = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(226, 232, 240, 0.9)';
+  const borderTopColor = isDark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.95)';
+  const textColor = isDark ? '#ffffff' : '#0f172a';
+  const iconColor = isDark ? '#ffffff' : '#0f172a';
+
   return (
     <View
       style={[
@@ -70,8 +80,11 @@ export default function MiniAudioPlayer({
       >
         <BlurView
           intensity={Platform.OS === 'ios' ? 65 : 85}
-          tint="dark"
-          style={styles.blurContent}
+          tint={isDark ? 'dark' : 'light'}
+          style={[
+            styles.blurContent,
+            { backgroundColor: blurBg, borderColor, borderTopColor },
+          ]}
         >
           {/* LEFT SIDE: Circular Mic Badge + Surah & Reciter Details */}
           <View style={styles.leftInfoSection}>
@@ -81,7 +94,7 @@ export default function MiniAudioPlayer({
 
             <View style={styles.textColumn}>
               {/* Surah Number + English Name (Arabic Name) */}
-              <Text style={styles.surahTitleText} numberOfLines={1}>
+              <Text style={[styles.surahTitleText, { color: textColor }]} numberOfLines={1}>
                 {currentSurah.id}. {currentSurah.name_simple} ({currentSurah.name_arabic})
               </Text>
 
@@ -102,12 +115,12 @@ export default function MiniAudioPlayer({
               hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
             >
               {isLoadingAudio ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color={isDark ? '#ffffff' : '#10b981'} />
               ) : (
                 <Ionicons
                   name={isPlaying ? 'pause' : 'play'}
                   size={20}
-                  color="#ffffff"
+                  color={iconColor}
                   style={isPlaying ? undefined : { marginLeft: 2 }}
                 />
               )}
@@ -120,7 +133,7 @@ export default function MiniAudioPlayer({
               onPress={handleNext}
               hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
             >
-              <Ionicons name="play-forward" size={19} color="#ffffff" />
+              <Ionicons name="play-forward" size={19} color={iconColor} />
             </TouchableOpacity>
           </View>
         </BlurView>

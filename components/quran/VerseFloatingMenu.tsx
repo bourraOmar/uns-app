@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
-  Animated,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useAppTheme } from '@/context/ThemeContext';
 
 interface VerseFloatingMenuProps {
   visible: boolean;
@@ -33,7 +33,17 @@ export default function VerseFloatingMenu({
   isPlaying,
   isLoadingAudio,
 }: VerseFloatingMenuProps) {
+  const { isDark } = useAppTheme();
   if (!visible) return null;
+
+  const blurBg = isDark
+    ? Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.72)' : 'rgba(30, 41, 59, 0.92)'
+    : Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.95)';
+  const borderColor = isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(226, 232, 240, 0.9)';
+  const borderTopColor = isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.95)';
+  const textColor = isDark ? '#f8fafc' : '#0f172a';
+  const iconColor = isDark ? '#f8fafc' : '#0f172a';
+  const dividerColor = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
 
   return (
     <View style={styles.floatingMenuContainer} pointerEvents="box-none">
@@ -48,11 +58,14 @@ export default function VerseFloatingMenu({
       >
         <BlurView
           intensity={Platform.OS === 'ios' ? 70 : 100}
-          tint="dark"
-          style={styles.tafsirBlur}
+          tint={isDark ? 'dark' : 'light'}
+          style={[
+            styles.tafsirBlur,
+            { backgroundColor: blurBg, borderColor, borderTopColor },
+          ]}
         >
-          <Text style={styles.tafsirText}>تفسير الآية المحددة</Text>
-          <Ionicons name="reorder-two-outline" size={22} color="#f8fafc" />
+          <Text style={[styles.tafsirText, { color: textColor }]}>تفسير الآية المحددة</Text>
+          <Ionicons name="reorder-two-outline" size={22} color={iconColor} />
         </BlurView>
       </TouchableOpacity>
 
@@ -60,8 +73,11 @@ export default function VerseFloatingMenu({
       <View style={styles.actionsPill}>
         <BlurView
           intensity={Platform.OS === 'ios' ? 70 : 100}
-          tint="dark"
-          style={styles.actionsBlur}
+          tint={isDark ? 'dark' : 'light'}
+          style={[
+            styles.actionsBlur,
+            { backgroundColor: blurBg, borderColor, borderTopColor },
+          ]}
         >
           {/* Bookmark Button */}
           <TouchableOpacity
@@ -75,12 +91,12 @@ export default function VerseFloatingMenu({
             <Ionicons
               name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
               size={22}
-              color={isBookmarked ? '#34d399' : '#f8fafc'}
+              color={isBookmarked ? (isDark ? '#34d399' : '#059669') : iconColor}
             />
           </TouchableOpacity>
 
           {/* Divider */}
-          <View style={styles.btnDivider} />
+          <View style={[styles.btnDivider, { backgroundColor: dividerColor }]} />
 
           {/* Play / Pause Verse Recitation Button */}
           <TouchableOpacity
@@ -92,19 +108,19 @@ export default function VerseFloatingMenu({
             }}
           >
             {isLoadingAudio ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={isDark ? '#ffffff' : '#0f172a'} />
             ) : (
               <Ionicons
                 name={isPlaying ? 'pause' : 'play'}
                 size={23}
-                color="#ffffff"
+                color={iconColor}
                 style={isPlaying ? undefined : { marginLeft: 2 }}
               />
             )}
           </TouchableOpacity>
 
           {/* Divider */}
-          <View style={styles.btnDivider} />
+          <View style={[styles.btnDivider, { backgroundColor: dividerColor }]} />
 
           {/* Share Button */}
           <TouchableOpacity
@@ -115,7 +131,7 @@ export default function VerseFloatingMenu({
               onShare();
             }}
           >
-            <Ionicons name="share-outline" size={22} color="#f8fafc" />
+            <Ionicons name="share-outline" size={22} color={iconColor} />
           </TouchableOpacity>
         </BlurView>
       </View>

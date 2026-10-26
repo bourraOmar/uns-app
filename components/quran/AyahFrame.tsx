@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { toEasternArabicNumerals } from '@/data/quranPages';
+import { useAppTheme } from '@/context/ThemeContext';
 
 interface AyahFrameProps {
   number: number;
@@ -10,9 +11,15 @@ interface AyahFrameProps {
 }
 
 export default function AyahFrame({ number, width = 25, height = 35 }: AyahFrameProps) {
+  const { isDark } = useAppTheme();
   const numStr = toEasternArabicNumerals(number);
   const isThreeDigits = number >= 100;
   const isTwoDigits = number >= 10 && number < 100;
+
+  const outerFill = isDark ? 'rgba(15, 142, 93, 0.18)' : 'rgba(16, 185, 129, 0.12)';
+  const outerStroke = isDark ? '#10b981' : '#059669';
+  const innerStroke = isDark ? 'rgba(74, 222, 128, 0.35)' : 'rgba(5, 150, 105, 0.3)';
+  const textColor = isDark ? '#4ade80' : '#047857';
 
   return (
     <View style={[styles.container, { width, height }]}>
@@ -46,8 +53,8 @@ export default function AyahFrame({ number, width = 25, height = 35 }: AyahFrame
             C 23 9, 27 6, 30 2
             Z
           "
-          fill="rgba(15, 142, 93, 0.18)"
-          stroke="#10b981"
+          fill={outerFill}
+          stroke={outerStroke}
           strokeWidth={2.4}
           strokeLinejoin="round"
         />
@@ -77,7 +84,7 @@ export default function AyahFrame({ number, width = 25, height = 35 }: AyahFrame
             Z
           "
           fill="none"
-          stroke="rgba(74, 222, 128, 0.35)"
+          stroke={innerStroke}
           strokeWidth={1}
         />
       </Svg>
@@ -86,6 +93,7 @@ export default function AyahFrame({ number, width = 25, height = 35 }: AyahFrame
         style={[
           styles.numberText,
           {
+            color: textColor,
             fontSize: isThreeDigits ? 9 : isTwoDigits ? 11 : 12,
           },
         ]}

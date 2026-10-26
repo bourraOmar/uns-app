@@ -12,6 +12,7 @@ import {
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { toEasternArabicNumerals } from '@/data/quranPages';
+import { useAppTheme } from '@/context/ThemeContext';
 
 interface TafsirModalProps {
   visible: boolean;
@@ -30,8 +31,25 @@ export default function TafsirModal({
   verseNumber,
   verseText,
 }: TafsirModalProps) {
+  const { isDark } = useAppTheme();
   const [tafsirText, setTafsirText] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const colors = {
+    cardBg: isDark ? '#1e293b' : '#ffffff',
+    cardBorder: isDark ? 'rgba(51, 65, 85, 0.8)' : 'rgba(226, 232, 240, 0.95)',
+    headerBorder: isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(226, 232, 240, 0.85)',
+    closeBtnBg: isDark ? '#0f172a' : 'rgba(241, 245, 249, 0.95)',
+    closeBtnBorder: isDark ? 'rgba(51, 65, 85, 0.7)' : 'rgba(203, 213, 225, 0.8)',
+    closeBtnIcon: isDark ? '#f8fafc' : '#0f172a',
+    title: isDark ? '#f8fafc' : '#0f172a',
+    subtitle: isDark ? '#34d399' : '#059669',
+    ayahBoxBg: isDark ? 'rgba(15, 23, 42, 0.7)' : 'rgba(241, 245, 249, 0.95)',
+    ayahBoxBorder: isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.35)',
+    ayahText: isDark ? '#34d399' : '#047857',
+    label: isDark ? '#94a3b8' : '#64748b',
+    paragraph: isDark ? '#f8fafc' : '#1e293b',
+  };
 
   useEffect(() => {
     if (visible && surahId && verseNumber) {
@@ -75,22 +93,30 @@ export default function TafsirModal({
           onPress={onClose}
         />
 
-        <View style={styles.modalCard}>
+        <View
+          style={[
+            styles.modalCard,
+            { backgroundColor: colors.cardBg, borderColor: colors.cardBorder },
+          ]}
+        >
           {/* Header */}
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.headerBorder }]}>
             <TouchableOpacity
-              style={styles.closeBtn}
+              style={[
+                styles.closeBtn,
+                { backgroundColor: colors.closeBtnBg, borderColor: colors.closeBtnBorder },
+              ]}
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Ionicons name="close" size={20} color="#f8fafc" />
+              <Ionicons name="close" size={20} color={colors.closeBtnIcon} />
             </TouchableOpacity>
 
             <View style={styles.modalHeaderTitleBlock}>
-              <Text style={styles.modalTitle}>
+              <Text style={[styles.modalTitle, { color: colors.title }]}>
                 تفسير الآية ({arabicVerseNum})
               </Text>
-              <Text style={styles.modalSubtitle}>
+              <Text style={[styles.modalSubtitle, { color: colors.subtitle }]}>
                 سورة {surahName} • التفسير الميسر
               </Text>
             </View>
@@ -102,20 +128,25 @@ export default function TafsirModal({
             contentContainerStyle={styles.scrollContent}
           >
             {/* Ayah Calligraphy Box */}
-            <View style={styles.ayahBox}>
-              <Text style={styles.ayahText}>{verseText}</Text>
+            <View
+              style={[
+                styles.ayahBox,
+                { backgroundColor: colors.ayahBoxBg, borderColor: colors.ayahBoxBorder },
+              ]}
+            >
+              <Text style={[styles.ayahText, { color: colors.ayahText }]}>{verseText}</Text>
             </View>
 
             {/* Tafsir Content */}
             <View style={styles.tafsirContent}>
-              <Text style={styles.tafsirHeaderLabel}>بيان التفسير:</Text>
+              <Text style={[styles.tafsirHeaderLabel, { color: colors.label }]}>بيان التفسير:</Text>
               {isLoading ? (
                 <View style={styles.loadingBox}>
                   <ActivityIndicator size="small" color="#10b981" />
                   <Text style={styles.loadingText}>جاري جلب التفسير الميسر...</Text>
                 </View>
               ) : (
-                <Text style={styles.tafsirParagraph}>{tafsirText}</Text>
+                <Text style={[styles.tafsirParagraph, { color: colors.paragraph }]}>{tafsirText}</Text>
               )}
             </View>
           </ScrollView>

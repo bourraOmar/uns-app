@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Magnetometer } from 'expo-sensors';
@@ -111,6 +112,7 @@ export default function QiblaScreen() {
   return (
     <View style={styles.container}>
       <IslamicBackground />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={{ flex: 1 }}>
       {loading ? (
         <View style={styles.centerContainer}>
