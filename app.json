@@ -38,8 +38,7 @@
         "expo-build-properties",
         {
           "android": {
-            "enableProguardInReleaseBuilds": false,
-            "abiFilters": ["arm64-v8a", "armeabi-v7a"]
+            "enableProguardInReleaseBuilds": false
           }
         }
       ]

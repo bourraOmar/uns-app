@@ -8,6 +8,8 @@ import {
   Amiri_700Bold,
 } from '@expo-google-fonts/amiri';
 import {
+  Cairo_400Regular,
+  Cairo_500Medium,
   Cairo_600SemiBold,
   Cairo_700Bold,
   Cairo_800ExtraBold,
@@ -19,29 +21,35 @@ import { ScrollCollapseProvider } from '@/context/ScrollCollapseContext';
 import { AppThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import AudioPlayerModal from '@/components/AudioPlayerModal';
 
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     Amiri_400Regular,
     Amiri_700Bold,
+    Cairo_400Regular,
+    Cairo_500Medium,
     Cairo_600SemiBold,
     Cairo_700Bold,
     Cairo_800ExtraBold,
     Rakkas_400Regular,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
-    if (error) throw error;
+    if (error) {
+      console.warn('Font load error:', error);
+    }
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+    if (loaded || error) {
+      SplashScreen.hideAsync().catch(() => {});
     }
-  }, [loaded]);
+  }, [loaded, error]);
 
-  if (!loaded) {
+  if (!loaded && !error) {
     return null;
   }
 
