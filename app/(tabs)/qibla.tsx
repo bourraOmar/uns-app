@@ -13,7 +13,7 @@ import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useAppTheme } from '@/context/ThemeContext';
 import IslamicBackground from '@/components/IslamicBackground';
 
 const KAABA_LAT = 21.4225;
@@ -21,7 +21,8 @@ const KAABA_LNG = 39.8262;
 
 export default function QiblaScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
+  const { isDark } = useAppTheme();
+  const colorScheme = isDark ? 'dark' : 'light';
   const colors = Colors[colorScheme];
 
   const [heading, setHeading] = useState(0);

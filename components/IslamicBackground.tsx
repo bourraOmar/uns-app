@@ -6,7 +6,6 @@ import { useAppTheme } from '@/context/ThemeContext';
 interface IslamicBackgroundProps {
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
-  forceTheme?: 'dark' | 'light';
 }
 
 /**
@@ -14,15 +13,14 @@ interface IslamicBackgroundProps {
  * Unified professional background across the entire app.
  * Features a dual-color linear gradient (Islamic Midnight Navy -> Rich Emerald)
  * overlaid with the Pinterest-style intricate Islamic geometric starburst pattern.
- * Always renders the signature dark Islamic theme to match white typography and dark cards.
  */
-export default function IslamicBackground({ children, style, forceTheme }: IslamicBackgroundProps) {
+export default function IslamicBackground({ children, style }: IslamicBackgroundProps) {
   const { isDark } = useAppTheme();
-  
-  // Use signature dark gradient by default so all screens maintain high contrast and luxury dark styling
-  const effectiveDark = forceTheme ? forceTheme === 'dark' : true;
 
-  const gradientColors = effectiveDark
+  // Two principal colors gradient
+  // Dark mode: Deep Islamic Midnight Navy (#081226) -> Rich Emerald Teal (#042828)
+  // Light mode: Warm Pearl Cream (#fbf9f5) -> Soft Golden Sand (#ede6d8)
+  const gradientColors = isDark
     ? (['#081226', '#042828'] as const)
     : (['#fbf9f5', '#ede6d8'] as const);
 
@@ -40,7 +38,7 @@ export default function IslamicBackground({ children, style, forceTheme }: Islam
           source={require('@/assets/images/islamic_bg_pattern.jpg')}
           style={[
             styles.patternImage,
-            { opacity: effectiveDark ? 0.085 : 0.22 },
+            { opacity: isDark ? 0.085 : 0.22 },
           ]}
           resizeMode="cover"
         />
@@ -61,7 +59,7 @@ export default function IslamicBackground({ children, style, forceTheme }: Islam
         source={require('@/assets/images/islamic_bg_pattern.jpg')}
         style={[
           styles.patternImage,
-          { opacity: effectiveDark ? 0.085 : 0.22 },
+          { opacity: isDark ? 0.085 : 0.22 },
         ]}
         resizeMode="cover"
       />

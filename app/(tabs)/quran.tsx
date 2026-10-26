@@ -18,6 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import IslamicBackground from '@/components/IslamicBackground';
 import surahsData from '../../data/surahs.json';
 
@@ -86,6 +87,7 @@ interface SwipeableReadingRowProps {
 }
 
 function SwipeableReadingRow({ item, isLast, onPress, onDelete }: SwipeableReadingRowProps) {
+  const { isDark } = useAppTheme();
   const [pan] = useState(() => new Animated.Value(0));
   const [rowHeight] = useState(() => new Animated.Value(68));
   const [rowOpacity] = useState(() => new Animated.Value(1));
@@ -191,7 +193,7 @@ function SwipeableReadingRow({ item, isLast, onPress, onDelete }: SwipeableReadi
   });
 
   return (
-    <Animated.View style={[styles.swipeableContainer, { height: rowHeight, opacity: rowOpacity }]}>
+    <Animated.View style={[styles.swipeableContainer, { height: rowHeight, opacity: rowOpacity, backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
       {/* Background Red Delete Button (only revealed when actively swiping left) */}
       <Animated.View style={[styles.deleteBackground, { opacity: deleteOpacity }]}>
         <TouchableOpacity
@@ -209,7 +211,11 @@ function SwipeableReadingRow({ item, isLast, onPress, onDelete }: SwipeableReadi
         style={[
           styles.readingItemRow,
           !isLast && styles.readingItemBorder,
-          { transform: [{ translateX: pan }] },
+          {
+            transform: [{ translateX: pan }],
+            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+            borderBottomColor: isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(226, 232, 240, 0.8)',
+          },
         ]}
         {...panResponder.panHandlers}
       >
@@ -225,20 +231,20 @@ function SwipeableReadingRow({ item, isLast, onPress, onDelete }: SwipeableReadi
           }}
         >
           {/* Left: Page Number with Chevron */}
-          <View style={styles.readingPageWrapper}>
+          <View style={[styles.readingPageWrapper, { backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? 'rgba(51, 65, 85, 0.6)' : '#e2e8f0' }]}>
             <Ionicons name="chevron-back" size={14} color="#64748b" />
-            <Text style={styles.readingPageNumber}>{item.page}</Text>
+            <Text style={[styles.readingPageNumber, { color: isDark ? '#cbd5e1' : '#475569' }]}>{item.page}</Text>
           </View>
 
           {/* Center: Surah Title & Time Ago */}
           <View style={styles.readingInfoWrapper}>
-            <Text style={styles.readingSurahName}>{item.surahName}</Text>
-            <Text style={styles.readingTimeAgo}>{item.timeAgo}</Text>
+            <Text style={[styles.readingSurahName, { color: isDark ? '#f8fafc' : '#0f172a' }]}>{item.surahName}</Text>
+            <Text style={[styles.readingTimeAgo, { color: isDark ? '#94a3b8' : '#64748b' }]}>{item.timeAgo}</Text>
           </View>
 
           {/* Right: Circular History Clock Icon */}
-          <View style={styles.readingHistoryCircle}>
-            <MaterialCommunityIcons name="history" size={18} color="#34d399" />
+          <View style={[styles.readingHistoryCircle, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.12)' : 'rgba(16, 185, 129, 0.12)' }]}>
+            <MaterialCommunityIcons name="history" size={18} color={isDark ? '#34d399' : '#059669'} />
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -248,6 +254,7 @@ function SwipeableReadingRow({ item, isLast, onPress, onDelete }: SwipeableReadi
 
 export default function QuranScreen() {
   const router = useRouter();
+  const { isDark } = useAppTheme();
   const flatListRef = useRef<FlatList<SurahItem>>(null);
   const {
     onScroll,
@@ -257,6 +264,31 @@ export default function QuranScreen() {
     closeSearch,
     isSearchActive,
   } = useScrollCollapse();
+
+  const colors = {
+    title: isDark ? '#f8fafc' : '#0f172a',
+    subtitle: isDark ? '#94a3b8' : '#64748b',
+    headerBtnBg: isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.9)',
+    headerBtnBorder: isDark ? '#334155' : '#cbd5e1',
+    headerBtnIcon: isDark ? '#f8fafc' : '#1e293b',
+    trackBg: isDark ? '#1e293b' : 'rgba(226, 232, 240, 0.85)',
+    trackBorder: isDark ? '#334155' : '#cbd5e1',
+    tabActiveBg: isDark ? '#0f172a' : '#ffffff',
+    tabActiveText: isDark ? '#f8fafc' : '#0f172a',
+    tabInactiveText: isDark ? '#64748b' : '#64748b',
+    cardBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.92)',
+    cardBorder: isDark ? '#334155' : 'rgba(226, 232, 240, 0.95)',
+    cardShadow: isDark ? '#000' : '#94a3b8',
+    surahName: isDark ? '#f8fafc' : '#0f172a',
+    pillBg: isDark ? '#0f172a' : '#f1f5f9',
+    pillBorder: isDark ? 'rgba(51, 65, 85, 0.6)' : '#e2e8f0',
+    pillText: isDark ? '#cbd5e1' : '#475569',
+    resultsBadgeBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.9)',
+    resultsBadgeText: isDark ? '#94a3b8' : '#475569',
+    filterBtnBg: isDark ? '#1e293b' : '#ffffff',
+    filterBtnBorder: isDark ? '#334155' : '#cbd5e1',
+    filterBtnText: isDark ? '#cbd5e1' : '#1e293b',
+  };
 
   const searchParams = useLocalSearchParams<{ tab?: string }>();
   const [selectedTab, setSelectedTab] = useState<'mushaf' | 'readings' | null>(null);
@@ -359,31 +391,46 @@ export default function QuranScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.surahCard}
+        style={[
+          styles.surahCard,
+          {
+            backgroundColor: colors.cardBg,
+            borderColor: colors.cardBorder,
+            shadowColor: colors.cardShadow,
+          },
+        ]}
         activeOpacity={0.75}
         onPress={() => handleOpenSurah(item)}
       >
         {/* Left Section: Verses Pill + Revelation Place + Page Number */}
         <View style={styles.cardLeftSection}>
           {/* Pill Badge */}
-          <View style={styles.versesBadgePill}>
-            <Ionicons name="chevron-back" size={13} color="#94a3b8" />
-            <Text style={styles.versesBadgeText}>
+          <View
+            style={[
+              styles.versesBadgePill,
+              {
+                backgroundColor: colors.pillBg,
+                borderColor: colors.pillBorder,
+              },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={13} color={colors.pillText} />
+            <Text style={[styles.versesBadgeText, { color: colors.pillText }]}>
               {item.verses_count} {item.verses_count <= 10 ? 'آيات' : 'آية'}
             </Text>
           </View>
 
           {/* Place & Page Metadata */}
           <View style={styles.metaRow}>
-            <Text style={styles.revelationText}>{isMakki ? 'مكية' : 'مدنية'}</Text>
-            <Text style={styles.dotSeparator}>•</Text>
-            <Text style={styles.pageNumberText}>{item.start_page} الصفحة</Text>
+            <Text style={[styles.revelationText, { color: colors.subtitle }]}>{isMakki ? 'مكية' : 'مدنية'}</Text>
+            <Text style={[styles.dotSeparator, { color: colors.subtitle }]}>•</Text>
+            <Text style={[styles.pageNumberText, { color: colors.subtitle }]}>{item.start_page} الصفحة</Text>
           </View>
         </View>
 
         {/* Right Section: Vocalized Name + Islamic Geometric Star with Number */}
         <View style={styles.cardRightSection}>
-          <Text style={styles.surahVocalizedName} numberOfLines={1}>
+          <Text style={[styles.surahVocalizedName, { color: colors.surahName }]} numberOfLines={1}>
             {item.vocalized_name}
           </Text>
 
@@ -405,7 +452,7 @@ export default function QuranScreen() {
     <View style={styles.safeArea}>
       <IslamicBackground />
       <SafeAreaView style={{ flex: 1 }}>
-        <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* TOP HEADER MATCHING DHIKR PAGE */}
       <View style={styles.header}>
@@ -413,19 +460,32 @@ export default function QuranScreen() {
         <View style={styles.headerActionsLeft}>
           {/* Profile / Services shortcut */}
           <TouchableOpacity
-            style={styles.headerCircleButton}
+            style={[
+              styles.headerCircleButton,
+              {
+                backgroundColor: colors.headerBtnBg,
+                borderColor: colors.headerBtnBorder,
+              },
+            ]}
             activeOpacity={0.75}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push('/(tabs)/duas' as any);
             }}
           >
-            <Ionicons name="person-outline" size={18} color="#f8fafc" />
+            <Ionicons name="person-outline" size={18} color={colors.headerBtnIcon} />
           </TouchableOpacity>
 
           {/* Bookmarks / Readings Button */}
           <TouchableOpacity
-            style={[styles.headerCircleButton, activeTab === 'readings' && styles.headerCircleButtonActive]}
+            style={[
+              styles.headerCircleButton,
+              {
+                backgroundColor: colors.headerBtnBg,
+                borderColor: colors.headerBtnBorder,
+              },
+              activeTab === 'readings' && styles.headerCircleButtonActive,
+            ]}
             activeOpacity={0.75}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -435,13 +495,20 @@ export default function QuranScreen() {
             <Ionicons
               name={activeTab === 'readings' ? 'bookmark' : 'bookmark-outline'}
               size={18}
-              color={activeTab === 'readings' ? '#10b981' : '#f8fafc'}
+              color={activeTab === 'readings' ? '#10b981' : colors.headerBtnIcon}
             />
           </TouchableOpacity>
 
           {/* Search Toggle Button */}
           <TouchableOpacity
-            style={[styles.headerCircleButton, isSearchActive && styles.headerCircleButtonActive]}
+            style={[
+              styles.headerCircleButton,
+              {
+                backgroundColor: colors.headerBtnBg,
+                borderColor: colors.headerBtnBorder,
+              },
+              isSearchActive && styles.headerCircleButtonActive,
+            ]}
             activeOpacity={0.75}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -455,21 +522,24 @@ export default function QuranScreen() {
             <Ionicons
               name={isSearchActive ? 'close' : 'search-outline'}
               size={18}
-              color={isSearchActive ? '#10b981' : '#f8fafc'}
+              color={isSearchActive ? '#10b981' : colors.headerBtnIcon}
             />
           </TouchableOpacity>
         </View>
 
         {/* Right: Title "المصحف" */}
-        <Text style={styles.headerTitle}>المصحف</Text>
+        <Text style={[styles.headerTitle, { color: colors.title }]}>المصحف</Text>
       </View>
 
       {/* SEGMENTED PILL TABS ("المصحف" / "قراءاتي") */}
       <View style={styles.segmentedTabsContainer}>
-        <View style={styles.segmentedTabsTrack}>
+        <View style={[styles.segmentedTabsTrack, { backgroundColor: colors.trackBg, borderColor: colors.trackBorder }]}>
           {/* المصحف */}
           <TouchableOpacity
-            style={[styles.segmentTab, activeTab === 'mushaf' && styles.segmentTabActive]}
+            style={[
+              styles.segmentTab,
+              activeTab === 'mushaf' && [styles.segmentTabActive, { backgroundColor: colors.tabActiveBg }],
+            ]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setActiveTab('mushaf');
@@ -479,7 +549,9 @@ export default function QuranScreen() {
             <Text
               style={[
                 styles.segmentTabText,
-                activeTab === 'mushaf' && styles.segmentTabTextActive,
+                activeTab === 'mushaf'
+                  ? [styles.segmentTabTextActive, { color: colors.tabActiveText }]
+                  : { color: colors.tabInactiveText },
               ]}
             >
               المصحف
@@ -488,7 +560,10 @@ export default function QuranScreen() {
 
           {/* قراءاتي */}
           <TouchableOpacity
-            style={[styles.segmentTab, activeTab === 'readings' && styles.segmentTabActive]}
+            style={[
+              styles.segmentTab,
+              activeTab === 'readings' && [styles.segmentTabActive, { backgroundColor: colors.tabActiveBg }],
+            ]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setActiveTab('readings');
@@ -498,7 +573,9 @@ export default function QuranScreen() {
             <Text
               style={[
                 styles.segmentTabText,
-                activeTab === 'readings' && styles.segmentTabTextActive,
+                activeTab === 'readings'
+                  ? [styles.segmentTabTextActive, { color: colors.tabActiveText }]
+                  : { color: colors.tabInactiveText },
               ]}
             >
               قراءاتي
@@ -516,14 +593,14 @@ export default function QuranScreen() {
           {/* Section: آخر قراءاتي */}
           <View style={styles.sectionHeaderRow}>
             <TouchableOpacity style={styles.seeAllButton} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={14} color="#94a3b8" />
-              <Text style={styles.seeAllText}>عرض الكل</Text>
+              <Ionicons name="chevron-back" size={14} color={colors.subtitle} />
+              <Text style={[styles.seeAllText, { color: colors.subtitle }]}>عرض الكل</Text>
             </TouchableOpacity>
-            <Text style={styles.sectionHeaderTitle}>آخر قراءاتي</Text>
+            <Text style={[styles.sectionHeaderTitle, { color: colors.title }]}>آخر قراءاتي</Text>
           </View>
 
           {/* Recent Readings List Card Container */}
-          <View style={styles.readingsListCard}>
+          <View style={[styles.readingsListCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
             {recentReadings.length > 0 ? (
               recentReadings.map((item, index) => {
                 const isLast = index === recentReadings.length - 1;
@@ -545,9 +622,9 @@ export default function QuranScreen() {
               })
             ) : (
               <View style={styles.emptyHistoryBox}>
-                <MaterialCommunityIcons name="history" size={34} color="#64748b" />
-                <Text style={styles.emptyHistoryText}>لا توجد قراءات في السجل</Text>
-                <Text style={styles.emptyHistorySubText}>
+                <MaterialCommunityIcons name="history" size={34} color={colors.subtitle} />
+                <Text style={[styles.emptyHistoryText, { color: colors.title }]}>لا توجد قراءات في السجل</Text>
+                <Text style={[styles.emptyHistorySubText, { color: colors.subtitle }]}>
                   السور التي تقرؤها ستظهر هنا تلقائياً
                 </Text>
               </View>
@@ -559,13 +636,19 @@ export default function QuranScreen() {
         <>
           {/* FILTER ROW: "العرض: السور ⬍" */}
           <View style={styles.filterRow}>
-            <View style={styles.resultsBadge}>
-              <Text style={styles.resultsBadgeText}>{filteredSurahs.length} سورة</Text>
+            <View style={[styles.resultsBadge, { backgroundColor: colors.resultsBadgeBg, borderColor: colors.cardBorder }]}>
+              <Text style={[styles.resultsBadgeText, { color: colors.resultsBadgeText }]}>{filteredSurahs.length} سورة</Text>
             </View>
 
-            <TouchableOpacity style={styles.filterDropdownButton} activeOpacity={0.8}>
-              <Ionicons name="swap-vertical" size={14} color="#94a3b8" />
-              <Text style={styles.filterDropdownText}>العرض: السور</Text>
+            <TouchableOpacity
+              style={[
+                styles.filterDropdownButton,
+                { backgroundColor: colors.filterBtnBg, borderColor: colors.filterBtnBorder },
+              ]}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="swap-vertical" size={14} color={colors.filterBtnText} />
+              <Text style={[styles.filterDropdownText, { color: colors.filterBtnText }]}>العرض: السور</Text>
             </TouchableOpacity>
           </View>
 

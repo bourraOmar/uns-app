@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  StatusBar,
   Image,
   ImageSourcePropType,
   Share,
@@ -16,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import IslamicBackground from '@/components/IslamicBackground';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import surahsData from '../../data/surahs.json';
 import {
   getPrayerTimesForDate,
@@ -262,7 +264,39 @@ function hasPrayerTimeArrived(
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isDark } = useAppTheme();
   const { onScroll, openSearch } = useScrollCollapse();
+
+  const colors = {
+    title: isDark ? '#f8fafc' : '#0f172a',
+    subtitle: isDark ? '#94a3b8' : '#475569',
+    muted: isDark ? '#64748b' : '#64748b',
+    cardBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.92)',
+    cardBorder: isDark ? '#334155' : 'rgba(226, 232, 240, 0.95)',
+    cardShadow: isDark ? '#000' : '#94a3b8',
+    headerBtnBg: isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.9)',
+    headerBtnBorder: isDark ? '#334155' : '#cbd5e1',
+    headerBtnIcon: isDark ? '#8ba7c0' : '#1e293b',
+    calendarNumber: isDark ? '#f8fafc' : '#0f172a',
+    calendarDay: isDark ? '#34d399' : '#059669',
+    calendarDivider: isDark ? '#334155' : '#e2e8f0',
+    greetingText: isDark ? '#e2e8f0' : '#1e293b',
+    actionPillBg: isDark ? '#15251d' : '#0f766e',
+    actionPillBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 118, 110, 0.25)',
+    mosqueCircleBg: isDark ? '#15251d' : '#ecfdf5',
+    mosqueCircleBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : '#a7f3d0',
+    prayerName: isDark ? '#8ba7c0' : '#475569',
+    prayerTime: isDark ? '#f8fafc' : '#0f172a',
+    prayerIconTint: isDark ? '#94a3b8' : '#64748b',
+    appTitle: isDark ? '#f8fafc' : '#0f172a',
+    appSubtitle: isDark ? '#8ba7c0' : '#64748b',
+    appCircleBorder: isDark ? '#334155' : 'rgba(0, 0, 0, 0.08)',
+    lastReadBg: isDark ? '#122026' : 'rgba(255, 255, 255, 0.95)',
+    lastReadBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.95)',
+    lastReadTitle: isDark ? '#ffffff' : '#0f172a',
+    lastReadArrowBg: isDark ? '#1e333d' : '#f1f5f9',
+    lastReadArrowIcon: isDark ? '#f8fafc' : '#1e293b',
+  };
 
   // 1. Live Calendar State
   const [calendar, setCalendar] = useState(() => getLiveCalendarDates(new Date()));
@@ -570,12 +604,17 @@ export default function HomeScreen() {
       );
     }
 
-    // Normal Dark Card
+    // Normal Card
     return (
       <TouchableOpacity
         key={p.id}
         style={[
           styles.prayerCardNormal,
+          {
+            backgroundColor: colors.cardBg,
+            borderColor: colors.cardBorder,
+            shadowColor: colors.cardShadow,
+          },
           isPrayed && styles.prayerCardNormalPrayed,
         ]}
         activeOpacity={canSelect ? 0.75 : 1}
@@ -592,14 +631,14 @@ export default function HomeScreen() {
           source={p.icon}
           style={[
             styles.prayerIconImg,
-            { tintColor: isPrayed ? '#34d399' : '#94a3b8' },
+            { tintColor: isPrayed ? '#34d399' : colors.prayerIconTint },
           ]}
           resizeMode="contain"
         />
-        <Text style={[styles.prayerCardName, isPrayed && styles.prayerCardNamePrayed]}>
+        <Text style={[styles.prayerCardName, { color: colors.prayerName }, isPrayed && styles.prayerCardNamePrayed]}>
           {p.name}
         </Text>
-        <Text style={styles.prayerCardTime}>{p.time}</Text>
+        <Text style={[styles.prayerCardTime, { color: colors.prayerTime }]}>{p.time}</Text>
       </TouchableOpacity>
     );
   };
@@ -634,6 +673,7 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <IslamicBackground />
       <SafeAreaView style={{ flex: 1 }}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -645,57 +685,78 @@ export default function HomeScreen() {
           {/* Left Action Icons */}
           <View style={styles.headerActionIcons}>
             <TouchableOpacity
-              style={styles.profileIconButton}
+              style={[
+                styles.profileIconButton,
+                !isDark && {
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                  borderColor: 'rgba(16, 185, 129, 0.25)',
+                },
+              ]}
               activeOpacity={0.7}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push('/(tabs)/duas' as any);
               }}
             >
-              <Ionicons name="person" size={18} color="#4ade80" />
+              <Ionicons name="person" size={18} color="#0f8e5d" />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.headerIconButton}
+              style={[
+                styles.headerIconButton,
+                { backgroundColor: colors.headerBtnBg, borderColor: colors.headerBtnBorder },
+              ]}
               activeOpacity={0.7}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push({ pathname: '/(tabs)/quran', params: { tab: 'readings' } } as any);
               }}
             >
-              <Ionicons name="bookmark" size={18} color="#8ba7c0" />
+              <Ionicons name="bookmark" size={18} color={colors.headerBtnIcon} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.headerIconButton}
+              style={[
+                styles.headerIconButton,
+                { backgroundColor: colors.headerBtnBg, borderColor: colors.headerBtnBorder },
+              ]}
               activeOpacity={0.7}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 openSearch();
               }}
             >
-              <Ionicons name="search" size={18} color="#8ba7c0" />
+              <Ionicons name="search" size={18} color={colors.headerBtnIcon} />
             </TouchableOpacity>
           </View>
 
           {/* Right Main Title */}
-          <Text style={styles.screenMainTitle}>الرئيسية</Text>
+          <Text style={[styles.screenMainTitle, { color: colors.title }]}>الرئيسية</Text>
         </View>
 
         {/* ================= 2. Hero Section ================= */}
         <View style={styles.heroSectionRow}>
           {/* Left: Calendar Card */}
-          <View style={styles.calendarCard}>
-            <Text style={styles.calendarDayTitle}>{calendar.weekdayName}</Text>
-            <View style={styles.calendarDivider} />
+          <View
+            style={[
+              styles.calendarCard,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.cardBorder,
+                shadowColor: colors.cardShadow,
+              },
+            ]}
+          >
+            <Text style={[styles.calendarDayTitle, { color: colors.calendarDay }]}>{calendar.weekdayName}</Text>
+            <View style={[styles.calendarDivider, { backgroundColor: colors.calendarDivider }]} />
             <View style={styles.calendarColumnsRow}>
               <View style={styles.calendarCol}>
-                <Text style={styles.calendarColLabel} numberOfLines={1}>{calendar.hijriMonth}</Text>
-                <Text style={styles.calendarColNumber}>{calendar.hijriDay}</Text>
-                <Text style={styles.calendarColYear}>{calendar.hijriYear}</Text>
+                <Text style={[styles.calendarColLabel, { color: colors.subtitle }]} numberOfLines={1}>{calendar.hijriMonth}</Text>
+                <Text style={[styles.calendarColNumber, { color: colors.calendarNumber }]}>{calendar.hijriDay}</Text>
+                <Text style={[styles.calendarColYear, { color: colors.muted }]}>{calendar.hijriYear}</Text>
               </View>
               <View style={styles.calendarCol}>
-                <Text style={styles.calendarColLabel} numberOfLines={1}>{calendar.gregMonth}</Text>
-                <Text style={styles.calendarColNumber}>{calendar.gregDay}</Text>
-                <Text style={styles.calendarColYear}>{calendar.gregYear}</Text>
+                <Text style={[styles.calendarColLabel, { color: colors.subtitle }]} numberOfLines={1}>{calendar.gregMonth}</Text>
+                <Text style={[styles.calendarColNumber, { color: colors.calendarNumber }]}>{calendar.gregDay}</Text>
+                <Text style={[styles.calendarColYear, { color: colors.muted }]}>{calendar.gregYear}</Text>
               </View>
             </View>
           </View>
@@ -703,14 +764,20 @@ export default function HomeScreen() {
           {/* Right: Greetings and Action */}
           <View style={styles.greetingSection}>
             <View style={styles.greetingTitleRow}>
-              <Text style={styles.greetingTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              <Text style={[styles.greetingTitle, { color: colors.greetingText }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                 {greeting.title}
               </Text>
               <Text style={styles.rosaryIcon}>{greeting.icon}</Text>
             </View>
 
             <TouchableOpacity
-              style={styles.actionPillButton}
+              style={[
+                styles.actionPillButton,
+                {
+                  backgroundColor: colors.actionPillBg,
+                  borderColor: colors.actionPillBorder,
+                },
+              ]}
               activeOpacity={0.8}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -726,9 +793,9 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.prayerLabelWithIcon}>
-                <Text style={styles.prayerLabelText} numberOfLines={1}>: صلاة {upcomingPrayerName} بعد</Text>
-                <View style={styles.mosqueIconCircle}>
-                  <MaterialCommunityIcons name="mosque" size={13} color="#a3e635" />
+                <Text style={[styles.prayerLabelText, { color: colors.subtitle }]} numberOfLines={1}>: صلاة {upcomingPrayerName} بعد</Text>
+                <View style={[styles.mosqueIconCircle, { backgroundColor: colors.mosqueCircleBg, borderColor: colors.mosqueCircleBorder }]}>
+                  <MaterialCommunityIcons name="mosque" size={13} color={isDark ? '#a3e635' : '#059669'} />
                 </View>
               </View>
             </View>
@@ -747,9 +814,9 @@ export default function HomeScreen() {
             }}
           >
             <Ionicons name="location-outline" size={16} color="#0f8e5d" />
-            <Text style={styles.locationCityText}>{userLocation.city}</Text>
+            <Text style={[styles.locationCityText, { color: colors.subtitle }]}>{userLocation.city}</Text>
           </TouchableOpacity>
-          <Text style={styles.prayerSectionTitle}>أوقات الصلاة</Text>
+          <Text style={[styles.prayerSectionTitle, { color: colors.title }]}>أوقات الصلاة</Text>
         </View>
 
         {/* Prayer Times Grid */}
@@ -775,10 +842,10 @@ export default function HomeScreen() {
               router.push('/custom-daily-apps' as any);
             }}
           >
-            <Ionicons name="pencil-outline" size={14} color="#8ba7c0" />
-            <Text style={styles.customizeText}>تخصيص</Text>
+            <Ionicons name="pencil-outline" size={14} color={colors.subtitle} />
+            <Text style={[styles.customizeText, { color: colors.subtitle }]}>تخصيص</Text>
           </TouchableOpacity>
-          <Text style={styles.sectionHeaderTitle}>تطبيقاتك اليومية</Text>
+          <Text style={[styles.sectionHeaderTitle, { color: colors.title }]}>تطبيقاتك اليومية</Text>
         </View>
 
         {activeDailyApps.length <= 4 ? (
@@ -793,12 +860,12 @@ export default function HomeScreen() {
                   router.push(app.route as any);
                 }}
               >
-                <View style={[styles.quickAppCircle, { backgroundColor: app.bgColor }]}>
+                <View style={[styles.quickAppCircle, { backgroundColor: app.bgColor, borderColor: colors.appCircleBorder }]}>
                   {renderDailyAppIcon(app)}
                 </View>
-                <Text style={styles.quickAppTitle} numberOfLines={1}>{app.title}</Text>
+                <Text style={[styles.quickAppTitle, { color: colors.appTitle }]} numberOfLines={1}>{app.title}</Text>
                 {app.subTitle ? (
-                  <Text style={styles.quickAppSubTitle} numberOfLines={1}>{app.subTitle}</Text>
+                  <Text style={[styles.quickAppSubTitle, { color: colors.appSubtitle }]} numberOfLines={1}>{app.subTitle}</Text>
                 ) : null}
               </TouchableOpacity>
             ))}
@@ -819,12 +886,12 @@ export default function HomeScreen() {
                   router.push(app.route as any);
                 }}
               >
-                <View style={[styles.quickAppCircle, { backgroundColor: app.bgColor }]}>
+                <View style={[styles.quickAppCircle, { backgroundColor: app.bgColor, borderColor: colors.appCircleBorder }]}>
                   {renderDailyAppIcon(app)}
                 </View>
-                <Text style={styles.quickAppTitle} numberOfLines={1}>{app.title}</Text>
+                <Text style={[styles.quickAppTitle, { color: colors.appTitle }]} numberOfLines={1}>{app.title}</Text>
                 {app.subTitle ? (
-                  <Text style={styles.quickAppSubTitle} numberOfLines={1}>{app.subTitle}</Text>
+                  <Text style={[styles.quickAppSubTitle, { color: colors.appSubtitle }]} numberOfLines={1}>{app.subTitle}</Text>
                 ) : null}
               </TouchableOpacity>
             ))}
@@ -834,7 +901,14 @@ export default function HomeScreen() {
         {/* ================= 5. Last Read / Resume Quran Section ================= */}
         <View style={styles.lastReadSectionWrapper}>
           <TouchableOpacity
-            style={styles.lastReadCard}
+            style={[
+              styles.lastReadCard,
+              {
+                backgroundColor: colors.lastReadBg,
+                borderColor: colors.lastReadBorder,
+                shadowColor: colors.cardShadow,
+              },
+            ]}
             activeOpacity={0.88}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -846,8 +920,8 @@ export default function HomeScreen() {
           >
             {/* Left Column: Arrow Chevron & Page Pill */}
             <View style={styles.lastReadLeftCol}>
-              <View style={styles.lastReadArrowCircle}>
-                <Ionicons name="chevron-back" size={16} color="#f8fafc" />
+              <View style={[styles.lastReadArrowCircle, { backgroundColor: colors.lastReadArrowBg, borderColor: colors.cardBorder }]}>
+                <Ionicons name="chevron-back" size={16} color={colors.lastReadArrowIcon} />
               </View>
               <View style={styles.lastReadPagePill}>
                 <Text style={styles.lastReadPageText}>ص {lastRead.page}</Text>
@@ -861,17 +935,17 @@ export default function HomeScreen() {
                 <Text style={styles.lastReadBadgeText}>آخر قراءة • متابعة المصحف</Text>
               </View>
 
-              <Text style={styles.lastReadSurahTitle} numberOfLines={1}>
+              <Text style={[styles.lastReadSurahTitle, { color: colors.lastReadTitle }]} numberOfLines={1}>
                 {lastRead.surahName}
               </Text>
 
               <View style={styles.lastReadMetaRow}>
-                <Text style={styles.lastReadMetaText}>
+                <Text style={[styles.lastReadMetaText, { color: colors.subtitle }]}>
                   {lastRead.revelationPlace === 'makkah' ? 'مكية' : 'مدنية'}
                 </Text>
-                <Text style={styles.lastReadMetaDot}>•</Text>
-                <Text style={styles.lastReadMetaText}>{lastRead.versesCount} آية</Text>
-                <Text style={styles.lastReadMetaDot}>•</Text>
+                <Text style={[styles.lastReadMetaDot, { color: colors.muted }]}>•</Text>
+                <Text style={[styles.lastReadMetaText, { color: colors.subtitle }]}>{lastRead.versesCount} آية</Text>
+                <Text style={[styles.lastReadMetaDot, { color: colors.muted }]}>•</Text>
                 <Text style={styles.lastReadMetaHighlight}>اضغط للمتابعة</Text>
               </View>
             </View>
@@ -889,7 +963,7 @@ export default function HomeScreen() {
 
         {/* ================= 6. Recent Activities Section (أنشطتك الأخيرة) ================= */}
         <View style={styles.recentActivitiesSection}>
-          <Text style={styles.recentActivitiesHeaderTitle}>أنشطتك الأخيرة</Text>
+          <Text style={[styles.recentActivitiesHeaderTitle, { color: colors.title }]}>أنشطتك الأخيرة</Text>
 
           <ScrollView
             horizontal
@@ -954,7 +1028,14 @@ export default function HomeScreen() {
         <View style={styles.dailyInspirationsSection}>
           {/* Card 1: آية اليوم */}
           <TouchableOpacity
-            style={styles.compactInspirationCard}
+            style={[
+              styles.compactInspirationCard,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.cardBorder,
+                shadowColor: colors.cardShadow,
+              },
+            ]}
             activeOpacity={0.88}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -976,12 +1057,12 @@ export default function HomeScreen() {
                   );
                 }}
               >
-                <Ionicons name="share-outline" size={17} color="#86efac" />
+                <Ionicons name="share-outline" size={17} color={isDark ? '#86efac' : '#059669'} />
               </TouchableOpacity>
 
               {/* Center: Verse Text */}
               <View style={styles.cardCenterCol}>
-                <Text style={styles.ayahTextInline}>
+                <Text style={[styles.ayahTextInline, { color: colors.title }]}>
                   {dailyInspirations.ayah.text}{' '}
                   <Text style={styles.ayahBadgeInline}>
                     ﴿{dailyInspirations.ayah.arabicVerseNumber}﴾
@@ -995,12 +1076,21 @@ export default function HomeScreen() {
 
             {/* Bottom Row: Reference */}
             <View style={styles.cardBottomRow}>
-              <Text style={styles.referenceTextSimple}>{dailyInspirations.ayah.reference}</Text>
+              <Text style={[styles.referenceTextSimple, { color: colors.subtitle }]}>{dailyInspirations.ayah.reference}</Text>
             </View>
           </TouchableOpacity>
 
           {/* Card 2: حديث اليوم */}
-          <View style={styles.compactInspirationCard}>
+          <View
+            style={[
+              styles.compactInspirationCard,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.cardBorder,
+                shadowColor: colors.cardShadow,
+              },
+            ]}
+          >
             <View style={styles.cardMainRow}>
               {/* Left: Share Icon */}
               <TouchableOpacity
@@ -1012,12 +1102,12 @@ export default function HomeScreen() {
                   )
                 }
               >
-                <Ionicons name="share-outline" size={17} color="#86efac" />
+                <Ionicons name="share-outline" size={17} color={isDark ? '#86efac' : '#059669'} />
               </TouchableOpacity>
 
               {/* Center: Hadith Text */}
               <View style={styles.cardCenterCol}>
-                <Text style={styles.hadithTextInline}>
+                <Text style={[styles.hadithTextInline, { color: colors.title }]}>
                   {dailyInspirations.hadith.text}
                 </Text>
               </View>
@@ -1029,13 +1119,22 @@ export default function HomeScreen() {
             {/* Bottom Row: Source */}
             {dailyInspirations.hadith.source ? (
               <View style={styles.cardBottomRow}>
-                <Text style={styles.referenceTextSimple}>{dailyInspirations.hadith.source}</Text>
+                <Text style={[styles.referenceTextSimple, { color: colors.subtitle }]}>{dailyInspirations.hadith.source}</Text>
               </View>
             ) : null}
           </View>
 
           {/* Card 3: دعاء اليوم */}
-          <View style={styles.compactInspirationCard}>
+          <View
+            style={[
+              styles.compactInspirationCard,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.cardBorder,
+                shadowColor: colors.cardShadow,
+              },
+            ]}
+          >
             <View style={styles.cardMainRow}>
               {/* Left: Share Icon */}
               <TouchableOpacity
@@ -1047,12 +1146,12 @@ export default function HomeScreen() {
                   )
                 }
               >
-                <Ionicons name="share-outline" size={17} color="#86efac" />
+                <Ionicons name="share-outline" size={17} color={isDark ? '#86efac' : '#059669'} />
               </TouchableOpacity>
 
               {/* Center: Dua Text */}
               <View style={styles.cardCenterCol}>
-                <Text style={styles.duaTextInline}>
+                <Text style={[styles.duaTextInline, { color: colors.title }]}>
                   {dailyInspirations.dua.text}
                 </Text>
               </View>
@@ -1064,7 +1163,7 @@ export default function HomeScreen() {
             {/* Bottom Row: Source */}
             {dailyInspirations.dua.source ? (
               <View style={styles.cardBottomRow}>
-                <Text style={styles.referenceTextSimple}>{dailyInspirations.dua.source}</Text>
+                <Text style={[styles.referenceTextSimple, { color: colors.subtitle }]}>{dailyInspirations.dua.source}</Text>
               </View>
             ) : null}
           </View>

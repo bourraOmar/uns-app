@@ -17,6 +17,7 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
+import { useAppTheme } from '@/context/ThemeContext';
 
 // --- FLATICON CUSTOM ICONS FOR MENU BAR ---
 const TAB_ICONS = {
@@ -88,7 +89,7 @@ const TAB_ITEMS = [
 ];
 
 // Returns the icon corresponding to the current active page
-function getPageIcon(routeName: string) {
+function getPageIcon(routeName: string, tintColor: string = '#ffffff') {
   let iconSource = TAB_ICONS.home;
   switch (routeName) {
     case 'duas':
@@ -111,7 +112,7 @@ function getPageIcon(routeName: string) {
   return (
     <Image
       source={iconSource}
-      style={{ width: 22, height: 22, tintColor: '#ffffff' }}
+      style={{ width: 22, height: 22, tintColor }}
       resizeMode="contain"
     />
   );
@@ -126,6 +127,7 @@ function FloatingTabBar({ state, navigation }: any) {
     return null;
   }
 
+  const { isDark } = useAppTheme();
   const {
     isCollapsed,
     setIsCollapsed,
@@ -148,6 +150,31 @@ function FloatingTabBar({ state, navigation }: any) {
     openPlayerModal,
     isPlayerModalVisible,
   } = useAudioPlayer();
+
+  const barColors = {
+    blurTint: (isDark ? 'dark' : 'light') as 'dark' | 'light',
+    menuBg: isDark
+      ? (Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.55)' : 'rgba(30, 41, 59, 0.85)')
+      : (Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.95)'),
+    menuBorder: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)',
+    menuBorderTop: isDark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.9)',
+    shadowColor: isDark ? '#000000' : '#475569',
+    activeText: '#0f8e5d',
+    inactiveText: isDark ? '#8ba7c0' : '#64748b',
+    activePillBg: isDark ? 'rgba(52, 211, 153, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+    playerBg: isDark
+      ? (Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.60)' : 'rgba(30, 41, 59, 0.85)')
+      : (Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.88)' : 'rgba(255, 255, 255, 0.96)'),
+    playerBorder: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+    playerSurah: isDark ? '#ffffff' : '#0f172a',
+    playerReciter: isDark ? '#34d399' : '#059669',
+    playerBtn: isDark ? '#ffffff' : '#1e293b',
+    dockCircleBg: isDark
+      ? (Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.60)' : 'rgba(30, 41, 59, 0.85)')
+      : (Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.88)' : 'rgba(255, 255, 255, 0.96)'),
+    dockCircleBorder: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.08)',
+    dockIcon: isDark ? '#ffffff' : '#1e293b',
+  };
 
   const keyboardTranslateY = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput>(null);
@@ -301,18 +328,24 @@ function FloatingTabBar({ state, navigation }: any) {
           >
             <BlurView
               intensity={Platform.OS === 'ios' ? 70 : 85}
-              tint="dark"
-              style={styles.floatingMiniPlayerBlur}
+              tint={barColors.blurTint}
+              style={[
+                styles.floatingMiniPlayerBlur,
+                {
+                  backgroundColor: barColors.playerBg,
+                  borderColor: barColors.playerBorder,
+                },
+              ]}
             >
               <View style={styles.floatingMiniPlayerLeft}>
                 <View style={styles.floatingMicBadge}>
-                  <Ionicons name="mic" size={17} color="#34d399" />
+                  <Ionicons name="mic" size={17} color={barColors.playerReciter} />
                 </View>
                 <View style={styles.floatingTextColumn}>
-                  <Text style={styles.floatingSurahTitle} numberOfLines={1}>
+                  <Text style={[styles.floatingSurahTitle, { color: barColors.playerSurah }]} numberOfLines={1}>
                     {currentSurah.id}. {currentSurah.name_simple} ({currentSurah.name_arabic})
                   </Text>
-                  <Text style={styles.floatingReciterName} numberOfLines={1}>
+                  <Text style={[styles.floatingReciterName, { color: barColors.playerReciter }]} numberOfLines={1}>
                     {currentReciter.englishName || currentReciter.name}
                   </Text>
                 </View>
@@ -329,12 +362,12 @@ function FloatingTabBar({ state, navigation }: any) {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   {isLoadingAudio ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
+                    <ActivityIndicator size="small" color={barColors.playerBtn} />
                   ) : (
                     <Ionicons
                       name={isPlaying ? 'pause' : 'play'}
                       size={20}
-                      color="#ffffff"
+                      color={barColors.playerBtn}
                       style={isPlaying ? undefined : { marginLeft: 2 }}
                     />
                   )}
@@ -349,7 +382,7 @@ function FloatingTabBar({ state, navigation }: any) {
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="play-forward" size={19} color="#ffffff" />
+                  <Ionicons name="play-forward" size={19} color={barColors.playerBtn} />
                 </TouchableOpacity>
               </View>
             </BlurView>
@@ -363,6 +396,7 @@ function FloatingTabBar({ state, navigation }: any) {
           styles.expandedBarWrapper,
           {
             opacity: expandedBarOpacity,
+            shadowColor: barColors.shadowColor,
             transform: [
               { translateY: expandedBarTranslateY },
               { scale: expandedBarScale },
@@ -373,8 +407,15 @@ function FloatingTabBar({ state, navigation }: any) {
       >
         <BlurView
           intensity={Platform.OS === 'ios' ? 75 : 90}
-          tint="dark"
-          style={styles.floatingMenuBar}
+          tint={barColors.blurTint}
+          style={[
+            styles.floatingMenuBar,
+            {
+              backgroundColor: barColors.menuBg,
+              borderColor: barColors.menuBorder,
+              borderTopColor: barColors.menuBorderTop,
+            },
+          ]}
         >
           {TAB_ITEMS.map((item) => {
             const isFocused = currentRoute?.name === item.name;
@@ -398,11 +439,16 @@ function FloatingTabBar({ state, navigation }: any) {
                 >
                   <BlurView
                     intensity={Platform.OS === 'ios' ? 40 : 60}
-                    tint="dark"
-                    style={styles.floatingMenuItemActivePill}
+                    tint={barColors.blurTint}
+                    style={[
+                      styles.floatingMenuItemActivePill,
+                      {
+                        backgroundColor: barColors.activePillBg,
+                      },
+                    ]}
                   >
-                    {item.renderIcon('#34d399')}
-                    <Text style={styles.floatingMenuItemActiveText}>{item.label}</Text>
+                    {item.renderIcon(barColors.activeText)}
+                    <Text style={[styles.floatingMenuItemActiveText, { color: barColors.activeText }]}>{item.label}</Text>
                   </BlurView>
                 </TouchableOpacity>
               );
@@ -415,8 +461,8 @@ function FloatingTabBar({ state, navigation }: any) {
                 onPress={onPress}
                 activeOpacity={0.7}
               >
-                {item.renderIcon('#8ba7c0')}
-                <Text style={styles.floatingMenuItemText}>{item.label}</Text>
+                {item.renderIcon(barColors.inactiveText)}
+                <Text style={[styles.floatingMenuItemText, { color: barColors.inactiveText }]}>{item.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -429,6 +475,7 @@ function FloatingTabBar({ state, navigation }: any) {
           styles.collapsedDockWrapper,
           {
             opacity: dockRowOpacity,
+            shadowColor: barColors.shadowColor,
             transform: [
               { translateY: dockRowTranslateY },
               { scale: dockRowScale },
@@ -442,8 +489,14 @@ function FloatingTabBar({ state, navigation }: any) {
             {/* Active Search Capsule on Left / Center matching screenshot */}
             <BlurView
               intensity={Platform.OS === 'ios' ? 75 : 90}
-              tint="dark"
-              style={styles.dockSearchCapsule}
+              tint={barColors.blurTint}
+              style={[
+                styles.dockSearchCapsule,
+                {
+                  backgroundColor: barColors.menuBg,
+                  borderColor: barColors.menuBorder,
+                },
+              ]}
             >
               {/* Clear / Close X Button on the Left */}
               <TouchableOpacity
@@ -457,13 +510,13 @@ function FloatingTabBar({ state, navigation }: any) {
                 }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close" size={14} color="#f8fafc" />
+                <Ionicons name="close" size={14} color={barColors.dockIcon} />
               </TouchableOpacity>
 
               {/* Search Text Input in the Center */}
               <TextInput
                 ref={searchInputRef}
-                style={styles.dockSearchInput}
+                style={[styles.dockSearchInput, { color: barColors.playerSurah }]}
                 placeholder={searchPlaceholder}
                 placeholderTextColor="#64748b"
                 value={searchQuery}
@@ -475,7 +528,7 @@ function FloatingTabBar({ state, navigation }: any) {
               />
 
               {/* Search Magnifying Glass Icon on the Right */}
-              <Ionicons name="search" size={20} color="#94a3b8" style={{ marginLeft: 4 }} />
+              <Ionicons name="search" size={20} color={barColors.inactiveText} style={{ marginLeft: 4 }} />
             </BlurView>
 
             {/* Right Circle: Current Page Icon (taps to close search & toggle menu) */}
@@ -490,10 +543,16 @@ function FloatingTabBar({ state, navigation }: any) {
             >
               <BlurView
                 intensity={Platform.OS === 'ios' ? 75 : 90}
-                tint="dark"
-                style={styles.dockCircleBlur}
+                tint={barColors.blurTint}
+                style={[
+                  styles.dockCircleBlur,
+                  {
+                    backgroundColor: barColors.dockCircleBg,
+                    borderColor: barColors.dockCircleBorder,
+                  },
+                ]}
               >
-                {getPageIcon(currentRoute?.name)}
+                {getPageIcon(currentRoute?.name, barColors.dockIcon)}
               </BlurView>
             </TouchableOpacity>
           </>
@@ -508,10 +567,16 @@ function FloatingTabBar({ state, navigation }: any) {
             >
               <BlurView
                 intensity={Platform.OS === 'ios' ? 75 : 90}
-                tint="dark"
-                style={styles.dockCircleBlur}
+                tint={barColors.blurTint}
+                style={[
+                  styles.dockCircleBlur,
+                  {
+                    backgroundColor: barColors.dockCircleBg,
+                    borderColor: barColors.dockCircleBorder,
+                  },
+                ]}
               >
-                <Ionicons name="search" size={20} color="#ffffff" />
+                <Ionicons name="search" size={20} color={barColors.dockIcon} />
               </BlurView>
             </TouchableOpacity>
 
@@ -524,15 +589,21 @@ function FloatingTabBar({ state, navigation }: any) {
               >
                 <BlurView
                   intensity={Platform.OS === 'ios' ? 75 : 90}
-                  tint="dark"
-                  style={styles.dockedMiniPlayerBlur}
+                  tint={barColors.blurTint}
+                  style={[
+                    styles.dockedMiniPlayerBlur,
+                    {
+                      backgroundColor: barColors.playerBg,
+                      borderColor: barColors.playerBorder,
+                    },
+                  ]}
                 >
                   <View style={styles.dockedMicBadge}>
-                    <Ionicons name="mic" size={15} color="#34d399" />
+                    <Ionicons name="mic" size={15} color={barColors.playerReciter} />
                   </View>
 
                   <View style={styles.dockedTextColumn}>
-                    <Text style={styles.dockedSurahTitle} numberOfLines={1}>
+                    <Text style={[styles.dockedSurahTitle, { color: barColors.playerSurah }]} numberOfLines={1}>
                       {currentSurah.id}. {currentSurah.name_simple} ({currentSurah.name_arabic})
                     </Text>
                   </View>
@@ -548,12 +619,12 @@ function FloatingTabBar({ state, navigation }: any) {
                       hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                     >
                       {isLoadingAudio ? (
-                        <ActivityIndicator size="small" color="#ffffff" />
+                        <ActivityIndicator size="small" color={barColors.playerBtn} />
                       ) : (
                         <Ionicons
                           name={isPlaying ? 'pause' : 'play'}
                           size={18}
-                          color="#ffffff"
+                          color={barColors.playerBtn}
                           style={isPlaying ? undefined : { marginLeft: 1 }}
                         />
                       )}
@@ -568,7 +639,7 @@ function FloatingTabBar({ state, navigation }: any) {
                       }}
                       hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                     >
-                      <Ionicons name="play-forward" size={17} color="#ffffff" />
+                      <Ionicons name="play-forward" size={17} color={barColors.playerBtn} />
                     </TouchableOpacity>
                   </View>
                 </BlurView>
@@ -586,10 +657,16 @@ function FloatingTabBar({ state, navigation }: any) {
             >
               <BlurView
                 intensity={Platform.OS === 'ios' ? 75 : 90}
-                tint="dark"
-                style={styles.dockCircleBlur}
+                tint={barColors.blurTint}
+                style={[
+                  styles.dockCircleBlur,
+                  {
+                    backgroundColor: barColors.dockCircleBg,
+                    borderColor: barColors.dockCircleBorder,
+                  },
+                ]}
               >
-                {getPageIcon(currentRoute?.name)}
+                {getPageIcon(currentRoute?.name, barColors.dockIcon)}
               </BlurView>
             </TouchableOpacity>
           </>

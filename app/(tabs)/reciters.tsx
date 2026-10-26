@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import IslamicBackground from '@/components/IslamicBackground';
 import {
   RECITERS_DATA,
@@ -32,7 +33,24 @@ type FilterType = 'all' | 'hafs' | 'multiple';
 
 export default function RecitersScreen() {
   const router = useRouter();
+  const { isDark } = useAppTheme();
   const searchInputRef = useRef<TextInput>(null);
+
+  const colors = {
+    title: isDark ? '#f8fafc' : '#0f172a',
+    subtitle: isDark ? '#94a3b8' : '#64748b',
+    cardBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.92)',
+    cardBorder: isDark ? '#334155' : 'rgba(226, 232, 240, 0.95)',
+    cardShadow: isDark ? '#000' : '#94a3b8',
+    headerBtnBg: isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.9)',
+    headerBtnBorder: isDark ? '#334155' : '#cbd5e1',
+    headerBtnIcon: isDark ? '#f8fafc' : '#1e293b',
+    micBadgeBg: isDark ? 'rgba(52, 211, 153, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+    micBadgeBorder: isDark ? 'rgba(52, 211, 153, 0.25)' : 'rgba(16, 185, 129, 0.25)',
+    micColor: isDark ? '#34d399' : '#059669',
+    menuBg: isDark ? '#1e293b' : '#ffffff',
+    menuBorder: isDark ? '#334155' : '#e2e8f0',
+  };
 
   // Reciters State: start with initial local data, then populate from MP3Quran API
   const [reciters, setReciters] = useState<Reciter[]>(RECITERS_DATA);
@@ -117,7 +135,14 @@ export default function RecitersScreen() {
   // Far Right: Circular Microphone Badge in emerald tint
   const renderReciterCard = ({ item }: { item: Reciter }) => (
     <TouchableOpacity
-      style={styles.reciterCard}
+      style={[
+        styles.reciterCard,
+        {
+          backgroundColor: colors.cardBg,
+          borderColor: colors.cardBorder,
+          shadowColor: colors.cardShadow,
+        },
+      ]}
       activeOpacity={0.75}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -133,26 +158,34 @@ export default function RecitersScreen() {
       }}
     >
       {/* 1. Left side: Chevron arrow '<' pointing left */}
-      <Ionicons name="chevron-back" size={18} color="#64748b" style={styles.chevronIcon} />
+      <Ionicons name="chevron-back" size={18} color={colors.subtitle} style={styles.chevronIcon} />
 
       {/* 2. Middle: Reciter details aligned to the right */}
       <View style={styles.reciterInfoContainer}>
-        <Text style={styles.reciterName}>{item.name}</Text>
+        <Text style={[styles.reciterName, { color: colors.title }]}>{item.name}</Text>
         <View style={styles.rewayaRow}>
           {item.badge && (
             <>
               <Text style={styles.badgeText}>{item.badge}</Text>
-              <Text style={styles.badgeSeparator}>•</Text>
+              <Text style={[styles.badgeSeparator, { color: colors.subtitle }]}>•</Text>
             </>
           )}
-          <Text style={styles.rewayaText}>{item.rewaya}</Text>
-          <Ionicons name="document-text-outline" size={13} color="#94a3b8" />
+          <Text style={[styles.rewayaText, { color: colors.subtitle }]}>{item.rewaya}</Text>
+          <Ionicons name="document-text-outline" size={13} color={colors.subtitle} />
         </View>
       </View>
 
       {/* 3. Right side: Circular microphone badge in app brand emerald */}
-      <View style={styles.micCircleBadge}>
-        <Ionicons name="mic" size={22} color="#34d399" />
+      <View
+        style={[
+          styles.micCircleBadge,
+          {
+            backgroundColor: colors.micBadgeBg,
+            borderColor: colors.micBadgeBorder,
+          },
+        ]}
+      >
+        <Ionicons name="mic" size={22} color={colors.micColor} />
       </View>
     </TouchableOpacity>
   );
@@ -161,7 +194,7 @@ export default function RecitersScreen() {
     <View style={styles.container}>
       <IslamicBackground />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <StatusBar barStyle="light-content" />
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* TOP HEADER MATCHING DHIKR PAGE */}
       <View style={styles.topHeader}>
@@ -169,19 +202,32 @@ export default function RecitersScreen() {
         <View style={styles.leftActions}>
           {/* Profile / Services shortcut */}
           <TouchableOpacity
-            style={styles.circleActionBtn}
+            style={[
+              styles.circleActionBtn,
+              {
+                backgroundColor: colors.headerBtnBg,
+                borderColor: colors.headerBtnBorder,
+              },
+            ]}
             activeOpacity={0.75}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push('/(tabs)/duas' as any);
             }}
           >
-            <Ionicons name="person-outline" size={18} color="#f8fafc" />
+            <Ionicons name="person-outline" size={18} color={colors.headerBtnIcon} />
           </TouchableOpacity>
 
           {/* Filter Dropdown Toggle Button */}
           <TouchableOpacity
-            style={[styles.circleActionBtn, showFilterMenu && styles.circleActionBtnActive]}
+            style={[
+              styles.circleActionBtn,
+              {
+                backgroundColor: colors.headerBtnBg,
+                borderColor: colors.headerBtnBorder,
+              },
+              showFilterMenu && styles.circleActionBtnActive,
+            ]}
             activeOpacity={0.75}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -191,13 +237,20 @@ export default function RecitersScreen() {
             <Ionicons
               name="swap-vertical"
               size={18}
-              color={showFilterMenu ? '#10b981' : '#f8fafc'}
+              color={showFilterMenu ? '#10b981' : colors.headerBtnIcon}
             />
           </TouchableOpacity>
 
           {/* Search Toggle Button */}
           <TouchableOpacity
-            style={[styles.circleActionBtn, isSearchActive && styles.circleActionBtnActive]}
+            style={[
+              styles.circleActionBtn,
+              {
+                backgroundColor: colors.headerBtnBg,
+                borderColor: colors.headerBtnBorder,
+              },
+              isSearchActive && styles.circleActionBtnActive,
+            ]}
             activeOpacity={0.75}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -211,7 +264,7 @@ export default function RecitersScreen() {
             <Ionicons
               name={isSearchActive ? 'close' : 'search-outline'}
               size={18}
-              color={isSearchActive ? '#10b981' : '#f8fafc'}
+              color={isSearchActive ? '#10b981' : colors.headerBtnIcon}
             />
           </TouchableOpacity>
         </View>
@@ -221,13 +274,13 @@ export default function RecitersScreen() {
           {isLoadingApi && (
             <ActivityIndicator size="small" color="#34d399" style={styles.loadingSpinner} />
           )}
-          <Text style={styles.screenTitle}>القُرّاء</Text>
+          <Text style={[styles.screenTitle, { color: colors.title }]}>القُرّاء</Text>
         </View>
       </View>
 
       {/* FILTER DROPDOWN OPTIONS (Collapsible) */}
       {showFilterMenu && (
-        <View style={styles.filterDropdownMenu}>
+        <View style={[styles.filterDropdownMenu, { backgroundColor: colors.menuBg, borderColor: colors.menuBorder }]}>
           <TouchableOpacity
             style={[styles.filterMenuItem, filter === 'all' && styles.filterMenuItemActive]}
             onPress={() => {
@@ -238,6 +291,7 @@ export default function RecitersScreen() {
             <Text
               style={[
                 styles.filterMenuItemText,
+                { color: filter === 'all' ? '#10b981' : colors.subtitle },
                 filter === 'all' && styles.filterMenuItemTextActive,
               ]}
             >
@@ -256,6 +310,7 @@ export default function RecitersScreen() {
             <Text
               style={[
                 styles.filterMenuItemText,
+                { color: filter === 'hafs' ? '#10b981' : colors.subtitle },
                 filter === 'hafs' && styles.filterMenuItemTextActive,
               ]}
             >
@@ -274,6 +329,7 @@ export default function RecitersScreen() {
             <Text
               style={[
                 styles.filterMenuItemText,
+                { color: filter === 'multiple' ? '#10b981' : colors.subtitle },
                 filter === 'multiple' && styles.filterMenuItemTextActive,
               ]}
             >
