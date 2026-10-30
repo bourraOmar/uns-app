@@ -230,10 +230,20 @@ function SwipeableReadingRow({ item, isLast, onPress, onDelete }: SwipeableReadi
             }
           }}
         >
-          {/* Left: Page Number with Chevron */}
-          <View style={[styles.readingPageWrapper, { backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? 'rgba(51, 65, 85, 0.6)' : '#e2e8f0' }]}>
-            <Ionicons name="chevron-back" size={14} color="#64748b" />
-            <Text style={[styles.readingPageNumber, { color: isDark ? '#cbd5e1' : '#475569' }]}>{item.page}</Text>
+          {/* Left: Page Number with Chevron Pill */}
+          <View
+            style={[
+              styles.readingPageWrapper,
+              {
+                backgroundColor: isDark ? '#0f172a' : '#f1f5f9',
+                borderColor: isDark ? 'rgba(51, 65, 85, 0.6)' : '#e2e8f0',
+              },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={13} color={isDark ? '#cbd5e1' : '#475569'} />
+            <Text style={[styles.readingPageNumber, { color: isDark ? '#cbd5e1' : '#475569' }]}>
+              {item.page}
+            </Text>
           </View>
 
           {/* Center: Surah Title & Time Ago */}
@@ -939,12 +949,20 @@ const styles = StyleSheet.create({
   readingPageWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    minWidth: 42,
+    gap: 4,
   },
   readingPageNumber: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 13,
+    fontSize: 12,
     color: '#cbd5e1',
+    includeFontPadding: false,
+    lineHeight: 16,
   },
 
   /* FILTER ROW (المصحف Tab) */
