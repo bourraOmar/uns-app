@@ -10,6 +10,7 @@ import {
   Image,
   ImageSourcePropType,
   Share,
+  Platform,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -651,10 +652,17 @@ export default function HomeScreen() {
           ]}
           resizeMode="contain"
         />
-        <Text style={[styles.prayerCardName, { color: colors.prayerName }, isPrayed && styles.prayerCardNamePrayed]}>
+        <Text
+          style={[styles.prayerCardName, { color: colors.prayerName }, isPrayed && styles.prayerCardNamePrayed]}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+        >
           {p.name}
         </Text>
-        <Text style={[styles.prayerCardTime, { color: colors.prayerTime }]}>{p.time}</Text>
+        <Text style={[styles.prayerCardTime, { color: colors.prayerTime }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+          {p.time}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -765,12 +773,26 @@ export default function HomeScreen() {
             <View style={[styles.calendarDivider, { backgroundColor: colors.calendarDivider }]} />
             <View style={styles.calendarColumnsRow}>
               <View style={styles.calendarCol}>
-                <Text style={[styles.calendarColLabel, { color: colors.subtitle }]} numberOfLines={1}>{calendar.hijriMonth}</Text>
+                <Text
+                  style={[styles.calendarColLabel, { color: colors.subtitle }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {calendar.hijriMonth}
+                </Text>
                 <Text style={[styles.calendarColNumber, { color: colors.calendarNumber }]}>{calendar.hijriDay}</Text>
                 <Text style={[styles.calendarColYear, { color: colors.muted }]}>{calendar.hijriYear}</Text>
               </View>
               <View style={styles.calendarCol}>
-                <Text style={[styles.calendarColLabel, { color: colors.subtitle }]} numberOfLines={1}>{calendar.gregMonth}</Text>
+                <Text
+                  style={[styles.calendarColLabel, { color: colors.subtitle }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {calendar.gregMonth}
+                </Text>
                 <Text style={[styles.calendarColNumber, { color: colors.calendarNumber }]}>{calendar.gregDay}</Text>
                 <Text style={[styles.calendarColYear, { color: colors.muted }]}>{calendar.gregYear}</Text>
               </View>
@@ -780,7 +802,12 @@ export default function HomeScreen() {
           {/* Right: Greetings and Action */}
           <View style={styles.greetingSection}>
             <View style={styles.greetingTitleRow}>
-              <Text style={[styles.greetingTitle, { color: colors.greetingText }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              <Text
+                style={[styles.greetingTitle, { color: colors.greetingText }]}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {greeting.title}
               </Text>
               <Text style={styles.rosaryIcon}>{greeting.icon}</Text>
@@ -885,7 +912,7 @@ export default function HomeScreen() {
                 <View style={[styles.quickAppCircle, { backgroundColor: app.bgColor, borderColor: colors.appCircleBorder }]}>
                   {renderDailyAppIcon(app)}
                 </View>
-                <Text style={[styles.quickAppTitle, { color: colors.appTitle }]} numberOfLines={1}>{app.title}</Text>
+                <Text style={[styles.quickAppTitle, { color: colors.appTitle }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>{app.title}</Text>
                 {app.subTitle ? (
                   <Text style={[styles.quickAppSubTitle, { color: colors.appSubtitle }]} numberOfLines={1}>{app.subTitle}</Text>
                 ) : null}
@@ -911,7 +938,7 @@ export default function HomeScreen() {
                 <View style={[styles.quickAppCircle, { backgroundColor: app.bgColor, borderColor: colors.appCircleBorder }]}>
                   {renderDailyAppIcon(app)}
                 </View>
-                <Text style={[styles.quickAppTitle, { color: colors.appTitle }]} numberOfLines={1}>{app.title}</Text>
+                <Text style={[styles.quickAppTitle, { color: colors.appTitle }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>{app.title}</Text>
                 {app.subTitle ? (
                   <Text style={[styles.quickAppSubTitle, { color: colors.appSubtitle }]} numberOfLines={1}>{app.subTitle}</Text>
                 ) : null}
@@ -1224,7 +1251,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 105,
+    paddingBottom: Platform.OS === 'ios' ? 160 : 140,
   },
 
   /* 1. Header */
@@ -1275,13 +1302,13 @@ const styles = StyleSheet.create({
 
   /* Calendar Card on the Left */
   calendarCard: {
-    width: 138,
+    width: 144,
     backgroundColor: '#1e293b',
     borderRadius: 22,
     borderWidth: 1,
     borderColor: '#334155',
     paddingVertical: 14,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     justifyContent: 'space-between',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1315,9 +1342,11 @@ const styles = StyleSheet.create({
   },
   calendarColLabel: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 10.5,
+    fontSize: 10,
+    lineHeight: 14,
     color: '#8ba7c0',
     marginBottom: 2,
+    textAlign: 'center',
   },
   calendarColNumber: {
     fontFamily: 'Cairo_800ExtraBold',
@@ -1345,7 +1374,8 @@ const styles = StyleSheet.create({
   },
   greetingTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
+    fontSize: 15,
+    lineHeight: 21,
     color: '#e2e8f0',
     textAlign: 'right',
     flexShrink: 1,
@@ -1442,7 +1472,7 @@ const styles = StyleSheet.create({
   },
   prayerRow: {
     flexDirection: 'row-reverse',
-    gap: 8,
+    gap: 6,
   },
   prayerCardNormal: {
     flex: 1,
@@ -1590,11 +1620,13 @@ const styles = StyleSheet.create({
   quickAppItem: {
     alignItems: 'center',
     flex: 1,
-    maxWidth: 80,
+    maxWidth: 84,
+    minHeight: 104,
   },
   quickAppItemScroll: {
     alignItems: 'center',
-    width: 72,
+    width: 78,
+    minHeight: 104,
   },
   quickAppCircle: {
     width: 60,
@@ -1617,6 +1649,7 @@ const styles = StyleSheet.create({
   quickAppTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 12,
+    lineHeight: 16,
     color: '#f8fafc',
     textAlign: 'center',
   },
