@@ -24,6 +24,7 @@ import IslamicBackground from '@/components/IslamicBackground';
 import {
   notificationService,
   NotificationSettings,
+  DEFAULT_NOTIFICATION_SETTINGS,
   ADHAN_OPTIONS,
   AdhanOption,
 } from '@/services/notificationService';
@@ -47,20 +48,8 @@ export default function ServicesScreen() {
   >(null);
 
   // Notifications persistent states
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    morningAdhkar: true,
-    morningHour: 7,
-    morningMinute: 0,
-    eveningAdhkar: true,
-    eveningHour: 17,
-    eveningMinute: 30,
-    prayerTimes: true,
-    selectedAdhanId: 'makkah',
-    dailyQuran: true,
-    dailyQuranHour: 21,
-    dailyQuranMinute: 0,
-    fridayKahf: true,
-  });
+  const [notificationSettings, setNotificationSettings] =
+    useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isAdhanPickerVisible, setIsAdhanPickerVisible] = useState(false);
   const [playingAdhanId, setPlayingAdhanId] = useState<string | null>(null);
@@ -177,7 +166,7 @@ export default function ServicesScreen() {
       icon: 'notifications-outline',
       action: () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setActiveModal('notifications');
+        router.push('/notifications-settings' as any);
       },
     },
     {

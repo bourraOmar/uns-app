@@ -62,6 +62,15 @@ export const ADHAN_OPTIONS: AdhanOption[] = [
       'https://raw.githubusercontent.com/Kiwifu/adhan-mp3/master/Mishary_Al_Afasy_-_HQ_(%D9%85%D8%B4%D8%A7%D8%B1%D9%8A_%D8%A7%D9%84%D8%B9%D9%81%D8%A7%D8%B3%D9%8A).mp3',
   },
   {
+    id: 'qatami',
+    name: 'أذان ناصر القطامي',
+    subtitle: 'الرياض، المملكة العربية السعودية',
+    soundFileName: 'adhan_alafasy.mp3',
+    localSource: require('@/assets/sounds/adhan_alafasy.mp3'),
+    remoteUrl:
+      'https://raw.githubusercontent.com/Kiwifu/adhan-mp3/master/Mishary_Al_Afasy_-_HQ_(%D9%85%D8%B4%D8%A7%D8%B1%D9%8A_%D8%A7%D9%84%D8%B9%D9%81%D8%A7%D8%B3%D9%8A).mp3',
+  },
+  {
     id: 'takbeer',
     name: 'تكبيرات فقط (تنبيه مختصر)',
     subtitle: 'الله أكبر الله أكبر',
@@ -73,29 +82,113 @@ export const ADHAN_OPTIONS: AdhanOption[] = [
 ];
 
 export interface NotificationSettings {
+  // Prayer alerts
+  prayerTimes: boolean;
+  selectedAdhanId: string;
+  prayerAdhans: {
+    Fajr: string;
+    Jumuah: string;
+    Asr: string;
+    Maghrib: string;
+    Isha: string;
+  };
+
+  // Adhkar alerts
   morningAdhkar: boolean;
   morningHour: number;
   morningMinute: number;
   eveningAdhkar: boolean;
   eveningHour: number;
   eveningMinute: number;
-  prayerTimes: boolean;
-  selectedAdhanId: string;
-  dailyQuran: boolean;
-  dailyQuranHour: number;
-  dailyQuranMinute: number;
-  fridayKahf: boolean;
+  sleepAdhkar: boolean;
+  sleepHour: number;
+  sleepMinute: number;
+  lastTenDaysDua: boolean;
+  lastTenDaysHour: number;
+  lastTenDaysMinute: number;
+
+  // Acts of worship alerts
+  prophetPrayer: boolean;
+  fastingMondayThursday: boolean;
+  fastingOffsetDays: number; // 1 = قبل يوم
+  kahfReminder: boolean;
+  kahfHour: number;
+  kahfMinute: number;
+  duhaPrayer: boolean;
+  duhaHour: number;
+  duhaMinute: number;
+  witrPrayer: boolean;
+  witrHour: number;
+  witrMinute: number;
+  fridayLastHour: boolean;
+  fridayLastHourTime: string;
+  charityReminder: boolean;
+  whiteDaysFasting: boolean;
+  whiteDaysOffsetDays: number; // 1 = قبل يوم
+
+  // Tasbih counter settings
+  tasbihSound: boolean;
+  tasbihHaptics: boolean;
+  tasbihSaveLastCount: boolean;
+
+  // Legacy compatibility
+  dailyQuran?: boolean;
+  dailyQuranHour?: number;
+  dailyQuranMinute?: number;
+  fridayKahf?: boolean;
 }
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  morningAdhkar: true,
-  morningHour: 7,
-  morningMinute: 0,
-  eveningAdhkar: true,
-  eveningHour: 17,
-  eveningMinute: 30,
+  // Prayer alerts
   prayerTimes: true,
-  selectedAdhanId: 'makkah',
+  selectedAdhanId: 'qatami',
+  prayerAdhans: {
+    Fajr: 'qatami',
+    Jumuah: 'qatami',
+    Asr: 'qatami',
+    Maghrib: 'qatami',
+    Isha: 'qatami',
+  },
+
+  // Adhkar alerts (matching screenshot states)
+  morningAdhkar: true,
+  morningHour: 5,
+  morningMinute: 40,
+  eveningAdhkar: true,
+  eveningHour: 16,
+  eveningMinute: 18,
+  sleepAdhkar: false,
+  sleepHour: 23,
+  sleepMinute: 0,
+  lastTenDaysDua: false,
+  lastTenDaysHour: 2,
+  lastTenDaysMinute: 0,
+
+  // Acts of worship alerts (matching screenshot states)
+  prophetPrayer: false,
+  fastingMondayThursday: false,
+  fastingOffsetDays: 1,
+  kahfReminder: true,
+  kahfHour: 11,
+  kahfMinute: 0,
+  duhaPrayer: false,
+  duhaHour: 9,
+  duhaMinute: 0,
+  witrPrayer: false,
+  witrHour: 22,
+  witrMinute: 0,
+  fridayLastHour: true,
+  fridayLastHourTime: '4:49 م',
+  charityReminder: true,
+  whiteDaysFasting: false,
+  whiteDaysOffsetDays: 1,
+
+  // Tasbih counter settings (matching screenshot states)
+  tasbihSound: false,
+  tasbihHaptics: true,
+  tasbihSaveLastCount: true,
+
+  // Legacy
   dailyQuran: true,
   dailyQuranHour: 21,
   dailyQuranMinute: 0,
@@ -250,7 +343,15 @@ class NotificationService {
     try {
       const saved = await AsyncStorage.getItem(STORAGE_SETTINGS_KEY);
       if (saved) {
-        return { ...DEFAULT_NOTIFICATION_SETTINGS, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_NOTIFICATION_SETTINGS,
+          ...parsed,
+          prayerAdhans: {
+            ...DEFAULT_NOTIFICATION_SETTINGS.prayerAdhans,
+            ...(parsed.prayerAdhans || {}),
+          },
+        };
       }
     } catch {}
     return DEFAULT_NOTIFICATION_SETTINGS;
@@ -319,8 +420,8 @@ class NotificationService {
     // 3. Daily Quran Reading Reminder
     if (activeSettings.dailyQuran) {
       await this.scheduleDailyQuran(
-        activeSettings.dailyQuranHour,
-        activeSettings.dailyQuranMinute
+        activeSettings.dailyQuranHour ?? 21,
+        activeSettings.dailyQuranMinute ?? 0
       );
     }
 
