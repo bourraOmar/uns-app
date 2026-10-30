@@ -118,6 +118,9 @@ class NotificationService {
    * Check if notifications permissions are granted
    */
   public async checkPermissions(): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+    }
     try {
       const settings = await Notifications.getPermissionsAsync();
       return (
@@ -134,6 +137,15 @@ class NotificationService {
    * Request notification permissions from user
    */
   public async requestPermissions(): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        if (Notification.permission === 'granted') return true;
+        const res = await Notification.requestPermission();
+        return res === 'granted';
+      }
+      return false;
+    }
+
     try {
       await this.createChannels();
       const { status } = await Notifications.requestPermissionsAsync({
@@ -145,7 +157,7 @@ class NotificationService {
       });
 
       const granted = status === 'granted';
-      if (!granted && Platform.OS !== 'web') {
+      if (!granted) {
         Alert.alert(
           'تفعيل التنبيهات',
           'يرجى السماح للتطبيق بإرسال الإشعارات من إعدادات الهاتف لتصلك مواقيت الصلاة والأذكار في وقتها المبارك.',
@@ -428,12 +440,23 @@ class NotificationService {
       const granted = await this.requestPermissions();
       if (!granted) return false;
 
+      const title = 'تطبيق أُنس يعمل بنجاح 🌿';
+      const body = 'تم ضبط نظام التنبيهات بنجاح! ستصلك أذكار الصباح والمساء ومواقيت الصلاة في مواعيدها المباركة بإذن الله.';
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
+        new Notification(title, {
+          body,
+          icon: '/favicon.png',
+        });
+        return true;
+      }
+
       await this.createChannels();
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'تطبيق أُنس يعمل بنجاح 🌿',
-          body: 'تم ضبط نظام التنبيهات بنجاح! ستصلك أذكار الصباح والمساء ومواقيت الصلاة في مواعيدها المباركة بإذن الله.',
+          title,
+          body,
           sound: 'default',
           color: '#10b981',
           data: { test: true },
