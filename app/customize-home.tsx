@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  PanResponder,
   Alert,
   Platform,
   StatusBar,
@@ -23,6 +24,7 @@ import {
 } from '@/services/homeSectionsService';
 
 const MIN_SECTIONS = 3;
+const ROW_HEIGHT = 56;
 
 export default function CustomizeHomeScreen() {
   const router = useRouter();
@@ -30,6 +32,16 @@ export default function CustomizeHomeScreen() {
 
   const [sections, setSections] = useState<HomeSectionItem[]>([]);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+  // Keep a ref to the latest sections and dragging index to avoid stale closures in PanResponder
+  const sectionsRef = useRef<HomeSectionItem[]>([]);
+  sectionsRef.current = sections;
+
+  const dragIndexRef = useRef<number | null>(null);
+  dragIndexRef.current = draggingIndex;
+
+  const accumulatedDyRef = useRef<number>(0);
 
   useEffect(() => {
     loadSections();
@@ -37,7 +49,9 @@ export default function CustomizeHomeScreen() {
 
   const loadSections = async () => {
     const list = await getHomeSections();
-    setSections(list);
+    // Ensure "banners" / "اللافتات" is excluded
+    const filtered = list.filter((s) => s.id !== ('banners' as any));
+    setSections(filtered);
   };
 
   const handleToggleSection = async (index: number) => {
@@ -63,32 +77,6 @@ export default function CustomizeHomeScreen() {
     await saveHomeSections(updated);
   };
 
-  const handleMoveUp = async (index: number) => {
-    if (index <= 0) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    const updated = [...sections];
-    const temp = updated[index];
-    updated[index] = updated[index - 1];
-    updated[index - 1] = temp;
-
-    setSections(updated);
-    await saveHomeSections(updated);
-  };
-
-  const handleMoveDown = async (index: number) => {
-    if (index >= sections.length - 1) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    const updated = [...sections];
-    const temp = updated[index];
-    updated[index] = updated[index + 1];
-    updated[index + 1] = temp;
-
-    setSections(updated);
-    await saveHomeSections(updated);
-  };
-
   const handleResetToDefaults = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
@@ -102,12 +90,71 @@ export default function CustomizeHomeScreen() {
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             const resetList = await resetHomeSections();
-            setSections(resetList);
+            const filtered = resetList.filter((s) => s.id !== ('banners' as any));
+            setSections(filtered);
             setWarningMessage(null);
           },
         },
       ]
     );
+  };
+
+  // Create a pan responder factory for holding & dragging on the left handle
+  const createRowPanResponder = (rowIndex: number) => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_evt, gestureState) => Math.abs(gestureState.dy) > 4,
+      onPanResponderGrant: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setDraggingIndex(rowIndex);
+        accumulatedDyRef.current = 0;
+      },
+      onPanResponderMove: (_evt, gestureState) => {
+        const currentIdx = dragIndexRef.current;
+        if (currentIdx === null) return;
+
+        const currentList = sectionsRef.current;
+        const totalDy = gestureState.dy - accumulatedDyRef.current;
+
+        // Threshold to swap: when dragging down past half a row height
+        if (totalDy > ROW_HEIGHT * 0.7 && currentIdx < currentList.length - 1) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          const nextList = [...currentList];
+          const temp = nextList[currentIdx];
+          nextList[currentIdx] = nextList[currentIdx + 1];
+          nextList[currentIdx + 1] = temp;
+
+          accumulatedDyRef.current += ROW_HEIGHT;
+          dragIndexRef.current = currentIdx + 1;
+          setDraggingIndex(currentIdx + 1);
+          setSections(nextList);
+        }
+        // Threshold to swap: when dragging up past half a row height
+        else if (totalDy < -ROW_HEIGHT * 0.7 && currentIdx > 0) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          const nextList = [...currentList];
+          const temp = nextList[currentIdx];
+          nextList[currentIdx] = nextList[currentIdx - 1];
+          nextList[currentIdx - 1] = temp;
+
+          accumulatedDyRef.current -= ROW_HEIGHT;
+          dragIndexRef.current = currentIdx - 1;
+          setDraggingIndex(currentIdx - 1);
+          setSections(nextList);
+        }
+      },
+      onPanResponderRelease: async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setDraggingIndex(null);
+        accumulatedDyRef.current = 0;
+        await saveHomeSections(sectionsRef.current);
+      },
+      onPanResponderTerminate: async () => {
+        setDraggingIndex(null);
+        accumulatedDyRef.current = 0;
+        await saveHomeSections(sectionsRef.current);
+      },
+    });
   };
 
   // Color palette matching the reference screenshot and uns-app theme
@@ -132,6 +179,8 @@ export default function CustomizeHomeScreen() {
     checkIcon: '#10b981',
     uncheckCircleBorder: isDark ? '#64748b' : '#cbd5e1',
     reorderIcon: isDark ? '#64748b' : '#94a3b8',
+    reorderIconDragging: '#10b981',
+    rowDraggingBg: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
   };
 
   return (
@@ -144,6 +193,7 @@ export default function CustomizeHomeScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={draggingIndex === null} // Prevent scroll while dragging a section
         >
           {/* ================= TOP ACTIONS (Matching Reference) ================= */}
           <View style={styles.topActionsRow}>
@@ -202,45 +252,33 @@ export default function CustomizeHomeScreen() {
           <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
             {sections.map((section, index) => {
               const isEnabled = section.enabled;
+              const isDraggingThis = draggingIndex === index;
+              const rowPanResponder = createRowPanResponder(index);
 
               return (
                 <React.Fragment key={section.id}>
                   {index > 0 && <View style={[styles.divider, { backgroundColor: colors.divider }]} />}
 
-                  <View style={styles.sectionRow}>
-                    {/* Left: Reorder Controls (Handles + Micro Move Buttons) */}
-                    <View style={styles.reorderGroup}>
-                      <TouchableOpacity
-                        style={styles.reorderMicroBtn}
-                        onPress={() => handleMoveUp(index)}
-                        disabled={index === 0}
-                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                      >
-                        <Ionicons
-                          name="chevron-up"
-                          size={14}
-                          color={index === 0 ? 'transparent' : colors.reorderIcon}
-                        />
-                      </TouchableOpacity>
-
+                  <View
+                    style={[
+                      styles.sectionRow,
+                      isDraggingThis && {
+                        backgroundColor: colors.rowDraggingBg,
+                        transform: [{ scale: 1.02 }],
+                      },
+                    ]}
+                  >
+                    {/* Left: Hold & Drag Handle (Clean 3 lines only, matching screenshot) */}
+                    <View
+                      {...rowPanResponder.panHandlers}
+                      style={styles.dragHandleTouch}
+                      hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
+                    >
                       <Ionicons
                         name="reorder-three-outline"
-                        size={22}
-                        color={colors.reorderIcon}
+                        size={26}
+                        color={isDraggingThis ? colors.reorderIconDragging : colors.reorderIcon}
                       />
-
-                      <TouchableOpacity
-                        style={styles.reorderMicroBtn}
-                        onPress={() => handleMoveDown(index)}
-                        disabled={index === sections.length - 1}
-                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                      >
-                        <Ionicons
-                          name="chevron-down"
-                          size={14}
-                          color={index === sections.length - 1 ? 'transparent' : colors.reorderIcon}
-                        />
-                      </TouchableOpacity>
                     </View>
 
                     {/* Right: Title & Checkmark Circle (Tapping toggles) */}
@@ -386,7 +424,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
+    height: ROW_HEIGHT,
     paddingHorizontal: 16,
   },
   rowClickArea: {
@@ -395,6 +433,7 @@ const styles = StyleSheet.create({
     gap: 14,
     flex: 1,
     justifyContent: 'flex-end',
+    height: '100%',
   },
   sectionTitleText: {
     fontFamily: 'Cairo_600SemiBold',
@@ -409,13 +448,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  reorderGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  reorderMicroBtn: {
-    padding: 2,
+  dragHandleTouch: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },

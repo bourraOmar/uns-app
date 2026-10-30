@@ -749,7 +749,6 @@ export default function HomeScreen() {
         </View>
 
         {/* ================= 2. Hero Section ================= */}
-        {isSectionVisible('banners') && (
         <View style={styles.heroSectionRow}>
           {/* Left: Calendar Card */}
           <View
@@ -818,7 +817,6 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-        )}
 
         {/* ================= 3. Prayer Times Section ================= */}
         {isSectionVisible('prayer_times') && (

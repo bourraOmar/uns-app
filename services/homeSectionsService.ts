@@ -8,8 +8,7 @@ export interface HomeSectionItem {
     | 'recent_activities'
     | 'ayah_of_day'
     | 'hadith_of_day'
-    | 'dua_of_day'
-    | 'banners';
+    | 'dua_of_day';
   title: string;
   enabled: boolean;
 }
@@ -22,10 +21,9 @@ export const DEFAULT_HOME_SECTIONS: HomeSectionItem[] = [
   { id: 'ayah_of_day', title: 'آية اليوم', enabled: true },
   { id: 'hadith_of_day', title: 'حديث اليوم', enabled: true },
   { id: 'dua_of_day', title: 'دعاء اليوم', enabled: true },
-  { id: 'banners', title: 'اللافتات', enabled: false }, // Matches reference screenshot
 ];
 
-const STORAGE_HOME_SECTIONS_KEY = '@uns_home_sections_v2';
+const STORAGE_HOME_SECTIONS_KEY = '@uns_home_sections_v3';
 
 export async function getHomeSections(): Promise<HomeSectionItem[]> {
   try {
