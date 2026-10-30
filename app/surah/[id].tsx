@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 
@@ -73,9 +73,18 @@ export default function SurahReaderScreen() {
   const [bookmarkedVerses, setBookmarkedVerses] = useState<string[]>([]);
 
   // Single verse audio playback state
-  const [verseSound, setVerseSound] = useState<Audio.Sound | null>(null);
+  const versePlayerRef = useRef<AudioPlayer | null>(null);
   const [playingVerseNum, setPlayingVerseNum] = useState<number | null>(null);
   const [isLoadingAudio, setIsLoadingAudio] = useState<boolean>(false);
+
+  useEffect(() => {
+    return () => {
+      if (versePlayerRef.current) {
+        versePlayerRef.current.remove();
+        versePlayerRef.current = null;
+      }
+    };
+  }, []);
 
   const loadBookmarks = async () => {
     try {
@@ -114,14 +123,6 @@ export default function SurahReaderScreen() {
     }, 0);
     return () => clearTimeout(timer);
   }, [surahId, currentSurah]);
-
-  useEffect(() => {
-    return () => {
-      if (verseSound) {
-        verseSound.unloadAsync();
-      }
-    };
-  }, [verseSound]);
 
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressActiveRef = useRef(false);
@@ -187,34 +188,37 @@ export default function SurahReaderScreen() {
   };
 
   const handlePlayVerse = async (verse: VerseData) => {
-    if (playingVerseNum === verse.verse_number && verseSound) {
-      await verseSound.stopAsync();
-      await verseSound.unloadAsync();
-      setVerseSound(null);
+    if (playingVerseNum === verse.verse_number && versePlayerRef.current) {
+      versePlayerRef.current.pause();
+      versePlayerRef.current.remove();
+      versePlayerRef.current = null;
       setPlayingVerseNum(null);
       return;
     }
 
     try {
       setIsLoadingAudio(true);
-      if (verseSound) {
-        await verseSound.unloadAsync();
+      if (versePlayerRef.current) {
+        versePlayerRef.current.remove();
+        versePlayerRef.current = null;
       }
       const pad3 = (n: number) => n.toString().padStart(3, '0');
       const audioUrl = `https://everyayah.com/data/Alafasy_128kbps/${pad3(surahId)}${pad3(verse.verse_number)}.mp3`;
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: audioUrl },
-        { shouldPlay: true }
-      );
-      setVerseSound(sound);
+      const player = createAudioPlayer(audioUrl);
+      versePlayerRef.current = player;
       setPlayingVerseNum(verse.verse_number);
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync();
-          setVerseSound(null);
+
+      player.addListener('playbackStatusUpdate', (status) => {
+        if (status.didJustFinish) {
+          player.remove();
+          if (versePlayerRef.current === player) {
+            versePlayerRef.current = null;
+          }
           setPlayingVerseNum(null);
         }
       });
+
+      player.play();
     } catch {
       // Keep silent
     } finally {

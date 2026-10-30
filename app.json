@@ -41,7 +41,10 @@
             "enableProguardInReleaseBuilds": false
           }
         }
-      ]
+      ],
+      "expo-audio",
+      "expo-video",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

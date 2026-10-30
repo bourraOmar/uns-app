@@ -1,4 +1,4 @@
-import { Audio } from 'expo-av';
+import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -88,7 +88,7 @@ export const BACKGROUND_SOUNDS: BackgroundSoundItem[] = [
 type Listener = () => void;
 
 class BackgroundSoundManager {
-  private soundInstance: Audio.Sound | null = null;
+  private soundInstance: AudioPlayer | null = null;
   private currentSoundId: string = 'none';
   private volume: number = 0.35;
   private isQuranPlaying: boolean = false;
@@ -220,13 +220,10 @@ class BackgroundSoundManager {
     if (!this.soundInstance || this.currentSoundId === 'none') return;
 
     try {
-      const status = await this.soundInstance.getStatusAsync();
-      if (status.isLoaded) {
-        if (isPlaying && !status.isPlaying) {
-          await this.soundInstance.playAsync();
-        } else if (!isPlaying && status.isPlaying && !this.isPreviewing) {
-          await this.soundInstance.pauseAsync();
-        }
+      if (isPlaying && !this.soundInstance.playing) {
+        this.soundInstance.play();
+      } else if (!isPlaying && this.soundInstance.playing && !this.isPreviewing) {
+        this.soundInstance.pause();
       }
     } catch (err) {
       console.warn('Error syncing background sound with Quran playback:', err);
@@ -243,8 +240,8 @@ class BackgroundSoundManager {
     // Stop and unload previous sound
     if (this.soundInstance) {
       try {
-        await this.soundInstance.stopAsync();
-        await this.soundInstance.unloadAsync();
+        this.soundInstance.pause();
+        this.soundInstance.remove();
       } catch {}
       this.soundInstance = null;
     }
@@ -270,25 +267,21 @@ class BackgroundSoundManager {
     };
 
     try {
-      const shouldPlay = this.isQuranPlaying;
-      const { sound } = await Audio.Sound.createAsync(
-        source,
-        {
-          shouldPlay,
-          isLooping: true,
-          volume: this.volume,
-        }
-      );
-      this.soundInstance = sound;
+      const player = createAudioPlayer(source);
+      player.loop = true;
+      player.volume = this.volume;
+      this.soundInstance = player;
 
-      // If Quran is not playing, preview briefly for 3 seconds
-      if (!this.isQuranPlaying) {
+      if (this.isQuranPlaying) {
+        player.play();
+      } else {
+        // If Quran is not playing, preview briefly for 3 seconds
         this.isPreviewing = true;
-        await sound.playAsync();
-        setTimeout(async () => {
-          if (this.isPreviewing && !this.isQuranPlaying && this.soundInstance === sound) {
+        player.play();
+        setTimeout(() => {
+          if (this.isPreviewing && !this.isQuranPlaying && this.soundInstance === player) {
             try {
-              await sound.pauseAsync();
+              player.pause();
             } catch {}
             this.isPreviewing = false;
           }
@@ -305,7 +298,7 @@ class BackgroundSoundManager {
 
     if (this.soundInstance) {
       try {
-        await this.soundInstance.setVolumeAsync(this.volume);
+        this.soundInstance.volume = this.volume;
       } catch (err) {
         console.warn('Failed to set background sound volume:', err);
       }
@@ -315,8 +308,8 @@ class BackgroundSoundManager {
   public async unload() {
     if (this.soundInstance) {
       try {
-        await this.soundInstance.stopAsync();
-        await this.soundInstance.unloadAsync();
+        this.soundInstance.pause();
+        this.soundInstance.remove();
       } catch {}
       this.soundInstance = null;
     }

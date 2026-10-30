@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppTheme } from '@/context/ThemeContext';
 import IslamicBackground from '@/components/IslamicBackground';
@@ -71,8 +71,8 @@ export default function TasbihScreen() {
   // Scale animation for tactile feedback
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // Sound ref for tap click audio
-  const soundRef = useRef<Audio.Sound | null>(null);
+  // Click audio player
+  const clickPlayer = useAudioPlayer(require('@/assets/sounds/click.wav'));
 
   const currentDhikr = DEFAULT_DHIKRS[activeDhikrIndex] || DEFAULT_DHIKRS[0];
   const currentCount = counts[currentDhikr.id] || 0;
@@ -114,29 +114,6 @@ export default function TasbihScreen() {
     optionCardText: isDark ? '#94a3b8' : '#64748b',
     switchTrackFalse: isDark ? '#1e293b' : '#cbd5e1',
   };
-
-  // Initialize click sound
-  useEffect(() => {
-    let soundObj: Audio.Sound | null = null;
-    (async () => {
-      try {
-        const { sound } = await Audio.Sound.createAsync(
-          require('@/assets/sounds/click.wav'),
-          { shouldPlay: false, volume: 0.85 }
-        );
-        soundObj = sound;
-        soundRef.current = sound;
-      } catch (e) {
-        // audio init ignored
-      }
-    })();
-
-    return () => {
-      if (soundObj) {
-        soundObj.unloadAsync();
-      }
-    };
-  }, []);
 
   // Load persisted state
   useEffect(() => {
@@ -232,9 +209,10 @@ export default function TasbihScreen() {
   };
 
   const playClickSound = async () => {
-    if (!soundEnabled || !soundRef.current) return;
+    if (!soundEnabled || !clickPlayer) return;
     try {
-      await soundRef.current.replayAsync();
+      await clickPlayer.seekTo(0);
+      clickPlayer.play();
     } catch (e) {
       // ignored
     }

@@ -8,7 +8,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { Alert } from 'react-native';
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { RECITERS_DATA, Reciter } from '@/data/reciters';
 import surahsData from '@/data/surahs.json';
@@ -62,7 +62,7 @@ const DEFAULT_RECITER: Reciter = RECITERS_DATA.find((r) => r.id === '92') || REC
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
 
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const soundRef = useRef<AudioPlayer | null>(null);
 
   const [currentSurahId, setCurrentSurahId] = useState<number | null>(null);
   const [currentReciter, setCurrentReciter] = useState<Reciter>(DEFAULT_RECITER);
@@ -97,10 +97,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   // Initialize Audio mode for background playback
   useEffect(() => {
-    Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      shouldDuckAndroid: true,
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'mixWithOthers',
     }).catch(() => {});
   }, []);
 
@@ -155,17 +155,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       // If toggling the same surah with the same reciter
       if (!reciterChanged && currentSurahIdRef.current === surahId && soundRef.current) {
         try {
-          const status = await soundRef.current.getStatusAsync();
-          if (status.isLoaded) {
-            if (status.isPlaying) {
-              await soundRef.current.pauseAsync();
-              setIsPlaying(false);
-            } else {
-              await soundRef.current.playAsync();
-              setIsPlaying(true);
-            }
-            return;
+          if (soundRef.current.playing) {
+            soundRef.current.pause();
+            setIsPlaying(false);
+          } else {
+            soundRef.current.play();
+            setIsPlaying(true);
           }
+          return;
         } catch (err) {
           console.warn('Error toggling play/pause:', err);
         }
@@ -174,8 +171,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       // Stop and unload existing sound
       if (soundRef.current) {
         try {
-          await soundRef.current.stopAsync();
-          await soundRef.current.unloadAsync();
+          soundRef.current.pause();
+          soundRef.current.remove();
         } catch {}
         soundRef.current = null;
       }
@@ -187,51 +184,43 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       setPlaybackProgress(0);
 
       try {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: audioUri },
-          { shouldPlay: true, progressUpdateIntervalMillis: 350 },
-          (status) => {
-            if (status.isLoaded) {
-              setIsPlaying(status.isPlaying);
-              if (status.positionMillis !== undefined) {
-                setPositionMillis(status.positionMillis);
-              }
-              if (status.durationMillis && status.durationMillis > 0) {
-                setDurationMillis(status.durationMillis);
-                setPlaybackProgress(status.positionMillis / status.durationMillis);
-              }
-              if (status.didJustFinish) {
-                setIsPlaying(false);
-                setPlaybackProgress(0);
-                setPositionMillis(0);
+        const newPlayer = createAudioPlayer(audioUri, { updateInterval: 350 });
+        soundRef.current = newPlayer;
 
-                if (isRepeatRef.current && currentSurahIdRef.current) {
-                  playSurah(currentSurahIdRef.current, currentReciterRef.current);
-                } else if (isShuffleRef.current) {
-                  playSurah(getRandomSurahId(currentSurahIdRef.current), currentReciterRef.current);
-                } else if (currentSurahIdRef.current && currentSurahIdRef.current < 114) {
-                  playSurah(currentSurahIdRef.current + 1, currentReciterRef.current);
-                } else if (currentSurahIdRef.current === 114) {
-                  playSurah(1, currentReciterRef.current);
-                }
-              }
-            } else if (status.error) {
-              console.warn(`Playback error for ${audioUri}:`, status.error);
-              setIsPlaying(false);
+        newPlayer.addListener('playbackStatusUpdate', (status) => {
+          setIsPlaying(status.playing);
+          const posMs = Math.round(status.currentTime * 1000);
+          const durMs = Math.round(status.duration * 1000);
+          setPositionMillis(posMs);
+          if (durMs > 0) {
+            setDurationMillis(durMs);
+            setPlaybackProgress(status.currentTime / status.duration);
+          }
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            setPlaybackProgress(0);
+            setPositionMillis(0);
+
+            if (isRepeatRef.current && currentSurahIdRef.current) {
+              playSurah(currentSurahIdRef.current, currentReciterRef.current);
+            } else if (isShuffleRef.current) {
+              playSurah(getRandomSurahId(currentSurahIdRef.current), currentReciterRef.current);
+            } else if (currentSurahIdRef.current && currentSurahIdRef.current < 114) {
+              playSurah(currentSurahIdRef.current + 1, currentReciterRef.current);
+            } else if (currentSurahIdRef.current === 114) {
+              playSurah(1, currentReciterRef.current);
             }
           }
-        );
-
-        soundRef.current = newSound;
+        });
 
         if (quranVolumeRef.current !== 1.0) {
-          await newSound.setVolumeAsync(quranVolumeRef.current).catch(() => {});
+          newPlayer.volume = quranVolumeRef.current;
         }
         if (currentSpeedRef.current !== 1.0) {
-          await newSound.setRateAsync(currentSpeedRef.current, true).catch(() => {});
+          newPlayer.playbackRate = currentSpeedRef.current;
         }
 
-        await newSound.playAsync();
+        newPlayer.play();
         setIsPlaying(true);
       } catch (err: any) {
         console.warn('Failed to load/play audio:', audioUri, err);
@@ -251,17 +240,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (soundRef.current) {
       try {
-        const status = await soundRef.current.getStatusAsync();
-        if (status.isLoaded) {
-          if (status.isPlaying) {
-            await soundRef.current.pauseAsync();
-            setIsPlaying(false);
-          } else {
-            await soundRef.current.playAsync();
-            setIsPlaying(true);
-          }
-          return;
+        if (soundRef.current.playing) {
+          soundRef.current.pause();
+          setIsPlaying(false);
+        } else {
+          soundRef.current.play();
+          setIsPlaying(true);
         }
+        return;
       } catch (err) {
         console.warn('Error toggling play:', err);
       }
@@ -274,7 +260,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const seekTo = useCallback(async (millis: number) => {
     if (soundRef.current) {
       try {
-        await soundRef.current.setPositionAsync(millis);
+        await soundRef.current.seekTo(millis / 1000);
         setPositionMillis(millis);
       } catch (err) {
         console.warn('Error seeking:', err);
@@ -308,7 +294,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setCurrentSpeed(speed);
     if (soundRef.current) {
       try {
-        await soundRef.current.setRateAsync(speed, true);
+        soundRef.current.playbackRate = speed;
       } catch (err) {
         console.warn('Error setting rate:', err);
       }
@@ -320,7 +306,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setQuranVolume(clamped);
     if (soundRef.current) {
       try {
-        await soundRef.current.setVolumeAsync(clamped);
+        soundRef.current.volume = clamped;
       } catch {}
     }
   }, []);
@@ -347,8 +333,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const stopAudio = useCallback(async () => {
     if (soundRef.current) {
       try {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
+        soundRef.current.pause();
+        soundRef.current.remove();
       } catch {}
       soundRef.current = null;
     }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 
 interface VideoBackgroundProps {
   source?: any;
@@ -19,16 +19,19 @@ export function VideoBackground({
   source = LOCAL_BACKGROUND_VIDEO,
   overlayOpacity = 0.35,
 }: VideoBackgroundProps) {
+  const player = useVideoPlayer(source, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Video
-        source={source}
+      <VideoView
+        player={player}
         style={styles.video}
-        resizeMode={ResizeMode.COVER}
-        isLooping
-        isMuted
-        shouldPlay
-        useNativeControls={false}
+        contentFit="cover"
+        nativeControls={false}
       />
       {/* Subtle tint overlay to keep Islamic typography and cards crisp */}
       <View
