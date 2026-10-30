@@ -32,19 +32,18 @@ import {
   getUserLocation,
 } from '@/services/prayerTimesService';
 
-interface PrayerRowInfo {
+interface PrayerItem {
   id: 'Fajr' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha';
   name: string;
   icon: keyof typeof Ionicons.glyphMap;
-  iconColor: string;
 }
 
-const PRAYERS_LIST: PrayerRowInfo[] = [
-  { id: 'Fajr', name: 'الفجر', icon: 'partly-sunny-outline', iconColor: '#38bdf8' },
-  { id: 'Dhuhr', name: 'الظهر', icon: 'sunny-outline', iconColor: '#f59e0b' },
-  { id: 'Asr', name: 'العصر', icon: 'sunny', iconColor: '#10b981' },
-  { id: 'Maghrib', name: 'المغرب', icon: 'cloudy-night-outline', iconColor: '#f97316' },
-  { id: 'Isha', name: 'العشاء', icon: 'moon-outline', iconColor: '#a78bfa' },
+const PRAYERS: PrayerItem[] = [
+  { id: 'Fajr', name: 'الفجر', icon: 'sparkles-outline' },
+  { id: 'Dhuhr', name: 'الظهر', icon: 'sunny-outline' },
+  { id: 'Asr', name: 'العصر', icon: 'sunny' },
+  { id: 'Maghrib', name: 'المغرب', icon: 'partly-sunny-outline' },
+  { id: 'Isha', name: 'العشاء', icon: 'moon-outline' },
 ];
 
 export default function PrayerSettingsScreen() {
@@ -54,14 +53,13 @@ export default function PrayerSettingsScreen() {
   const [config, setConfig] = useState<PrayerCalculationConfig>(DEFAULT_PRAYER_CONFIG);
   const [baseTimes, setBaseTimes] = useState<Record<string, string>>({
     Fajr: '05:30',
-    Dhuhr: '12:30',
-    Asr: '15:45',
-    Maghrib: '18:15',
-    Isha: '19:45',
+    Dhuhr: '12:22',
+    Asr: '15:25',
+    Maghrib: '17:49',
+    Isha: '19:07',
   });
   const [activeModal, setActiveModal] = useState<'method' | 'asr' | 'ramadan' | null>(null);
 
-  // Load config & baseline prayer times on mount
   useEffect(() => {
     loadSettings();
   }, []);
@@ -107,7 +105,6 @@ export default function PrayerSettingsScreen() {
     setActiveModal(null);
     await savePrayerCalculationConfig(updated);
 
-    // Refresh base times with the new method
     try {
       const loc = await getUserLocation();
       const base = await getBasePrayerTimesForDate(new Date(), loc, updated);
@@ -125,7 +122,6 @@ export default function PrayerSettingsScreen() {
     setActiveModal(null);
     await savePrayerCalculationConfig(updated);
 
-    // Refresh base times with new Asr school
     try {
       const loc = await getUserLocation();
       const base = await getBasePrayerTimesForDate(new Date(), loc, updated);
@@ -169,33 +165,31 @@ export default function PrayerSettingsScreen() {
     );
   };
 
-  // Colors aligned with dark/light theme
+  // Color palette matching the reference design and uns-app theme
   const colors = {
-    screenBg: isDark ? '#0c1524' : '#f8fafc',
-    headerTitle: isDark ? '#f8fafc' : '#0f172a',
-    backBtnBg: isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.05)',
-    backBtnBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-    sectionLabel: isDark ? '#94a3b8' : '#64748b',
-    cardBg: isDark ? '#142034' : '#ffffff',
-    cardBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+    screenBg: isDark ? '#0e151b' : '#f8fafc',
+    headerTitle: isDark ? '#ffffff' : '#0f172a',
+    backBtnBg: isDark ? '#1a242c' : '#f1f5f9',
+    backBtnBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+    sectionLabel: isDark ? '#6ee7b7' : '#059669', // Mint emerald tint like reference
+    cardBg: isDark ? '#151f28' : '#ffffff',
+    cardBorder: isDark ? 'rgba(255, 255, 255, 0.05)' : '#e2e8f0',
     divider: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f1f5f9',
-    itemTitle: isDark ? '#f8fafc' : '#0f172a',
-    itemSubtitle: isDark ? '#94a3b8' : '#64748b',
-    chevron: isDark ? '#64748b' : '#94a3b8',
-    stepperBg: isDark ? '#1c2b44' : '#f1f5f9',
-    stepperBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
-    stepperText: isDark ? '#f8fafc' : '#0f172a',
-    stepperDivider: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1',
-    modalBg: isDark ? '#142034' : '#ffffff',
-    modalOverlay: 'rgba(0, 0, 0, 0.6)',
+    itemTitle: isDark ? '#ffffff' : '#0f172a',
+    itemValue: isDark ? '#94a3b8' : '#64748b',
+    iconCircleBg: isDark ? 'rgba(52, 211, 153, 0.16)' : 'rgba(16, 185, 129, 0.12)',
+    iconTint: isDark ? '#6ee7b7' : '#059669',
+    stepperBg: isDark ? '#1f2a35' : '#f1f5f9',
+    stepperBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+    stepperDivider: isDark ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1',
+    stepperIcon: isDark ? '#ffffff' : '#0f172a',
+    modalBg: isDark ? '#151f28' : '#ffffff',
     activeCheck: '#10b981',
   };
 
-  // Current Asr label
   const currentAsrLabel =
     ASR_MADHABS.find((m) => m.id === config.asrMadhab)?.name || 'حنبلي، شافعي، مالكي';
 
-  // Current Ramadan label
   const currentRamadanLabel =
     RAMADAN_ISHA_OPTIONS.find((r) => r.offset === config.ramadanIshaOffset)?.name || 'بدون إضافة';
 
@@ -205,44 +199,47 @@ export default function PrayerSettingsScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* Top Header */}
-        <View style={styles.headerBar}>
-          <View style={styles.headerRightContainer}>
-            <TouchableOpacity
-              style={[
-                styles.backButton,
-                { backgroundColor: colors.backBtnBg, borderColor: colors.backBtnBorder },
-              ]}
-              onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/' as any))}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chevron-forward" size={22} color={colors.headerTitle} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.headerTitle }]}>
-              اعدادات مواقيت الصلاة
-            </Text>
-          </View>
-        </View>
-
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* ================= TOP HEADER (Matching Reference) ================= */}
+          <View style={styles.headerContainer}>
+            {/* Back Button on Top Right */}
+            <View style={styles.backButtonRow}>
+              <TouchableOpacity
+                style={[
+                  styles.backButton,
+                  { backgroundColor: colors.backBtnBg, borderColor: colors.backBtnBorder },
+                ]}
+                onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/' as any))}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-forward" size={24} color={colors.headerTitle} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Main Screen Title placed below back button, right-aligned */}
+            <Text style={[styles.mainScreenTitle, { color: colors.headerTitle }]}>
+              اعدادات مواقيت الصلاة
+            </Text>
+          </View>
+
           {/* ================= SECTION 1: الحساب ================= */}
           <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionLabel, { color: colors.sectionLabel }]}>الحساب</Text>
+            <Text style={[styles.sectionTitle, { color: colors.sectionLabel }]}>الحساب</Text>
 
             <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
               {/* Row 1: طريقة الحساب */}
               <TouchableOpacity
-                style={styles.rowItem}
+                style={styles.settingRow}
                 onPress={() => setActiveModal('method')}
                 activeOpacity={0.65}
               >
-                <View style={styles.rowValueContainer}>
-                  <Ionicons name="chevron-back" size={16} color={colors.chevron} />
-                  <Text style={[styles.rowValueText, { color: colors.itemSubtitle }]} numberOfLines={1}>
+                <View style={styles.rowLeftGroup}>
+                  <Ionicons name="chevron-back" size={17} color={colors.itemValue} />
+                  <Text style={[styles.rowValueText, { color: colors.itemValue }]} numberOfLines={1}>
                     {config.methodName}
                   </Text>
                 </View>
@@ -253,13 +250,13 @@ export default function PrayerSettingsScreen() {
 
               {/* Row 2: حساب وقت العصر */}
               <TouchableOpacity
-                style={styles.rowItem}
+                style={styles.settingRow}
                 onPress={() => setActiveModal('asr')}
                 activeOpacity={0.65}
               >
-                <View style={styles.rowValueContainer}>
-                  <Ionicons name="chevron-back" size={16} color={colors.chevron} />
-                  <Text style={[styles.rowValueText, { color: colors.itemSubtitle }]} numberOfLines={1}>
+                <View style={styles.rowLeftGroup}>
+                  <Ionicons name="chevron-back" size={17} color={colors.itemValue} />
+                  <Text style={[styles.rowValueText, { color: colors.itemValue }]} numberOfLines={1}>
                     {currentAsrLabel}
                   </Text>
                 </View>
@@ -270,13 +267,13 @@ export default function PrayerSettingsScreen() {
 
               {/* Row 3: تعديل العشاء في رمضان */}
               <TouchableOpacity
-                style={styles.rowItem}
+                style={styles.settingRow}
                 onPress={() => setActiveModal('ramadan')}
                 activeOpacity={0.65}
               >
-                <View style={styles.rowValueContainer}>
-                  <Ionicons name="chevron-back" size={16} color={colors.chevron} />
-                  <Text style={[styles.rowValueText, { color: colors.itemSubtitle }]} numberOfLines={1}>
+                <View style={styles.rowLeftGroup}>
+                  <Ionicons name="chevron-back" size={17} color={colors.itemValue} />
+                  <Text style={[styles.rowValueText, { color: colors.itemValue }]} numberOfLines={1}>
                     {currentRamadanLabel}
                   </Text>
                 </View>
@@ -289,12 +286,12 @@ export default function PrayerSettingsScreen() {
 
           {/* ================= SECTION 2: تعديل أوقات الصلاة يدوياً ================= */}
           <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionLabel, { color: colors.sectionLabel }]}>
+            <Text style={[styles.sectionTitle, { color: colors.sectionLabel }]}>
               تعديل أوقات الصلاة يدوياً
             </Text>
 
             <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
-              {PRAYERS_LIST.map((prayer, index) => {
+              {PRAYERS.map((prayer, index) => {
                 const base = baseTimes[prayer.id] || '12:00';
                 const offset = config.offsets[prayer.id] || 0;
                 const ramadanExtra = prayer.id === 'Isha' ? config.ramadanIshaOffset || 0 : 0;
@@ -308,7 +305,7 @@ export default function PrayerSettingsScreen() {
                       {/* Left: Capsule Stepper [ + | - ] */}
                       <View
                         style={[
-                          styles.stepperContainer,
+                          styles.stepperPill,
                           {
                             backgroundColor: colors.stepperBg,
                             borderColor: colors.stepperBorder,
@@ -316,55 +313,36 @@ export default function PrayerSettingsScreen() {
                         ]}
                       >
                         <TouchableOpacity
-                          style={styles.stepperBtn}
+                          style={styles.stepperAction}
                           onPress={() => updateOffsets(prayer.id, 1)}
-                          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                           activeOpacity={0.6}
                         >
-                          <Ionicons name="add" size={18} color={colors.stepperText} />
+                          <Ionicons name="add" size={19} color={colors.stepperIcon} />
                         </TouchableOpacity>
 
                         <View
-                          style={[styles.stepperDivider, { backgroundColor: colors.stepperDivider }]}
+                          style={[styles.stepperSeparator, { backgroundColor: colors.stepperDivider }]}
                         />
 
                         <TouchableOpacity
-                          style={styles.stepperBtn}
+                          style={styles.stepperAction}
                           onPress={() => updateOffsets(prayer.id, -1)}
-                          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                           activeOpacity={0.6}
                         >
-                          <Ionicons name="remove" size={18} color={colors.stepperText} />
+                          <Ionicons name="remove" size={19} color={colors.stepperIcon} />
                         </TouchableOpacity>
                       </View>
 
-                      {/* Right: Icon + Prayer Name & Live Time */}
-                      <View style={styles.prayerInfoContainer}>
-                        <View style={styles.prayerTextGroup}>
-                          <View style={styles.prayerNameRow}>
-                            {offset !== 0 && (
-                              <View
-                                style={[
-                                  styles.offsetPill,
-                                  { backgroundColor: offset > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' },
-                                ]}
-                              >
-                                <Text
-                                  style={[
-                                    styles.offsetPillText,
-                                    { color: offset > 0 ? '#10b981' : '#ef4444' },
-                                  ]}
-                                >
-                                  {offset > 0 ? `+${offset}` : `${offset}`}
-                                </Text>
-                              </View>
-                            )}
-                            <Text style={[styles.prayerNameText, { color: colors.itemTitle }]}>
-                              {prayer.name}
+                      {/* Right: Prayer name & time ON SAME LINE + Icon Circle (Matching Screenshot) */}
+                      <View style={styles.prayerRightGroup}>
+                        <View style={styles.prayerSingleLineText}>
+                          <Text style={[styles.prayerNameText, { color: colors.itemTitle }]}>
+                            {prayer.name}{' '}
+                            <Text style={[styles.prayerTimeText, { color: colors.itemValue }]}>
+                              {formattedTime}
                             </Text>
-                          </View>
-                          <Text style={[styles.prayerTimeText, { color: colors.itemSubtitle }]}>
-                            {formattedTime}
                           </Text>
                         </View>
 
@@ -372,16 +350,11 @@ export default function PrayerSettingsScreen() {
                           style={[
                             styles.prayerIconCircle,
                             {
-                              backgroundColor: isDark
-                                ? 'rgba(255, 255, 255, 0.05)'
-                                : 'rgba(16, 185, 129, 0.08)',
-                              borderColor: isDark
-                                ? 'rgba(255, 255, 255, 0.08)'
-                                : 'rgba(16, 185, 129, 0.15)',
+                              backgroundColor: colors.iconCircleBg,
                             },
                           ]}
                         >
-                          <Ionicons name={prayer.icon} size={20} color={prayer.iconColor} />
+                          <Ionicons name={prayer.icon} size={20} color={colors.iconTint} />
                         </View>
                       </View>
                     </View>
@@ -414,7 +387,7 @@ export default function PrayerSettingsScreen() {
           </View>
         </ScrollView>
 
-        {/* ================= MODAL: طريقة الحساب ================= */}
+        {/* ================= MODALS ================= */}
         <Modal
           visible={activeModal === 'method'}
           transparent
@@ -431,7 +404,7 @@ export default function PrayerSettingsScreen() {
             >
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.modalCloseBtn}>
-                  <Ionicons name="close" size={20} color={colors.itemSubtitle} />
+                  <Ionicons name="close" size={22} color={colors.itemValue} />
                 </TouchableOpacity>
                 <Text style={[styles.modalTitle, { color: colors.itemTitle }]}>
                   اختر طريقة الحساب
@@ -476,7 +449,6 @@ export default function PrayerSettingsScreen() {
           </Pressable>
         </Modal>
 
-        {/* ================= MODAL: حساب وقت العصر ================= */}
         <Modal
           visible={activeModal === 'asr'}
           transparent
@@ -493,7 +465,7 @@ export default function PrayerSettingsScreen() {
             >
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.modalCloseBtn}>
-                  <Ionicons name="close" size={20} color={colors.itemSubtitle} />
+                  <Ionicons name="close" size={22} color={colors.itemValue} />
                 </TouchableOpacity>
                 <Text style={[styles.modalTitle, { color: colors.itemTitle }]}>
                   حساب وقت العصر
@@ -531,7 +503,7 @@ export default function PrayerSettingsScreen() {
                         >
                           {madhab.name}
                         </Text>
-                        <Text style={[styles.modalOptionSubtext, { color: colors.itemSubtitle }]}>
+                        <Text style={[styles.modalOptionSubtext, { color: colors.itemValue }]}>
                           {madhab.subtitle}
                         </Text>
                       </View>
@@ -543,7 +515,6 @@ export default function PrayerSettingsScreen() {
           </Pressable>
         </Modal>
 
-        {/* ================= MODAL: تعديل العشاء في رمضان ================= */}
         <Modal
           visible={activeModal === 'ramadan'}
           transparent
@@ -560,7 +531,7 @@ export default function PrayerSettingsScreen() {
             >
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.modalCloseBtn}>
-                  <Ionicons name="close" size={20} color={colors.itemSubtitle} />
+                  <Ionicons name="close" size={22} color={colors.itemValue} />
                 </TouchableOpacity>
                 <Text style={[styles.modalTitle, { color: colors.itemTitle }]}>
                   تعديل العشاء في رمضان
@@ -616,57 +587,59 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  headerBar: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 12 : 8,
-    paddingBottom: 12,
-  },
-  headerRightContainer: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 20,
-    textAlign: 'right',
-  },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
     paddingBottom: 40,
   },
-  sectionContainer: {
-    marginTop: 18,
+  /* Header matching reference */
+  headerContainer: {
+    marginBottom: 20,
+    marginTop: 8,
   },
-  sectionLabel: {
+  backButtonRow: {
+    alignItems: 'flex-end',
+    marginBottom: 16,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mainScreenTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 26,
+    textAlign: 'right',
+    letterSpacing: -0.2,
+  },
+  /* Section headers */
+  sectionContainer: {
+    marginBottom: 22,
+  },
+  sectionTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
     textAlign: 'right',
-    marginBottom: 8,
+    marginBottom: 10,
     paddingHorizontal: 4,
   },
+  /* Cards */
   card: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
   },
-  rowItem: {
+  settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 16,
   },
   rowTitleText: {
@@ -674,10 +647,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'right',
   },
-  rowValueContainer: {
+  rowLeftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     flexShrink: 1,
   },
   rowValueText: {
@@ -689,74 +662,62 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     marginHorizontal: 16,
   },
+  /* Prayer rows */
   prayerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  prayerInfoContainer: {
+  prayerRightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
-  prayerTextGroup: {
+  prayerSingleLineText: {
     alignItems: 'flex-end',
-  },
-  prayerNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
   },
   prayerNameText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 16,
+    textAlign: 'right',
   },
   prayerTimeText: {
     fontFamily: 'Cairo_500Medium',
-    fontSize: 13,
-    marginTop: -2,
-  },
-  offsetPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 8,
-  },
-  offsetPillText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 11,
+    fontSize: 14,
   },
   prayerIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepperContainer: {
+  /* Stepper capsule [ + | - ] */
+  stepperPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1,
-    height: 34,
-    paddingHorizontal: 2,
+    height: 38,
+    width: 90,
   },
-  stepperBtn: {
-    width: 34,
-    height: 30,
+  stepperAction: {
+    flex: 1,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepperDivider: {
+  stepperSeparator: {
     width: 1,
-    height: 16,
+    height: 18,
   },
+  /* Reset Card */
   resetCard: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -776,9 +737,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#ef4444',
   },
+  /* Modals */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -786,17 +748,17 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxHeight: '75%',
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
-    padding: 16,
+    padding: 18,
     overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-    paddingBottom: 8,
+    marginBottom: 14,
+    paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
@@ -816,9 +778,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: 12,
-    marginVertical: 2,
+    marginVertical: 3,
   },
   modalOptionText: {
     fontFamily: 'Cairo_600SemiBold',
