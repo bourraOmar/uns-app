@@ -656,11 +656,11 @@ export default function HomeScreen() {
           style={[styles.prayerCardName, { color: colors.prayerName }, isPrayed && styles.prayerCardNamePrayed]}
           numberOfLines={2}
           adjustsFontSizeToFit
-          minimumFontScale={0.8}
+          minimumFontScale={0.7}
         >
           {p.name}
         </Text>
-        <Text style={[styles.prayerCardTime, { color: colors.prayerTime }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+        <Text style={[styles.prayerCardTime, { color: colors.prayerTime }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
           {p.time}
         </Text>
       </TouchableOpacity>
@@ -1473,14 +1473,16 @@ const styles = StyleSheet.create({
   prayerRow: {
     flexDirection: 'row-reverse',
     gap: 6,
+    alignItems: 'stretch',
   },
   prayerCardNormal: {
     flex: 1,
+    minHeight: 88,
     backgroundColor: '#1e293b',
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#334155',
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1491,29 +1493,35 @@ const styles = StyleSheet.create({
   },
   prayerCardName: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 15,
     color: '#8ba7c0',
-    marginTop: 6,
+    marginTop: 4,
+    textAlign: 'center',
+    width: '100%',
   },
   prayerCardTime: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#f8fafc',
     marginTop: 2,
+    textAlign: 'center',
+    width: '100%',
   },
   prayerIconImg: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
   },
 
   /* Wide Highlighted Card (Mint green) */
   prayerCardHighlight: {
-    flex: 2.1,
+    flex: 1.8,
+    minHeight: 88,
     backgroundColor: '#cbf4dc',
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(15, 142, 93, 0.3)',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1527,15 +1535,17 @@ const styles = StyleSheet.create({
   },
   countdownNotice: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 10,
+    fontSize: 9.5,
     color: '#065f46',
     marginBottom: 2,
+    textAlign: 'left',
   },
   countdownDigits: {
     fontFamily: 'Cairo_800ExtraBold',
-    fontSize: 15,
+    fontSize: 13.5,
     color: '#065f46',
-    letterSpacing: 0.2,
+    letterSpacing: 0,
+    textAlign: 'left',
   },
   highlightInfoCol: {
     alignItems: 'flex-end',
@@ -1548,7 +1558,7 @@ const styles = StyleSheet.create({
   },
   highlightNameText: {
     fontFamily: 'Cairo_800ExtraBold',
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#065f46',
     marginTop: 2,
   },
