@@ -168,7 +168,7 @@ export default function ServicesScreen() {
       icon: 'time-outline',
       action: () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push('/(tabs)/qibla' as any);
+        router.push('/prayer-settings' as any);
       },
     },
     {

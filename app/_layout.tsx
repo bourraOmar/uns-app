@@ -151,6 +151,7 @@ function RootLayoutNav() {
         <Stack.Screen name="category/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="dua-khatm" options={{ headerShown: false }} />
         <Stack.Screen name="custom-daily-apps" options={{ headerShown: false }} />
+        <Stack.Screen name="prayer-settings" options={{ headerShown: false }} />
       </Stack>
       <GlobalAudioPlayerModal />
     </ThemeProvider>

@@ -441,6 +441,11 @@ export default function HomeScreen() {
       loadLastRead();
       loadPrayedPrayers();
       loadDailyApps();
+      getUserLocation().then((loc) => {
+        getPrayerTimesForDate(new Date(), loc).then((times) => {
+          setPrayerRawTimes(times);
+        });
+      });
     }, [])
   );
 

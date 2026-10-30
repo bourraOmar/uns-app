@@ -133,10 +133,115 @@ export function formatRemainingArabicText(seconds: number): string {
   return `${seconds} ثوانٍ`;
 }
 
+export interface PrayerCalculationConfig {
+  methodId: number;
+  methodName: string;
+  asrMadhab: 'standard' | 'hanafi';
+  ramadanIshaOffset: number;
+  offsets: {
+    Fajr: number;
+    Dhuhr: number;
+    Asr: number;
+    Maghrib: number;
+    Isha: number;
+  };
+}
+
+export const CALCULATION_METHODS = [
+  { id: 3, name: 'رابطة العالم الإسلامي' },
+  { id: 4, name: 'جامعة أم القرى بمكة المكرمة' },
+  { id: 5, name: 'الهيئة المصرية العامة للمساحة' },
+  { id: 14, name: 'وزارة الأوقاف والشؤون الإسلامية (المغرب)' },
+  { id: 16, name: 'الهيئة العامة للشؤون الإسلامية والأوقاف (الإمارات)' },
+  { id: 9, name: 'وزارة الأوقاف والشؤون الإسلامية (الكويت)' },
+  { id: 2, name: 'الاتحاد الإسلامي لأمريكا الشمالية (ISNA)' },
+  { id: 13, name: 'رئاسة الشؤون الدينية التركية (Diyanet)' },
+  { id: 1, name: 'جامعة العلوم الإسلامية بكراتشي' },
+];
+
+export const ASR_MADHABS = [
+  { id: 'standard' as const, name: 'حنبلي، شافعي، مالكي', subtitle: 'الجمهور (ظل الشيء مثله)' },
+  { id: 'hanafi' as const, name: 'حنفي', subtitle: 'المذهب الحنفي (ظل الشيء مثليه)' },
+];
+
+export const RAMADAN_ISHA_OPTIONS = [
+  { offset: 0, name: 'بدون إضافة' },
+  { offset: 15, name: 'إضافة 15 دقيقة' },
+  { offset: 20, name: 'إضافة 20 دقيقة' },
+  { offset: 30, name: 'إضافة 30 دقيقة' },
+];
+
+export const DEFAULT_PRAYER_CONFIG: PrayerCalculationConfig = {
+  methodId: 3,
+  methodName: 'رابطة العالم الإسلامي',
+  asrMadhab: 'standard',
+  ramadanIshaOffset: 0,
+  offsets: {
+    Fajr: 0,
+    Dhuhr: 0,
+    Asr: 0,
+    Maghrib: 0,
+    Isha: 0,
+  },
+};
+
+const STORAGE_PRAYER_CONFIG_KEY = '@uns_prayer_calculation_config_v1';
+
+export async function getPrayerCalculationConfig(): Promise<PrayerCalculationConfig> {
+  try {
+    const saved = await AsyncStorage.getItem(STORAGE_PRAYER_CONFIG_KEY);
+    if (saved) {
+      return { ...DEFAULT_PRAYER_CONFIG, ...JSON.parse(saved) };
+    }
+  } catch {}
+  return DEFAULT_PRAYER_CONFIG;
+}
+
+export async function savePrayerCalculationConfig(
+  config: Partial<PrayerCalculationConfig>
+): Promise<PrayerCalculationConfig> {
+  const current = await getPrayerCalculationConfig();
+  const updated = {
+    ...current,
+    ...config,
+    offsets: { ...current.offsets, ...(config.offsets || {}) },
+  };
+  try {
+    await AsyncStorage.setItem(STORAGE_PRAYER_CONFIG_KEY, JSON.stringify(updated));
+  } catch {}
+  return updated;
+}
+
+export async function resetPrayerCalculationConfig(): Promise<PrayerCalculationConfig> {
+  try {
+    await AsyncStorage.setItem(
+      STORAGE_PRAYER_CONFIG_KEY,
+      JSON.stringify(DEFAULT_PRAYER_CONFIG)
+    );
+  } catch {}
+  return DEFAULT_PRAYER_CONFIG;
+}
+
+export function applyMinuteOffsetToTime(time24: string, offsetMinutes: number): string {
+  if (!time24 || offsetMinutes === 0) return time24;
+  const [hStr, mStr] = time24.split(':');
+  let totalMin = parseInt(hStr, 10) * 60 + parseInt(mStr, 10) + offsetMinutes;
+  while (totalMin < 0) totalMin += 1440;
+  while (totalMin >= 1440) totalMin -= 1440;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+}
+
 /**
  * Standard astronomical prayer times calculation (pure math, 100% offline fallback)
  */
-function calculateAstronomicalPrayerTimes(lat: number, lng: number, date: Date) {
+function calculateAstronomicalPrayerTimes(
+  lat: number,
+  lng: number,
+  date: Date,
+  asrMadhab: 'standard' | 'hanafi' = 'standard'
+) {
   const d = date.getDate();
   const m = date.getMonth() + 1;
   const y = date.getFullYear();
@@ -202,9 +307,10 @@ function calculateAstronomicalPrayerTimes(lat: number, lng: number, date: Date) 
   const fajrHA = hourAngle(fajrAngle) || 108;
   const ishaHA = hourAngle(ishaAngle) || 108;
 
-  // Asr (Shafi'i/Hanbali/Maliki: shadow factor = 1)
+// Asr (Shafi'i/Hanbali/Maliki: shadow factor = 1, Hanafi: shadow factor = 2)
+  const shadowFactor = asrMadhab === 'hanafi' ? 2 : 1;
   const asrAlt =
-    Math.atan(1 / (1 + Math.tan(Math.abs(latRad - declRad)))) * (180 / Math.PI);
+    Math.atan(1 / (shadowFactor + Math.tan(Math.abs(latRad - declRad)))) * (180 / Math.PI);
   const asrHA =
     Math.acos(
       (Math.sin((asrAlt * Math.PI) / 180) - Math.sin(latRad) * Math.sin(declRad)) /
@@ -241,14 +347,17 @@ function calculateAstronomicalPrayerTimes(lat: number, lng: number, date: Date) 
 }
 
 /**
- * Fetch online prayer times or compute astronomical offline times
+ * Fetch base (unadjusted) online or astronomical prayer times
  */
-export async function getPrayerTimesForDate(
+export async function getBasePrayerTimesForDate(
   date: Date = new Date(),
-  coords = DEFAULT_COORDS
+  coords = DEFAULT_COORDS,
+  config?: PrayerCalculationConfig
 ): Promise<Record<string, string>> {
+  const activeConfig = config || (await getPrayerCalculationConfig());
   const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-  const cacheKey = `@uns_prayer_times_${dateKey}_${coords.latitude.toFixed(2)}_${coords.longitude.toFixed(2)}`;
+  const schoolParam = activeConfig.asrMadhab === 'hanafi' ? 1 : 0;
+  const cacheKey = `@uns_prayer_base_${dateKey}_${coords.latitude.toFixed(2)}_${coords.longitude.toFixed(2)}_m${activeConfig.methodId}_s${schoolParam}`;
 
   // 1. Try Cache
   try {
@@ -263,7 +372,7 @@ export async function getPrayerTimesForDate(
     const day = date.getDate();
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
-    const url = `https://api.aladhan.com/v1/timings/${day}-${month}-${year}?latitude=${coords.latitude}&longitude=${coords.longitude}&method=3`;
+    const url = `https://api.aladhan.com/v1/timings/${day}-${month}-${year}?latitude=${coords.latitude}&longitude=${coords.longitude}&method=${activeConfig.methodId}&school=${schoolParam}`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
@@ -292,9 +401,33 @@ export async function getPrayerTimesForDate(
   }
 
   // 3. Astronomical Math Fallback
-  const mathTimes = calculateAstronomicalPrayerTimes(coords.latitude, coords.longitude, date);
+  const mathTimes = calculateAstronomicalPrayerTimes(coords.latitude, coords.longitude, date, activeConfig.asrMadhab);
   AsyncStorage.setItem(cacheKey, JSON.stringify(mathTimes)).catch(() => {});
   return mathTimes;
+}
+
+/**
+ * Fetch online prayer times or compute astronomical offline times with active calculation config & offsets
+ */
+export async function getPrayerTimesForDate(
+  date: Date = new Date(),
+  coords = DEFAULT_COORDS
+): Promise<Record<string, string>> {
+  const config = await getPrayerCalculationConfig();
+  const baseTimes = await getBasePrayerTimesForDate(date, coords, config);
+
+  return {
+    Fajr: applyMinuteOffsetToTime(baseTimes.Fajr, config.offsets?.Fajr || 0),
+    Sunrise: baseTimes.Sunrise,
+    Dhuhr: applyMinuteOffsetToTime(baseTimes.Dhuhr, config.offsets?.Dhuhr || 0),
+    Asr: applyMinuteOffsetToTime(baseTimes.Asr, config.offsets?.Asr || 0),
+    Maghrib: applyMinuteOffsetToTime(baseTimes.Maghrib, config.offsets?.Maghrib || 0),
+    Isha: applyMinuteOffsetToTime(
+      baseTimes.Isha,
+      (config.offsets?.Isha || 0) + (config.ramadanIshaOffset || 0)
+    ),
+    Midnight: baseTimes.Midnight,
+  };
 }
 
 /**
