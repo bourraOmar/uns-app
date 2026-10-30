@@ -85,6 +85,14 @@ export interface NotificationSettings {
   // Prayer alerts
   prayerTimes: boolean;
   selectedAdhanId: string;
+  prayerToggles: {
+    Fajr: boolean;
+    Sunrise: boolean;
+    Jumuah: boolean;
+    Asr: boolean;
+    Maghrib: boolean;
+    Isha: boolean;
+  };
   prayerAdhans: {
     Fajr: string;
     Jumuah: string;
@@ -142,6 +150,14 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   // Prayer alerts
   prayerTimes: true,
   selectedAdhanId: 'qatami',
+  prayerToggles: {
+    Fajr: true,
+    Sunrise: false,
+    Jumuah: true,
+    Asr: true,
+    Maghrib: true,
+    Isha: true,
+  },
   prayerAdhans: {
     Fajr: 'qatami',
     Jumuah: 'qatami',
@@ -347,6 +363,10 @@ class NotificationService {
         return {
           ...DEFAULT_NOTIFICATION_SETTINGS,
           ...parsed,
+          prayerToggles: {
+            ...DEFAULT_NOTIFICATION_SETTINGS.prayerToggles,
+            ...(parsed.prayerToggles || {}),
+          },
           prayerAdhans: {
             ...DEFAULT_NOTIFICATION_SETTINGS.prayerAdhans,
             ...(parsed.prayerAdhans || {}),

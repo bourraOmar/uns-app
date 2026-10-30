@@ -221,14 +221,13 @@ export default function NotificationsSettingsScreen() {
             <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
               <TouchableOpacity
                 style={styles.settingRow}
-                onPress={() => handleToggle('prayerTimes', !settings.prayerTimes)}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push('/prayer-notifications' as any);
+                }}
                 activeOpacity={0.7}
               >
-                <Ionicons
-                  name={settings.prayerTimes ? 'checkmark-circle' : 'chevron-back'}
-                  size={settings.prayerTimes ? 20 : 17}
-                  color={settings.prayerTimes ? '#10b981' : colors.chevron}
-                />
+                <Ionicons name="chevron-back" size={17} color={colors.chevron} />
 
                 <View style={styles.rowRightGroup}>
                   <Text style={[styles.rowTitleText, { color: colors.itemTitle }]}>
