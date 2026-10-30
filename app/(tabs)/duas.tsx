@@ -148,7 +148,7 @@ export default function ServicesScreen() {
       icon: 'layers-outline',
       action: () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push('/(tabs)/' as any);
+        router.push('/customize-home' as any);
       },
     },
     {

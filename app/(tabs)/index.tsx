@@ -32,6 +32,7 @@ import { getDailyInspirations } from '@/data/dailyInspirations';
 import { getSmartIslamicGreeting, getHijriNumericDate } from '@/services/smartIslamicGreetingService';
 import LocationModal from '@/components/LocationModal';
 import { ALL_DAILY_APPS, DEFAULT_DAILY_APP_IDS, DailyAppItem } from '@/data/dailyAppsData';
+import { getHomeSections, HomeSectionItem } from '@/services/homeSectionsService';
 // Custom icons using pure React Native components (no external SVG dependency)
 function TasbihBeadsIcon({ size = 22, color = '#ffffff' }: { size?: number; color?: string }) {
   const radius = (size - 6) / 2;
@@ -436,11 +437,21 @@ export default function HomeScreen() {
     } catch {}
   };
 
+  // Custom Home Sections State
+  const [homeSections, setHomeSections] = useState<HomeSectionItem[]>([]);
+
+  const isSectionVisible = (id: string) => {
+    if (!homeSections || homeSections.length === 0) return true;
+    const item = homeSections.find((s) => s.id === id);
+    return item ? item.enabled : true;
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadLastRead();
       loadPrayedPrayers();
       loadDailyApps();
+      getHomeSections().then(setHomeSections);
       getUserLocation().then((loc) => {
         getPrayerTimesForDate(new Date(), loc).then((times) => {
           setPrayerRawTimes(times);
@@ -738,6 +749,7 @@ export default function HomeScreen() {
         </View>
 
         {/* ================= 2. Hero Section ================= */}
+        {isSectionVisible('banners') && (
         <View style={styles.heroSectionRow}>
           {/* Left: Calendar Card */}
           <View
@@ -806,8 +818,11 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+        )}
 
         {/* ================= 3. Prayer Times Section ================= */}
+        {isSectionVisible('prayer_times') && (
+        <>
         {/* Header: Location on Left, "أوقات الصلاة" on Right */}
         <View style={styles.prayerSectionHeader}>
           <TouchableOpacity
@@ -836,8 +851,12 @@ export default function HomeScreen() {
             {row2Prayers.map((p) => renderPrayerCard(p))}
           </View>
         </View>
+        </>
+        )}
 
         {/* ================= 4. Daily Apps Section ================= */}
+        {isSectionVisible('daily_apps') && (
+        <>
         <View style={styles.sectionTitleRow}>
           <TouchableOpacity
             style={styles.customizeButton}
@@ -902,8 +921,11 @@ export default function HomeScreen() {
             ))}
           </ScrollView>
         )}
+        </>
+        )}
 
         {/* ================= 5. Last Read / Resume Quran Section ================= */}
+        {isSectionVisible('continue_khatmah') && (
         <View style={styles.lastReadSectionWrapper}>
           <TouchableOpacity
             style={[
@@ -965,8 +987,10 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
         </View>
+        )}
 
         {/* ================= 6. Recent Activities Section (أنشطتك الأخيرة) ================= */}
+        {isSectionVisible('recent_activities') && (
         <View style={styles.recentActivitiesSection}>
           <Text style={[styles.recentActivitiesHeaderTitle, { color: colors.title }]}>أنشطتك الأخيرة</Text>
 
@@ -1028,10 +1052,12 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </ScrollView>
         </View>
+        )}
 
         {/* ================= 7. Daily Inspirations (آية اليوم، حديث اليوم، دعاء اليوم) ================= */}
         <View style={styles.dailyInspirationsSection}>
           {/* Card 1: آية اليوم */}
+          {isSectionVisible('ayah_of_day') && (
           <TouchableOpacity
             style={[
               styles.compactInspirationCard,
@@ -1084,8 +1110,10 @@ export default function HomeScreen() {
               <Text style={[styles.referenceTextSimple, { color: colors.subtitle }]}>{dailyInspirations.ayah.reference}</Text>
             </View>
           </TouchableOpacity>
+          )}
 
           {/* Card 2: حديث اليوم */}
+          {isSectionVisible('hadith_of_day') && (
           <View
             style={[
               styles.compactInspirationCard,
@@ -1128,8 +1156,10 @@ export default function HomeScreen() {
               </View>
             ) : null}
           </View>
+          )}
 
           {/* Card 3: دعاء اليوم */}
+          {isSectionVisible('dua_of_day') && (
           <View
             style={[
               styles.compactInspirationCard,
@@ -1172,6 +1202,7 @@ export default function HomeScreen() {
               </View>
             ) : null}
           </View>
+          )}
         </View>
       </ScrollView>
       </SafeAreaView>

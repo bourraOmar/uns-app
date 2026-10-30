@@ -154,6 +154,7 @@ function RootLayoutNav() {
         <Stack.Screen name="prayer-settings" options={{ headerShown: false }} />
         <Stack.Screen name="notifications-settings" options={{ headerShown: false }} />
         <Stack.Screen name="prayer-notifications" options={{ headerShown: false }} />
+        <Stack.Screen name="customize-home" options={{ headerShown: false }} />
       </Stack>
       <GlobalAudioPlayerModal />
     </ThemeProvider>
