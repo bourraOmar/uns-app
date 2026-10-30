@@ -58,7 +58,13 @@
         {
           "icon": "./assets/images/android-icon-foreground.png",
           "color": "#10b981",
-          "defaultChannel": "default"
+          "defaultChannel": "default",
+          "sounds": [
+            "./assets/sounds/adhan_makkah.mp3",
+            "./assets/sounds/adhan_madinah.mp3",
+            "./assets/sounds/adhan_alaqsa.mp3",
+            "./assets/sounds/adhan_alafasy.mp3"
+          ]
         }
       ]
     ],

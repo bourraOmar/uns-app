@@ -21,7 +21,12 @@ import * as Haptics from 'expo-haptics';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import IslamicBackground from '@/components/IslamicBackground';
-import { notificationService, NotificationSettings } from '@/services/notificationService';
+import {
+  notificationService,
+  NotificationSettings,
+  ADHAN_OPTIONS,
+  AdhanOption,
+} from '@/services/notificationService';
 
 interface ServiceItem {
   id: string;
@@ -50,15 +55,27 @@ export default function ServicesScreen() {
     eveningHour: 17,
     eveningMinute: 30,
     prayerTimes: true,
+    selectedAdhanId: 'makkah',
     dailyQuran: true,
     dailyQuranHour: 21,
     dailyQuranMinute: 0,
     fridayKahf: true,
   });
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [isAdhanPickerVisible, setIsAdhanPickerVisible] = useState(false);
+  const [playingAdhanId, setPlayingAdhanId] = useState<string | null>(null);
 
   useEffect(() => {
     notificationService.getSettings().then(setNotificationSettings);
+
+    const unsubscribe = notificationService.subscribePreview(() => {
+      setPlayingAdhanId(notificationService.getCurrentPreviewId());
+    });
+
+    return () => {
+      unsubscribe();
+      notificationService.stopPreview();
+    };
   }, []);
 
   const handleToggleNotification = async (key: keyof NotificationSettings, value: boolean) => {
@@ -71,13 +88,27 @@ export default function ServicesScreen() {
     setNotificationSettings(updated);
   };
 
+  const handleSelectAdhan = async (adhanId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const updated = await notificationService.updateSettings({ selectedAdhanId: adhanId });
+    setNotificationSettings(updated);
+  };
+
+  const handlePreviewAdhan = (adhanId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    notificationService.previewAdhan(adhanId);
+  };
+
   const handleSendTestNotification = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsSendingTest(true);
     try {
       const success = await notificationService.sendTestNotification();
       if (success) {
-        Alert.alert('تم إرسال التنبيه التجريبي 🔔', 'تأكد من شريط الإشعارات بهاتفك لرؤية التنبيه فوراً.');
+        Alert.alert(
+          'تم إرسال التنبيه التجريبي 🕌',
+          'تم إطلاق صوت الأذان المختار وإرسال التنبيه. تأكد من شريط الإشعارات بهاتفك.'
+        );
       }
     } finally {
       setIsSendingTest(false);
@@ -390,6 +421,37 @@ export default function ServicesScreen() {
                 </View>
               </View>
 
+              {/* Chosen Adhan Selector Button */}
+              {notificationSettings.prayerTimes && (
+                <TouchableOpacity
+                  style={[
+                    styles.adhanSelectorRow,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(30, 41, 59, 0.65)'
+                        : 'rgba(241, 245, 249, 0.85)',
+                      borderColor: colors.sheetBorder,
+                    },
+                  ]}
+                  onPress={() => setIsAdhanPickerVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chevron-back" size={18} color={colors.chevron} />
+                  <View style={styles.adhanSelectorTextCol}>
+                    <Text style={[styles.adhanSelectorTitle, { color: colors.title }]}>
+                      صوت الأذان المختار 🔊
+                    </Text>
+                    <Text style={styles.adhanSelectorSubtitle}>
+                      {ADHAN_OPTIONS.find((a) => a.id === notificationSettings.selectedAdhanId)
+                        ?.name || 'أذان الحرم المكي الشريف'}
+                    </Text>
+                  </View>
+                  <View style={styles.adhanIconBadge}>
+                    <Ionicons name="volume-high" size={18} color="#10b981" />
+                  </View>
+                </TouchableOpacity>
+              )}
+
               <View style={styles.toggleRow}>
                 <Switch
                   value={notificationSettings.dailyQuran}
@@ -434,9 +496,148 @@ export default function ServicesScreen() {
                 ) : (
                   <>
                     <Ionicons name="notifications" size={18} color="#ffffff" />
-                    <Text style={styles.testNotificationText}>إرسال تنبيه تجريبي فوري 🔔</Text>
+                    <Text style={styles.testNotificationText}>
+                      تجربة إشعار الأذان المختار فوراً 🕌
+                    </Text>
                   </>
                 )}
+              </TouchableOpacity>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* MODAL: ADHAN SOUND PICKER */}
+        <Modal
+          visible={isAdhanPickerVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            notificationService.stopPreview();
+            setIsAdhanPickerVisible(false);
+          }}
+        >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => {
+              notificationService.stopPreview();
+              setIsAdhanPickerVisible(false);
+            }}
+          >
+            <Pressable
+              style={[
+                styles.modalSheet,
+                { backgroundColor: colors.sheetBg, borderColor: colors.sheetBorder },
+              ]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.dragHandle} />
+              <View style={styles.modalHeaderRow}>
+                <TouchableOpacity
+                  style={[styles.modalCloseBtn, { borderColor: colors.sheetBorder }]}
+                  onPress={() => {
+                    notificationService.stopPreview();
+                    setIsAdhanPickerVisible(false);
+                  }}
+                >
+                  <Ionicons name="close" size={18} color={colors.title} />
+                </TouchableOpacity>
+                <Text style={[styles.modalSheetTitle, { color: colors.title }]}>
+                  صوت مؤذن الصلاة والأذان
+                </Text>
+              </View>
+
+              <Text
+                style={[
+                  styles.dialogBodyText,
+                  { color: colors.subtitle, marginBottom: 12, textAlign: 'right' },
+                ]}
+              >
+                اختر صوت الأذان المفضل لديك، ويمكنك الضغط على زر التشغيل للاستماع لصوت المؤذن قبل الاختيار:
+              </Text>
+
+              <View style={styles.adhanList}>
+                {ADHAN_OPTIONS.map((adhan) => {
+                  const isSelected = notificationSettings.selectedAdhanId === adhan.id;
+                  const isPlaying = playingAdhanId === adhan.id;
+
+                  return (
+                    <TouchableOpacity
+                      key={adhan.id}
+                      style={[
+                        styles.adhanOptionCard,
+                        {
+                          backgroundColor: isDark
+                            ? isSelected
+                              ? 'rgba(16, 185, 129, 0.15)'
+                              : 'rgba(30, 41, 59, 0.6)'
+                            : isSelected
+                            ? 'rgba(16, 185, 129, 0.1)'
+                            : '#f8fafc',
+                          borderColor: isSelected ? '#10b981' : colors.sheetBorder,
+                        },
+                      ]}
+                      onPress={() => handleSelectAdhan(adhan.id)}
+                      activeOpacity={0.8}
+                    >
+                      {/* Play / Stop Audio Button */}
+                      <TouchableOpacity
+                        style={[
+                          styles.playPreviewBtn,
+                          {
+                            backgroundColor: isPlaying
+                              ? '#10b981'
+                              : isDark
+                              ? '#1e293b'
+                              : '#ffffff',
+                            borderColor: isPlaying ? '#10b981' : colors.sheetBorder,
+                          },
+                        ]}
+                        onPress={() => handlePreviewAdhan(adhan.id)}
+                      >
+                        <Ionicons
+                          name={isPlaying ? 'pause' : 'play'}
+                          size={16}
+                          color={isPlaying ? '#ffffff' : '#10b981'}
+                        />
+                      </TouchableOpacity>
+
+                      {/* Text info */}
+                      <View style={styles.adhanOptionTextCol}>
+                        <Text
+                          style={[
+                            styles.adhanOptionName,
+                            { color: isSelected ? '#10b981' : colors.title },
+                          ]}
+                        >
+                          {adhan.name}
+                        </Text>
+                        <Text style={[styles.adhanOptionSubtitle, { color: colors.subtitle }]}>
+                          {adhan.subtitle}
+                        </Text>
+                      </View>
+
+                      {/* Selection Radio Indicator */}
+                      <View
+                        style={[
+                          styles.adhanRadioOuter,
+                          { borderColor: isSelected ? '#10b981' : colors.subtitle },
+                        ]}
+                      >
+                        {isSelected && <View style={styles.adhanRadioInner} />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <TouchableOpacity
+                style={styles.doneBtn}
+                onPress={() => {
+                  notificationService.stopPreview();
+                  setIsAdhanPickerVisible(false);
+                }}
+              >
+                <Text style={styles.doneBtnText}>تأكيد الاختيار</Text>
               </TouchableOpacity>
             </Pressable>
           </Pressable>
@@ -830,6 +1031,110 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   testNotificationText: {
+    fontFamily: 'Cairo_700Bold',
+    color: '#ffffff',
+    fontSize: 14,
+  },
+
+  /* ADHAN SELECTOR ROW IN NOTIFICATIONS MODAL */
+  adhanSelectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  adhanSelectorTextCol: {
+    flex: 1,
+    marginRight: 12,
+    alignItems: 'flex-end',
+  },
+  adhanSelectorTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    textAlign: 'right',
+  },
+  adhanSelectorSubtitle: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: '#10b981',
+    textAlign: 'right',
+    marginTop: 2,
+  },
+  adhanIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* ADHAN PICKER MODAL STYLES */
+  adhanList: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  adhanOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  playPreviewBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adhanOptionTextCol: {
+    flex: 1,
+    marginRight: 12,
+    alignItems: 'flex-end',
+  },
+  adhanOptionName: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    textAlign: 'right',
+  },
+  adhanOptionSubtitle: {
+    fontFamily: 'Cairo_500Medium',
+    fontSize: 11,
+    textAlign: 'right',
+    marginTop: 1,
+  },
+  adhanRadioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adhanRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#10b981',
+  },
+  doneBtn: {
+    backgroundColor: '#10b981',
+    paddingVertical: 13,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  doneBtnText: {
     fontFamily: 'Cairo_700Bold',
     color: '#ffffff',
     fontSize: 14,

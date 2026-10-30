@@ -1,6 +1,7 @@
 import { Platform, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { getPrayerTimesForDate, getUserLocation } from './prayerTimesService';
 
 // Configure foreground notification presentation handler at module load
@@ -14,6 +15,63 @@ Notifications.setNotificationHandler({
   }),
 });
 
+export interface AdhanOption {
+  id: string;
+  name: string;
+  subtitle: string;
+  soundFileName: string;
+  localSource: any;
+  remoteUrl: string;
+}
+
+export const ADHAN_OPTIONS: AdhanOption[] = [
+  {
+    id: 'makkah',
+    name: 'أذان الحرم المكي الشريف',
+    subtitle: 'الشيخ علي بن أحمد ملا',
+    soundFileName: 'adhan_makkah.mp3',
+    localSource: require('@/assets/sounds/adhan_makkah.mp3'),
+    remoteUrl:
+      'https://raw.githubusercontent.com/Kiwifu/adhan-mp3/master/Ali_Ibn_Ahmad_Mala_1_-_Al_Haram_Al_Maki_(%D8%B9%D9%84%D9%8A_%D8%A8%D9%86_%D8%A3%D8%AD%D9%85%D8%AF_%D9%85%D9%84%D8%A7_-_%D8%A7%D9%84%D8%AD%D8%B1%D9%85_%D8%A7%D9%84%D9%85%D9%83%D9%8A).mp3',
+  },
+  {
+    id: 'madinah',
+    name: 'أذان المسجد النبوي الشريف',
+    subtitle: 'المدينة المنورة',
+    soundFileName: 'adhan_madinah.mp3',
+    localSource: require('@/assets/sounds/adhan_madinah.mp3'),
+    remoteUrl:
+      'https://raw.githubusercontent.com/Kiwifu/adhan-mp3/master/Adhan_Al_Haram_Al_Madani_-_Al_Madinah_1_(%D8%A3%D8%B0%D8%A7%D9%86_%D8%A7%D9%84%D8%AD%D8%B1%D9%85_%D8%A7%D9%84%D9%85%D8%AF%D9%86%D9%8A_-_%D8%A7%D9%84%D9%85%D8%AF%D9%8A%D9%86%D8%A9_%D8%A7%D9%84%D9%85%D9%86%D9%88%D8%B1%D8%A9).mp3',
+  },
+  {
+    id: 'alaqsa',
+    name: 'أذان المسجد الأقصى المبارك',
+    subtitle: 'القدس الشريف',
+    soundFileName: 'adhan_alaqsa.mp3',
+    localSource: require('@/assets/sounds/adhan_alaqsa.mp3'),
+    remoteUrl:
+      'https://raw.githubusercontent.com/Kiwifu/adhan-mp3/master/Adhan_Al_Aqsa_-_Jerusalem_(%D8%A3%D8%B0%D8%A7%D9%86_%D8%A7%D9%84%D9%85%D8%B3%D8%AC%D8%AF_%D8%A7%D9%84%D8%A3%D9%82%D8%B5%D9%89_-_%D8%A7%D9%84%D9%82%D8%AF%D8%B3).mp3',
+  },
+  {
+    id: 'alafasy',
+    name: 'أذان الشيخ مشاري راشد العفاسي',
+    subtitle: 'الكويت',
+    soundFileName: 'adhan_alafasy.mp3',
+    localSource: require('@/assets/sounds/adhan_alafasy.mp3'),
+    remoteUrl:
+      'https://raw.githubusercontent.com/Kiwifu/adhan-mp3/master/Mishary_Al_Afasy_-_HQ_(%D9%85%D8%B4%D8%A7%D8%B1%D9%8A_%D8%A7%D9%84%D8%B9%D9%81%D8%A7%D8%B3%D9%8A).mp3',
+  },
+  {
+    id: 'takbeer',
+    name: 'تكبيرات فقط (تنبيه مختصر)',
+    subtitle: 'الله أكبر الله أكبر',
+    soundFileName: 'adhan_makkah.mp3',
+    localSource: require('@/assets/sounds/adhan_makkah.mp3'),
+    remoteUrl:
+      'https://raw.githubusercontent.com/Kiwifu/adhan-mp3/master/Ali_Ibn_Ahmad_Mala_1_-_Al_Haram_Al_Maki_(%D8%B9%D9%84%D9%8A_%D8%A8%D9%86_%D8%A3%D8%AD%D9%85%D8%AF_%D9%85%D9%84%D8%A7_-_%D8%A7%D9%84%D8%AD%D8%B1%D9%85_%D8%A7%D9%84%D9%85%D9%83%D9%8A).mp3',
+  },
+];
+
 export interface NotificationSettings {
   morningAdhkar: boolean;
   morningHour: number;
@@ -22,6 +80,7 @@ export interface NotificationSettings {
   eveningHour: number;
   eveningMinute: number;
   prayerTimes: boolean;
+  selectedAdhanId: string;
   dailyQuran: boolean;
   dailyQuranHour: number;
   dailyQuranMinute: number;
@@ -36,6 +95,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   eveningHour: 17,
   eveningMinute: 30,
   prayerTimes: true,
+  selectedAdhanId: 'makkah',
   dailyQuran: true,
   dailyQuranHour: 21,
   dailyQuranMinute: 0,
@@ -46,6 +106,9 @@ const STORAGE_SETTINGS_KEY = '@uns_notification_settings_v1';
 
 class NotificationService {
   private isInitialized = false;
+  private previewPlayer: AudioPlayer | null = null;
+  private currentPreviewId: string | null = null;
+  private previewListeners: Set<() => void> = new Set();
 
   /**
    * Initialize notification channels (Android) and setup listeners
@@ -54,23 +117,27 @@ class NotificationService {
     if (this.isInitialized) return;
 
     try {
-      await this.createChannels();
+      const settings = await this.getSettings();
+      await this.createChannels(settings.selectedAdhanId);
       this.isInitialized = true;
 
       // Reschedule active notifications in background
-      this.scheduleAll();
+      this.scheduleAll(settings);
     } catch (err) {
       console.warn('Failed to initialize NotificationService:', err);
     }
   }
 
   /**
-   * Create Android Notification Channels with high priority
+   * Create Android Notification Channels with high priority and selected Adhan sound
    */
-  public async createChannels(): Promise<void> {
+  public async createChannels(selectedAdhanId: string = 'makkah'): Promise<void> {
     if (Platform.OS !== 'android') return;
 
     try {
+      const adhanOpt =
+        ADHAN_OPTIONS.find((a) => a.id === selectedAdhanId) || ADHAN_OPTIONS[0];
+
       await Notifications.setNotificationChannelAsync('default', {
         name: 'إشعارات أُنس العامة',
         importance: Notifications.AndroidImportance.MAX,
@@ -82,11 +149,11 @@ class NotificationService {
 
       await Notifications.setNotificationChannelAsync('prayers', {
         name: 'مواقيت الصلاة والأذان',
-        description: 'تنبيهات دخول أوقات الصلوات الخمس',
+        description: `تنبيهات دخول أوقات الصلوات بصوت الأذان (${adhanOpt.name})`,
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 500, 250, 500],
         lightColor: '#10b981',
-        sound: 'default',
+        sound: adhanOpt.soundFileName,
         enableVibrate: true,
       });
 
@@ -119,7 +186,11 @@ class NotificationService {
    */
   public async checkPermissions(): Promise<boolean> {
     if (Platform.OS === 'web') {
-      return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+      return (
+        typeof window !== 'undefined' &&
+        'Notification' in window &&
+        Notification.permission === 'granted'
+      );
     }
     try {
       const settings = await Notifications.getPermissionsAsync();
@@ -147,7 +218,8 @@ class NotificationService {
     }
 
     try {
-      await this.createChannels();
+      const settings = await this.getSettings();
+      await this.createChannels(settings.selectedAdhanId);
       const { status } = await Notifications.requestPermissionsAsync({
         ios: {
           allowAlert: true,
@@ -195,6 +267,11 @@ class NotificationService {
     try {
       await AsyncStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(updated));
     } catch {}
+
+    // Update channels with newly selected adhan if changed
+    if (newSettings.selectedAdhanId) {
+      await this.createChannels(newSettings.selectedAdhanId);
+    }
 
     // Reschedule everything with the updated settings
     await this.scheduleAll(updated);
@@ -252,9 +329,9 @@ class NotificationService {
       await this.scheduleFridayKahf();
     }
 
-    // 5. Daily Prayer Times Reminders
+    // 5. Daily Prayer Times Reminders with Selected Adhan
     if (activeSettings.prayerTimes) {
-      await this.schedulePrayerTimes();
+      await this.schedulePrayerTimes(activeSettings.selectedAdhanId);
     }
   }
 
@@ -349,7 +426,7 @@ class NotificationService {
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
           channelId: 'quran',
-          weekday: 6, // 6 = Friday in expo-notifications (1=Sun, 2=Mon, 3=Tue, 4=Wed, 5=Thu, 6=Fri, 7=Sat)
+          weekday: 6, // 6 = Friday in expo-notifications
           hour: 10,
           minute: 0,
         },
@@ -360,13 +437,16 @@ class NotificationService {
   }
 
   /**
-   * Schedule Prayer Times for today and upcoming hours
+   * Schedule Prayer Times for today and upcoming hours with chosen Adhan sound
    */
-  private async schedulePrayerTimes(): Promise<void> {
+  private async schedulePrayerTimes(selectedAdhanId: string = 'makkah'): Promise<void> {
     try {
       const loc = await getUserLocation();
       const today = new Date();
       const times = await getPrayerTimesForDate(today, loc);
+
+      const adhanOpt =
+        ADHAN_OPTIONS.find((a) => a.id === selectedAdhanId) || ADHAN_OPTIONS[0];
 
       const PRAYER_NAMES_AR: Record<string, string> = {
         Fajr: 'صلاة الفجر',
@@ -398,9 +478,14 @@ class NotificationService {
             content: {
               title: `حان الآن موعد ${nameAr} 🕌`,
               body: `حيّ على الصلاة، حيّ على الفلاح.. حان وقت ${nameAr} حسب التوقيت المحلي لـ ${loc.city}.`,
-              sound: 'default',
+              sound: adhanOpt.soundFileName,
               color: '#10b981',
-              data: { type: 'prayer', prayerId: key, route: '/(tabs)/qibla' },
+              data: {
+                type: 'prayer',
+                prayerId: key,
+                adhanId: selectedAdhanId,
+                route: '/(tabs)/qibla',
+              },
             },
             trigger: {
               type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -415,9 +500,14 @@ class NotificationService {
           content: {
             title: `حان الآن موعد ${nameAr} 🕌`,
             body: `حيّ على الصلاة، حيّ على الفلاح.. حان وقت ${nameAr} المبارك.`,
-            sound: 'default',
+            sound: adhanOpt.soundFileName,
             color: '#10b981',
-            data: { type: 'prayer', prayerId: key, route: '/(tabs)/qibla' },
+            data: {
+              type: 'prayer',
+              prayerId: key,
+              adhanId: selectedAdhanId,
+              route: '/(tabs)/qibla',
+            },
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -433,17 +523,106 @@ class NotificationService {
   }
 
   /**
-   * Send an immediate test notification to verify device receipt
+   * Preview/listen to an Adhan audio option in settings
+   */
+  public async previewAdhan(adhanId: string): Promise<void> {
+    if (this.currentPreviewId === adhanId && this.previewPlayer) {
+      // Toggle off if already playing
+      this.stopPreview();
+      return;
+    }
+
+    this.stopPreview();
+
+    const adhan = ADHAN_OPTIONS.find((a) => a.id === adhanId);
+    if (!adhan) return;
+
+    try {
+      this.currentPreviewId = adhanId;
+      this.notifyPreviewListeners();
+
+      const source =
+        Platform.OS === 'web' ? { uri: adhan.remoteUrl } : adhan.localSource;
+
+      const player = createAudioPlayer(source);
+      this.previewPlayer = player;
+
+      player.addListener('playbackStatusUpdate', (status) => {
+        if (status.didJustFinish) {
+          this.stopPreview();
+        }
+      });
+
+      player.play();
+    } catch (err) {
+      console.warn(`Failed to play adhan preview for [${adhanId}]:`, err);
+      this.stopPreview();
+    }
+  }
+
+  /**
+   * Stop playing adhan preview
+   */
+  public stopPreview(): void {
+    if (this.previewPlayer) {
+      try {
+        this.previewPlayer.pause();
+        this.previewPlayer.remove();
+      } catch {}
+      this.previewPlayer = null;
+    }
+    this.currentPreviewId = null;
+    this.notifyPreviewListeners();
+  }
+
+  public getCurrentPreviewId(): string | null {
+    return this.currentPreviewId;
+  }
+
+  public subscribePreview(listener: () => void): () => void {
+    this.previewListeners.add(listener);
+    return () => {
+      this.previewListeners.delete(listener);
+    };
+  }
+
+  private notifyPreviewListeners(): void {
+    this.previewListeners.forEach((l) => l());
+  }
+
+  /**
+   * Play Adhan audio directly (e.g. when prayer time arrives or in test)
+   */
+  public async playSelectedAdhan(selectedAdhanId?: string): Promise<void> {
+    const settings = await this.getSettings();
+    const adhanId = selectedAdhanId || settings.selectedAdhanId;
+    await this.previewAdhan(adhanId);
+  }
+
+  /**
+   * Send an immediate test notification with the chosen Adhan audio
    */
   public async sendTestNotification(): Promise<boolean> {
     try {
       const granted = await this.requestPermissions();
       if (!granted) return false;
 
-      const title = 'تطبيق أُنس يعمل بنجاح 🌿';
-      const body = 'تم ضبط نظام التنبيهات بنجاح! ستصلك أذكار الصباح والمساء ومواقيت الصلاة في مواعيدها المباركة بإذن الله.';
+      const settings = await this.getSettings();
+      const adhanOpt =
+        ADHAN_OPTIONS.find((a) => a.id === settings.selectedAdhanId) ||
+        ADHAN_OPTIONS[0];
 
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
+      const title = 'حان الآن موعد الأذان 🕌';
+      const body = `حيّ على الصلاة، حيّ على الفلاح.. (${adhanOpt.name} - ${adhanOpt.subtitle})`;
+
+      // Start playing the adhan sound immediately for local preview
+      this.playSelectedAdhan(settings.selectedAdhanId);
+
+      if (
+        Platform.OS === 'web' &&
+        typeof window !== 'undefined' &&
+        'Notification' in window
+      ) {
         new Notification(title, {
           body,
           icon: '/favicon.png',
@@ -451,15 +630,15 @@ class NotificationService {
         return true;
       }
 
-      await this.createChannels();
+      await this.createChannels(settings.selectedAdhanId);
 
       await Notifications.scheduleNotificationAsync({
         content: {
           title,
           body,
-          sound: 'default',
+          sound: adhanOpt.soundFileName,
           color: '#10b981',
-          data: { test: true },
+          data: { test: true, adhanId: settings.selectedAdhanId },
         },
         trigger: null, // triggers immediately
       });
