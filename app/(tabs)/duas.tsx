@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,6 +13,7 @@ import {
   Switch,
   Linking,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,6 +21,7 @@ import * as Haptics from 'expo-haptics';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import IslamicBackground from '@/components/IslamicBackground';
+import { notificationService, NotificationSettings } from '@/services/notificationService';
 
 interface ServiceItem {
   id: string;
@@ -39,10 +41,48 @@ export default function ServicesScreen() {
     'notifications' | 'about' | 'privacy' | 'social' | 'feedback' | null
   >(null);
 
-  // Notifications states
-  const [morningNotification, setMorningNotification] = useState(true);
-  const [eveningNotification, setEveningNotification] = useState(true);
-  const [prayerNotification, setPrayerNotification] = useState(true);
+  // Notifications persistent states
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    morningAdhkar: true,
+    morningHour: 7,
+    morningMinute: 0,
+    eveningAdhkar: true,
+    eveningHour: 17,
+    eveningMinute: 30,
+    prayerTimes: true,
+    dailyQuran: true,
+    dailyQuranHour: 21,
+    dailyQuranMinute: 0,
+    fridayKahf: true,
+  });
+  const [isSendingTest, setIsSendingTest] = useState(false);
+
+  useEffect(() => {
+    notificationService.getSettings().then(setNotificationSettings);
+  }, []);
+
+  const handleToggleNotification = async (key: keyof NotificationSettings, value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (value) {
+      const granted = await notificationService.requestPermissions();
+      if (!granted) return;
+    }
+    const updated = await notificationService.updateSettings({ [key]: value });
+    setNotificationSettings(updated);
+  };
+
+  const handleSendTestNotification = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsSendingTest(true);
+    try {
+      const success = await notificationService.sendTestNotification();
+      if (success) {
+        Alert.alert('تم إرسال التنبيه التجريبي 🔔', 'تأكد من شريط الإشعارات بهاتفك لرؤية التنبيه فوراً.');
+      }
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
 
   const colors = {
     title: isDark ? '#ffffff' : '#0f172a',
@@ -301,39 +341,103 @@ export default function ServicesScreen() {
 
               <View style={styles.toggleRow}>
                 <Switch
-                  value={morningNotification}
-                  onValueChange={setMorningNotification}
+                  value={notificationSettings.morningAdhkar}
+                  onValueChange={(val) => handleToggleNotification('morningAdhkar', val)}
                   trackColor={{ false: '#64748b', true: '#10b981' }}
                   thumbColor="#ffffff"
                 />
-                <Text style={[styles.toggleLabel, { color: colors.title }]}>
-                  تذكير أذكار الصباح (شروق الشمس)
-                </Text>
+                <View style={styles.toggleLabelCol}>
+                  <Text style={[styles.toggleLabel, { color: colors.title }]}>
+                    أذكار الصباح 🌿
+                  </Text>
+                  <Text style={[styles.toggleSubLabel, { color: colors.subtitle }]}>
+                    تذكير يومي عند الساعة 07:00 صباحاً
+                  </Text>
+                </View>
               </View>
 
               <View style={styles.toggleRow}>
                 <Switch
-                  value={eveningNotification}
-                  onValueChange={setEveningNotification}
+                  value={notificationSettings.eveningAdhkar}
+                  onValueChange={(val) => handleToggleNotification('eveningAdhkar', val)}
                   trackColor={{ false: '#64748b', true: '#10b981' }}
                   thumbColor="#ffffff"
                 />
-                <Text style={[styles.toggleLabel, { color: colors.title }]}>
-                  تذكير أذكار المساء (بعد العصر)
-                </Text>
+                <View style={styles.toggleLabelCol}>
+                  <Text style={[styles.toggleLabel, { color: colors.title }]}>
+                    أذكار المساء 🌙
+                  </Text>
+                  <Text style={[styles.toggleSubLabel, { color: colors.subtitle }]}>
+                    تذكير يومي عند الساعة 05:30 مساءً
+                  </Text>
+                </View>
               </View>
 
               <View style={styles.toggleRow}>
                 <Switch
-                  value={prayerNotification}
-                  onValueChange={setPrayerNotification}
+                  value={notificationSettings.prayerTimes}
+                  onValueChange={(val) => handleToggleNotification('prayerTimes', val)}
                   trackColor={{ false: '#64748b', true: '#10b981' }}
                   thumbColor="#ffffff"
                 />
-                <Text style={[styles.toggleLabel, { color: colors.title }]}>
-                  تنبيهات مواقيت الصلاة والأذان
-                </Text>
+                <View style={styles.toggleLabelCol}>
+                  <Text style={[styles.toggleLabel, { color: colors.title }]}>
+                    مواقيت الصلاة والأذان 🕌
+                  </Text>
+                  <Text style={[styles.toggleSubLabel, { color: colors.subtitle }]}>
+                    تنبيهات دخول أوقات الصلوات الخمس حسب موقعك
+                  </Text>
+                </View>
               </View>
+
+              <View style={styles.toggleRow}>
+                <Switch
+                  value={notificationSettings.dailyQuran}
+                  onValueChange={(val) => handleToggleNotification('dailyQuran', val)}
+                  trackColor={{ false: '#64748b', true: '#10b981' }}
+                  thumbColor="#ffffff"
+                />
+                <View style={styles.toggleLabelCol}>
+                  <Text style={[styles.toggleLabel, { color: colors.title }]}>
+                    ورد القرآن الكريم 📖
+                  </Text>
+                  <Text style={[styles.toggleSubLabel, { color: colors.subtitle }]}>
+                    تذكير يومي بالقراءة عند الساعة 09:00 مساءً
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.toggleRow}>
+                <Switch
+                  value={notificationSettings.fridayKahf}
+                  onValueChange={(val) => handleToggleNotification('fridayKahf', val)}
+                  trackColor={{ false: '#64748b', true: '#10b981' }}
+                  thumbColor="#ffffff"
+                />
+                <View style={styles.toggleLabelCol}>
+                  <Text style={[styles.toggleLabel, { color: colors.title }]}>
+                    سورة الكهف يوم الجمعة 🕊️
+                  </Text>
+                  <Text style={[styles.toggleSubLabel, { color: colors.subtitle }]}>
+                    تذكير أسبوعي صباح كل جمعة عند 10:00 ص
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.testNotificationBtn}
+                onPress={handleSendTestNotification}
+                disabled={isSendingTest}
+              >
+                {isSendingTest ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons name="notifications" size={18} color="#ffffff" />
+                    <Text style={styles.testNotificationText}>إرسال تنبيه تجريبي فوري 🔔</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </Pressable>
           </Pressable>
         </Modal>
@@ -695,16 +799,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(100, 116, 139, 0.2)',
+    borderBottomColor: 'rgba(100, 116, 139, 0.15)',
   },
-  toggleLabel: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 14,
-    textAlign: 'right',
+  toggleLabelCol: {
     flex: 1,
     marginRight: 12,
+    alignItems: 'flex-end',
+  },
+  toggleLabel: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    textAlign: 'right',
+  },
+  toggleSubLabel: {
+    fontFamily: 'Cairo_500Medium',
+    fontSize: 11,
+    textAlign: 'right',
+    marginTop: 2,
+  },
+  testNotificationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#059669',
+    paddingVertical: 13,
+    borderRadius: 16,
+    marginTop: 18,
+  },
+  testNotificationText: {
+    fontFamily: 'Cairo_700Bold',
+    color: '#ffffff',
+    fontSize: 14,
   },
   dialogBodyText: {
     fontFamily: 'Cairo_500Medium',

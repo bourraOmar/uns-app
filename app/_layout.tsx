@@ -1,5 +1,6 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import {
@@ -19,6 +20,7 @@ import { Rakkas_400Regular } from '@expo-google-fonts/rakkas';
 import { AudioPlayerProvider, useAudioPlayer } from '@/context/AudioPlayerContext';
 import { ScrollCollapseProvider } from '@/context/ScrollCollapseContext';
 import { AppThemeProvider, useAppTheme } from '@/context/ThemeContext';
+import { notificationService } from '@/services/notificationService';
 import AudioPlayerModal from '@/components/AudioPlayerModal';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -118,6 +120,24 @@ function GlobalAudioPlayerModal() {
 
 function RootLayoutNav() {
   const { isDark } = useAppTheme();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Initialize notification channels and reschedule
+    notificationService.initialize();
+
+    // Listen to notification responses (when user taps on notification)
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const route = response.notification.request.content.data?.route;
+      if (typeof route === 'string' && route.length > 0) {
+        router.push(route as any);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
 
   return (
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
