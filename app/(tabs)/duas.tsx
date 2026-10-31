@@ -669,7 +669,7 @@ export default function ServicesScreen() {
                 وقراءته.
               </Text>
               <Text style={[styles.versionText, { color: colors.iconColor }]}>
-                الإصدار 1.0.0 • صُنع بحب وإخلاص
+                الإصدار 1.0.1 • صُنع بحب وإخلاص
               </Text>
             </Pressable>
           </Pressable>
