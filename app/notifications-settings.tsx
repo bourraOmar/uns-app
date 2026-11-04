@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Switch,
@@ -12,6 +11,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -188,7 +188,7 @@ export default function NotificationsSettingsScreen() {
       <IslamicBackground />
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}

@@ -5,11 +5,11 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   TextInput,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -173,7 +173,7 @@ export default function AdhkarScreen() {
   return (
     <View style={styles.container}>
       <IslamicBackground />
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
         {/* TOP BAR MATCHING SCREENSHOT 1 */}
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   /* SCROLL CONTENT */
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 120, // Extra space for floating bottom tab bar
+    paddingBottom: 160, // Extra space for floating bottom tab bar
   },
 
   /* FEATURED SECTION (TOP 3 HORIZONTAL CARDS) */

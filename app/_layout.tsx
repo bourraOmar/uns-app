@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
   Amiri_400Regular,
@@ -56,13 +57,15 @@ export default function RootLayout() {
   }
 
   return (
-    <AppThemeProvider>
-      <AudioPlayerProvider>
-        <ScrollCollapseProvider>
-          <RootLayoutNav />
-        </ScrollCollapseProvider>
-      </AudioPlayerProvider>
-    </AppThemeProvider>
+    <SafeAreaProvider>
+      <AppThemeProvider>
+        <AudioPlayerProvider>
+          <ScrollCollapseProvider>
+            <RootLayoutNav />
+          </ScrollCollapseProvider>
+        </AudioPlayerProvider>
+      </AppThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

@@ -3,11 +3,11 @@ import {
   StyleSheet,
   Text,
   View,
-  SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Magnetometer } from 'expo-sensors';
 import * as Location from 'expo-location';
@@ -113,7 +113,7 @@ export default function QiblaScreen() {
     <View style={styles.container}>
       <IslamicBackground />
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.tint} />

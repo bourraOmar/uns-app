@@ -5,7 +5,6 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Share,
   Modal,
@@ -15,6 +14,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -229,7 +229,7 @@ export default function ServicesScreen() {
   return (
     <View style={styles.container}>
       <IslamicBackground />
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
         {/* TOP HEADER MATCHING SCREENSHOT 2 */}
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
   /* SCROLL CONTENT */
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 120, // Space for floating bottom tab bar
+    paddingBottom: 160, // Space for floating bottom tab bar
   },
 
   /* SERVICES PILL LIST */

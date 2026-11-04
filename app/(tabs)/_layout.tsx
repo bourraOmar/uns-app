@@ -18,6 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { useScrollCollapse } from '@/context/ScrollCollapseContext';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
 import { useAppTheme } from '@/context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // --- FLATICON CUSTOM ICONS FOR MENU BAR ---
 const TAB_ICONS = {
@@ -294,6 +295,8 @@ function FloatingTabBar({ state, navigation }: any) {
     outputRange: [0.92, 1],
   });
 
+  const insets = useSafeAreaInsets();
+  const bottomOffset = Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 12) + (Platform.OS === 'android' ? 6 : 4);
   const hasActiveAudio = !!currentSurah && !isPlayerModalVisible && !isSearchActive;
 
   return (
@@ -301,6 +304,7 @@ function FloatingTabBar({ state, navigation }: any) {
       style={[
         styles.floatingBarContainer,
         {
+          bottom: bottomOffset,
           transform: [{ translateY: keyboardTranslateY }],
         },
       ]}

@@ -5,7 +5,6 @@ import {
   View,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Image,
   ScrollView,
@@ -13,6 +12,7 @@ import {
   Animated,
   PanResponder,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -461,7 +461,7 @@ export default function QuranScreen() {
   return (
     <View style={styles.safeArea}>
       <IslamicBackground />
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* TOP HEADER MATCHING DHIKR PAGE */}
@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
 
   /* READINGS TAB (قراءاتي) */
   readingsScrollContent: {
-    paddingBottom: 110,
+    paddingBottom: 160,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -1009,7 +1009,7 @@ const styles = StyleSheet.create({
   /* SURAH LIST */
   surahListContent: {
     paddingHorizontal: 16,
-    paddingBottom: 96,
+    paddingBottom: 160,
   },
 
   /* SURAH CARD */
