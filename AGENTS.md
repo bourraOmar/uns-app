@@ -39,3 +39,15 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Safe Area & Edge-to-Edge Navigation (CRITICAL — NEVER REVERT)
+
+- **NEVER import `SafeAreaView` from `'react-native'`**: It does not work on Android and leaves headers hidden under the system status bar (time/battery).
+- **ALWAYS import `SafeAreaView` from `'react-native-safe-area-context'`**:
+  - For tab screens (`app/(tabs)/*`): Use `<SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>` (the bottom is handled by the floating navigation bar).
+  - For non-tab screens: Use `<SafeAreaView style={...} edges={['top', 'bottom', 'left', 'right']}>`.
+- **Root Provider**: `app/_layout.tsx` MUST wrap the entire application in `<SafeAreaProvider>`.
+- **Floating Bottom Bar Positioning**: The floating tab bar in `app/(tabs)/_layout.tsx` MUST use `useSafeAreaInsets()`:
+  `bottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 12) + (Platform.OS === 'android' ? 6 : 4)`.
+  This guarantees it stays safely above Android's 48dp 3-button navigation bar (`< O []`) and gesture pills on all devices.
+- **Scroll Content Clearance**: Tab scroll views must maintain `paddingBottom: 160` (or higher) so the final items are never obstructed by the floating navigation bar.
