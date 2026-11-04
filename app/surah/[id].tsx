@@ -688,8 +688,12 @@ export default function SurahReaderScreen() {
           var activeVerseKey = null;
 
           function post(obj) {
+            var str = JSON.stringify(obj);
             if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-              window.ReactNativeWebView.postMessage(JSON.stringify(obj));
+              window.ReactNativeWebView.postMessage(str);
+            }
+            if (window.parent && window.parent.postMessage) {
+              window.parent.postMessage(str, '*');
             }
           }
 
@@ -730,28 +734,47 @@ export default function SurahReaderScreen() {
     `;
   }, [v2Verses, isDark, pages, chapterMeta.start_page, currentSurah, nextSurah, surahId, mushafVersion]);
 
-  // Handle messages from WebView
+  // Unified message handler for both Web iframe and Native WebView
+  const handleIncomingMessage = (data: any) => {
+    if (!data || !data.type) return;
+    if (data.type === 'VERSE_SELECTED') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const vNum = data.verseNumber;
+      const matching = v2Verses?.find((item) => item.verse_number === vNum);
+      if (matching) {
+        setSelectedVerse({
+          id: matching.id,
+          verse_number: matching.verse_number,
+          text_uthmani: matching.text_uthmani,
+        });
+      }
+    } else if (data.type === 'DESELECT') {
+      setSelectedVerse(null);
+    } else if (data.type === 'NEXT_SURAH') {
+      handleNextSurah();
+    } else if (data.type === 'KHATM_DUA') {
+      router.push('/dua-khatm');
+    }
+  };
+
+  // Web message listener for iframe postMessage
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const onWebMessage = (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        handleIncomingMessage(data);
+      } catch {}
+    };
+    window.addEventListener('message', onWebMessage);
+    return () => window.removeEventListener('message', onWebMessage);
+  }, [v2Verses]);
+
+  // Handle messages from Native WebView
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'VERSE_SELECTED') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        const vNum = data.verseNumber;
-        const matching = v2Verses?.find((item) => item.verse_number === vNum);
-        if (matching) {
-          setSelectedVerse({
-            id: matching.id,
-            verse_number: matching.verse_number,
-            text_uthmani: matching.text_uthmani,
-          });
-        }
-      } else if (data.type === 'DESELECT') {
-        setSelectedVerse(null);
-      } else if (data.type === 'NEXT_SURAH') {
-        handleNextSurah();
-      } else if (data.type === 'KHATM_DUA') {
-        router.push('/dua-khatm');
-      }
+      handleIncomingMessage(data);
     } catch {}
   };
 
@@ -911,8 +934,23 @@ export default function SurahReaderScreen() {
               ))}
             </View>
           </ScrollView>
+        ) : Platform.OS === 'web' ? (
+          /* Web Browser Support (iframe instead of native WebView) */
+          <View style={styles.webViewWrapper}>
+            {/* @ts-ignore */}
+            <iframe
+              srcDoc={mushafHtml}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 'none',
+                backgroundColor: 'transparent',
+              }}
+              onLoad={() => setIsWebViewReady(true)}
+            />
+          </View>
         ) : (
-          /* Official King Fahad Complex V2 Mushaf (WebView Native Accelerated) */
+          /* Official King Fahad Complex Mushaf (WebView Native Accelerated) */
           <View style={styles.webViewWrapper}>
             <WebView
               ref={webViewRef}
