@@ -36,6 +36,7 @@ export interface V2Word {
   char_type_name: string;
   line_number: number;
   page_number: number;
+  code_v1?: string;
   code_v2?: string;
   text_uthmani?: string;
 }
@@ -45,6 +46,8 @@ export interface V2Verse {
   verse_number: number;
   verse_key: string;
   text_uthmani: string;
+  code_v1?: string;
+  code_v2?: string;
   v2_page?: number;
   words?: V2Word[];
 }
@@ -116,11 +119,33 @@ export default function SurahReaderScreen() {
   };
 
   // State
+  const [mushafVersion, setMushafVersion] = useState<'v1' | 'v2'>('v1');
   const [v2Verses, setV2Verses] = useState<V2Verse[] | null>(() => v2MemoryCache.get(surahId) || null);
   const [isLoadingV2, setIsLoadingV2] = useState<boolean>(!v2MemoryCache.has(surahId));
   const [v2Error, setV2Error] = useState<boolean>(false);
   const [useFallbackMode, setUseFallbackMode] = useState<boolean>(false);
   const [isWebViewReady, setIsWebViewReady] = useState<boolean>(false);
+
+  // Load saved mushaf version preference
+  useEffect(() => {
+    AsyncStorage.getItem('@uns_mushaf_version')
+      .then((saved) => {
+        if (saved === 'v1' || saved === 'v2') {
+          setMushafVersion(saved);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleMushafVersion = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const next = mushafVersion === 'v1' ? 'v2' : 'v1';
+    setMushafVersion(next);
+    setIsWebViewReady(false);
+    try {
+      await AsyncStorage.setItem('@uns_mushaf_version', next);
+    } catch {}
+  };
 
   // Selected verse state for floating menu
   const [selectedVerse, setSelectedVerse] = useState<VerseData | null>(null);
@@ -185,15 +210,18 @@ export default function SurahReaderScreen() {
     setSelectedVerse(null);
     setIsWebViewReady(false);
 
-    // 1. In-memory check
+    // 1. In-memory check (ensure it has code_v1)
     if (v2MemoryCache.has(surahId)) {
-      setV2Verses(v2MemoryCache.get(surahId)!);
-      setIsLoadingV2(false);
-      setV2Error(false);
-      return;
+      const cachedList = v2MemoryCache.get(surahId)!;
+      if (cachedList[0]?.words?.[0]?.code_v1) {
+        setV2Verses(cachedList);
+        setIsLoadingV2(false);
+        setV2Error(false);
+        return;
+      }
     }
 
-    const cacheKey = `@uns_v2_surah_${surahId}`;
+    const cacheKey = `@uns_mushaf_v1_v2_surah_${surahId}`;
 
     const loadData = async () => {
       setIsLoadingV2(true);
@@ -204,16 +232,18 @@ export default function SurahReaderScreen() {
         const cached = await AsyncStorage.getItem(cacheKey);
         if (cached && !isCancelled) {
           const parsed = JSON.parse(cached) as V2Verse[];
-          v2MemoryCache.set(surahId, parsed);
-          setV2Verses(parsed);
-          setIsLoadingV2(false);
-          return;
+          if (parsed[0]?.words?.[0]?.code_v1) {
+            v2MemoryCache.set(surahId, parsed);
+            setV2Verses(parsed);
+            setIsLoadingV2(false);
+            return;
+          }
         }
       } catch {}
 
-      // 3. Network fetch from Quran API (words=true, fields=text_uthmani,code_v2,v2_page,mushaf=1)
+      // 3. Network fetch from Quran API (fetching both code_v1 and code_v2)
       try {
-        const url = `https://api.quran.com/api/v4/verses/by_chapter/${surahId}?language=ar&words=true&translations=16&per_page=300&fields=text_uthmani,code_v2,v2_page&word_fields=code_v2,line_number,page_number&mushaf=1`;
+        const url = `https://api.quran.com/api/v4/verses/by_chapter/${surahId}?language=ar&words=true&translations=16&per_page=300&fields=text_uthmani,code_v1,code_v2,v2_page&word_fields=code_v1,code_v2,line_number,page_number&mushaf=1`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('API fetch failed');
         const json = await res.json();
@@ -365,16 +395,21 @@ export default function SurahReaderScreen() {
     const footerNumColor = isDark ? '#94a3b8' : '#64748b';
     const bismillahColor = isDark ? '#f8fafc' : '#1e354d';
 
+    const fontPath = mushafVersion === 'v1' ? 'v1' : 'v2';
     const fontFaces = allRequiredPages
       .map(
         (p) => `
         @font-face {
           font-family: 'p${p}';
-          src: url('https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${p}.woff2') format('woff2');
+          src: url('https://verses.quran.foundation/fonts/quran/hafs/${fontPath}/woff2/p${p}.woff2') format('woff2');
           font-display: swap;
         }`
       )
       .join('\n');
+
+    const bismillahGlyphs = mushafVersion === 'v1'
+      ? ['ﭑ', 'ﭒ', 'ﭓ', 'ﭔ']
+      : ['ﱁ', 'ﱂ', 'ﱃ', 'ﱄ'];
 
     // Pages markup
     const pagesMarkup = pages
@@ -395,7 +430,10 @@ export default function SurahReaderScreen() {
 
             const wordsHtml = lineWords
               .map((w) => {
-                const glyph = w.code_v2 || w.text_uthmani || '';
+                const glyph =
+                  (mushafVersion === 'v1' ? (w.code_v1 || w.code_v2) : (w.code_v2 || w.code_v1)) ||
+                  w.text_uthmani ||
+                  '';
                 return `
                   <span
                     class="mushaf-word"
@@ -422,10 +460,7 @@ export default function SurahReaderScreen() {
               showBismillah
                 ? `
               <div class="bismillah-header" dir="rtl">
-                <span class="bismillah-glyph">ﱁ</span>
-                <span class="bismillah-glyph">ﱂ</span>
-                <span class="bismillah-glyph">ﱃ</span>
-                <span class="bismillah-glyph">ﱄ</span>
+                ${bismillahGlyphs.map((g) => `<span class="bismillah-glyph">${g}</span>`).join('')}
               </div>
             `
                 : ''
@@ -693,7 +728,7 @@ export default function SurahReaderScreen() {
       </body>
       </html>
     `;
-  }, [v2Verses, isDark, pages, chapterMeta.start_page, currentSurah, nextSurah, surahId]);
+  }, [v2Verses, isDark, pages, chapterMeta.start_page, currentSurah, nextSurah, surahId, mushafVersion]);
 
   // Handle messages from WebView
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
@@ -758,16 +793,25 @@ export default function SurahReaderScreen() {
               <Text style={[styles.headerTitle, { color: colors.headerTitle }]}>
                 سورة {currentSurah.name_arabic}
               </Text>
-              <View
+              <TouchableOpacity
                 style={[
                   styles.mushafBadge,
                   { backgroundColor: colors.mushafBadgeBg, borderColor: colors.mushafBadgeBorder },
                 ]}
+                onPress={toggleMushafVersion}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
+                <Ionicons
+                  name="swap-horizontal"
+                  size={12}
+                  color={colors.mushafBadgeText}
+                  style={{ marginRight: 3 }}
+                />
                 <Text style={[styles.mushafBadgeText, { color: colors.mushafBadgeText }]}>
-                  مجمع الملك فهد V2
+                  {mushafVersion === 'v1' ? 'مجمع الملك فهد V1' : 'مجمع الملك فهد V2'}
                 </Text>
-              </View>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.headerMetaRow}>
@@ -970,8 +1014,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   mushafBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 2.5,
     borderRadius: 10,
     borderWidth: 1,
   },
