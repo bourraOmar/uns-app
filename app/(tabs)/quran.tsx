@@ -674,6 +674,10 @@ export default function QuranScreen() {
                 contentContainerStyle={styles.surahListContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
+                initialNumToRender={12}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                removeClippedSubviews={true}
                 onScroll={onScroll}
                 scrollEventThrottle={16}
                 onScrollToIndexFailed={(info) => {

@@ -248,6 +248,10 @@ export default function ReciterProfileScreen() {
             currentSurah ? { paddingBottom: 110 } : { paddingBottom: 40 },
           ]}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
         />
 
         {/* SPOTIFY-STYLE FLOATING MINI-PLAYER (MATCHING SCREENSHOT) */}

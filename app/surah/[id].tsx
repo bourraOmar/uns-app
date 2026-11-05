@@ -1,26 +1,23 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
   View,
+  ScrollView,
   TouchableOpacity,
+  Image,
   StatusBar,
   Share,
-  Platform,
-  ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 
 import surahsData from '@/data/surahs.json';
 import quranUthmaniData from '@/data/quran_uthmani.json';
-import { QURAN_CHAPTERS, ChapterMeta } from '@/data/quranChapters';
 import { toEasternArabicNumerals } from '@/data/quranPages';
 import { SurahItem } from '@/context/AudioPlayerContext';
 import AyahFrame from '@/components/quran/AyahFrame';
@@ -28,29 +25,6 @@ import VerseFloatingMenu from '@/components/quran/VerseFloatingMenu';
 import TafsirModal from '@/components/quran/TafsirModal';
 import IslamicBackground from '@/components/IslamicBackground';
 import { useAppTheme } from '@/context/ThemeContext';
-
-export interface V2Word {
-  id: number;
-  position: number;
-  audio_url: string | null;
-  char_type_name: string;
-  line_number: number;
-  page_number: number;
-  code_v1?: string;
-  code_v2?: string;
-  text_uthmani?: string;
-}
-
-export interface V2Verse {
-  id: number;
-  verse_number: number;
-  verse_key: string;
-  text_uthmani: string;
-  code_v1?: string;
-  code_v2?: string;
-  v2_page?: number;
-  words?: V2Word[];
-}
 
 interface VerseData {
   id: number;
@@ -68,46 +42,15 @@ const OFFLINE_FATIHA_VERSES: VerseData[] = [
   { id: 7, verse_number: 7, text_uthmani: 'صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ' },
 ];
 
-function toArabicDigits(num: number | string): string {
-  const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  return String(num).replace(/[0-9]/g, (d) => digits[+d]);
-}
-
-// Global in-memory cache across surah navigation for instantaneous 0ms transitions
-const v2MemoryCache = new Map<number, V2Verse[]>();
-
 export default function SurahReaderScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const webViewRef = useRef<WebView>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const surahId = parseInt(id || '1', 10);
   const currentSurah = (surahsData as SurahItem[]).find((s) => s.id === surahId) || (surahsData[0] as SurahItem);
   const nextSurah = (surahsData as SurahItem[]).find((s) => s.id === surahId + 1);
 
-  // Chapter metadata from Quran Chapters
-  const chapterMeta: ChapterMeta = useMemo(() => {
-    return (
-      QURAN_CHAPTERS.find((ch) => ch.id === surahId) || {
-        id: currentSurah.id,
-        name_arabic: currentSurah.name_arabic,
-        name_simple: currentSurah.name_simple,
-        verses_count: currentSurah.verses_count,
-        revelation_place: currentSurah.revelation_place,
-        bismillah_pre: currentSurah.id !== 1 && currentSurah.id !== 9,
-        start_page: currentSurah.start_page || 1,
-        end_page: currentSurah.start_page || 1,
-      }
-    );
-  }, [surahId, currentSurah]);
-
-  // Pages range in King Fahad Mushaf
-  const pages = useMemo(() => {
-    const count = Math.max(1, chapterMeta.end_page - chapterMeta.start_page + 1);
-    return Array.from({ length: count }, (_, i) => chapterMeta.start_page + i);
-  }, [chapterMeta.start_page, chapterMeta.end_page]);
-
-  // Offline fallback verses helper
   const getOfflineVerses = (chapterId: number): VerseData[] => {
     const rawList = (quranUthmaniData as Record<string, string[]>)[chapterId.toString()];
     if (!rawList || rawList.length === 0) return OFFLINE_FATIHA_VERSES;
@@ -118,34 +61,7 @@ export default function SurahReaderScreen() {
     }));
   };
 
-  // State
-  const [mushafVersion, setMushafVersion] = useState<'v1' | 'v2'>('v1');
-  const [v2Verses, setV2Verses] = useState<V2Verse[] | null>(() => v2MemoryCache.get(surahId) || null);
-  const [isLoadingV2, setIsLoadingV2] = useState<boolean>(!v2MemoryCache.has(surahId));
-  const [v2Error, setV2Error] = useState<boolean>(false);
-  const [useFallbackMode, setUseFallbackMode] = useState<boolean>(false);
-  const [isWebViewReady, setIsWebViewReady] = useState<boolean>(false);
-
-  // Load saved mushaf version preference
-  useEffect(() => {
-    AsyncStorage.getItem('@uns_mushaf_version')
-      .then((saved) => {
-        if (saved === 'v1' || saved === 'v2') {
-          setMushafVersion(saved);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const toggleMushafVersion = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const next = mushafVersion === 'v1' ? 'v2' : 'v1';
-    setMushafVersion(next);
-    setIsWebViewReady(false);
-    try {
-      await AsyncStorage.setItem('@uns_mushaf_version', next);
-    } catch {}
-  };
+  const [verses, setVerses] = useState<VerseData[]>(() => getOfflineVerses(surahId));
 
   // Selected verse state for floating menu
   const [selectedVerse, setSelectedVerse] = useState<VerseData | null>(null);
@@ -161,7 +77,6 @@ export default function SurahReaderScreen() {
   const [playingVerseNum, setPlayingVerseNum] = useState<number | null>(null);
   const [isLoadingAudio, setIsLoadingAudio] = useState<boolean>(false);
 
-  // Clean audio on unmount
   useEffect(() => {
     return () => {
       if (versePlayerRef.current) {
@@ -178,102 +93,85 @@ export default function SurahReaderScreen() {
     } catch {}
   };
 
-  // Record reading history & load bookmarks
   useEffect(() => {
-    loadBookmarks();
-    if (currentSurah) {
-      const item = {
-        surahId: currentSurah.id,
-        surahName: `سورة ${currentSurah.name_arabic}`,
-        page: chapterMeta.start_page,
-        versesCount: currentSurah.verses_count,
-        revelationPlace: currentSurah.revelation_place,
-        timeAgo: 'اليوم',
-      };
-      AsyncStorage.setItem('@uns_last_read', JSON.stringify(item)).catch(() => {});
-      AsyncStorage.getItem('@uns_recent_readings')
-        .then((saved) => {
-          const list = saved ? JSON.parse(saved) : [];
-          const filtered = list.filter((r: any) => r.surahId !== currentSurah.id);
-          AsyncStorage.setItem(
-            '@uns_recent_readings',
-            JSON.stringify([{ id: currentSurah.id.toString(), ...item }, ...filtered].slice(0, 10))
-          ).catch(() => {});
-        })
-        .catch(() => {});
-    }
-  }, [surahId, currentSurah, chapterMeta.start_page]);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    const timer = setTimeout(() => {
+      setVerses(getOfflineVerses(surahId));
+      loadBookmarks();
 
-  // Fetch or Load King Fahad Complex V2 data (Cached locally)
+      if (currentSurah) {
+        const item = {
+          surahId: currentSurah.id,
+          surahName: `سورة ${currentSurah.name_arabic}`,
+          page: currentSurah.start_page,
+          versesCount: currentSurah.verses_count,
+          revelationPlace: currentSurah.revelation_place,
+          timeAgo: 'اليوم',
+        };
+        AsyncStorage.setItem('@uns_last_read', JSON.stringify(item)).catch(() => {});
+        AsyncStorage.getItem('@uns_recent_readings')
+          .then((saved) => {
+            const list = saved ? JSON.parse(saved) : [];
+            const filtered = list.filter((r: any) => r.surahId !== currentSurah.id);
+            AsyncStorage.setItem(
+              '@uns_recent_readings',
+              JSON.stringify([{ id: currentSurah.id.toString(), ...item }, ...filtered].slice(0, 10))
+            ).catch(() => {});
+          })
+          .catch(() => {});
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [surahId, currentSurah]);
+
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressActiveRef = useRef(false);
+
+  const startVerseLongPress = (verse: VerseData) => {
+    isLongPressActiveRef.current = false;
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressActiveRef.current = true;
+      handleVerseLongPress(verse);
+    }, 320);
+  };
+
+  const cancelVerseLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
   useEffect(() => {
-    let isCancelled = false;
-    setSelectedVerse(null);
-    setIsWebViewReady(false);
-
-    // 1. In-memory check (ensure it has code_v1)
-    if (v2MemoryCache.has(surahId)) {
-      const cachedList = v2MemoryCache.get(surahId)!;
-      if (cachedList[0]?.words?.[0]?.code_v1) {
-        setV2Verses(cachedList);
-        setIsLoadingV2(false);
-        setV2Error(false);
-        return;
-      }
-    }
-
-    const cacheKey = `@uns_mushaf_v1_v2_surah_${surahId}`;
-
-    const loadData = async () => {
-      setIsLoadingV2(true);
-      setV2Error(false);
-
-      // 2. Local AsyncStorage cache check
-      try {
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached && !isCancelled) {
-          const parsed = JSON.parse(cached) as V2Verse[];
-          if (parsed[0]?.words?.[0]?.code_v1) {
-            v2MemoryCache.set(surahId, parsed);
-            setV2Verses(parsed);
-            setIsLoadingV2(false);
-            return;
-          }
-        }
-      } catch {}
-
-      // 3. Network fetch from Quran API (fetching both code_v1 and code_v2)
-      try {
-        const url = `https://api.quran.com/api/v4/verses/by_chapter/${surahId}?language=ar&words=true&translations=16&per_page=300&fields=text_uthmani,code_v1,code_v2,v2_page&word_fields=code_v1,code_v2,line_number,page_number&mushaf=1`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('API fetch failed');
-        const json = await res.json();
-        const verses: V2Verse[] = json.verses || [];
-
-        if (!isCancelled && verses.length > 0) {
-          v2MemoryCache.set(surahId, verses);
-          setV2Verses(verses);
-          setIsLoadingV2(false);
-          AsyncStorage.setItem(cacheKey, JSON.stringify(verses)).catch(() => {});
-        }
-      } catch {
-        if (!isCancelled) {
-          setIsLoadingV2(false);
-          setV2Error(true);
-        }
-      }
-    };
-
-    loadData();
-
     return () => {
-      isCancelled = true;
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
     };
-  }, [surahId]);
+  }, []);
 
   const handleNextSurah = () => {
     if (nextSurah) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       router.replace({ pathname: '/surah/[id]', params: { id: nextSurah.id.toString() } });
+    }
+  };
+
+  const handleVerseLongPress = (verse: VerseData) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedVerse(verse);
+  };
+
+  const handleVersePress = () => {
+    if (isLongPressActiveRef.current) {
+      isLongPressActiveRef.current = false;
+      return;
+    }
+    if (selectedVerse) {
+      setSelectedVerse(null);
     }
   };
 
@@ -346,657 +244,289 @@ export default function SurahReaderScreen() {
     backBtnIcon: isDark ? '#f8fafc' : '#0f172a',
     headerTitle: isDark ? '#f8fafc' : '#0f172a',
     headerMetaText: isDark ? '#94a3b8' : '#64748b',
+    surahCardBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)',
+    surahCardBorder: isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(226, 232, 240, 0.95)',
+    verseText: isDark ? '#f8fafc' : '#0f172a',
+    basmalahTint: isDark ? '#f8fafc' : '#0f172a',
+    nextSurahBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)',
+    nextSurahBorder: isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(16, 185, 129, 0.45)',
+    nextSurahTitle: isDark ? '#f8fafc' : '#0f172a',
+    nextSurahSubtitle: isDark ? '#4ade80' : '#059669',
+    finishSurahsBg: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)',
+    finishSurahsBorder: isDark ? '#334155' : '#cbd5e1',
+    finishSurahsText: isDark ? '#f8fafc' : '#0f172a',
     revelationBadgeBg: isDark ? 'rgba(15, 142, 93, 0.15)' : 'rgba(16, 185, 129, 0.12)',
     revelationBadgeText: isDark ? '#4ade80' : '#047857',
-    mushafBadgeBg: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.12)',
-    mushafBadgeBorder: isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(16, 185, 129, 0.3)',
-    mushafBadgeText: isDark ? '#34d399' : '#059669',
   };
 
-  // Build the King Fahad Complex V2 Mushaf HTML content
-  const mushafHtml = useMemo(() => {
-    if (!v2Verses || v2Verses.length === 0) return '';
-
-    // Collect all unique pages for @font-face
-    const allPagesSet = new Set<number>([1, ...pages]);
-    v2Verses.forEach((v) => {
-      if (v.v2_page) allPagesSet.add(v.v2_page);
-      v.words?.forEach((w) => {
-        if (w.page_number) allPagesSet.add(w.page_number);
-      });
-    });
-    const allRequiredPages = Array.from(allPagesSet).sort((a, b) => a - b);
-
-    // Group words by page and line
-    const pagesData: Record<number, Record<number, (V2Word & { verseKey: string; verseNumber: number })[]>> = {};
-    v2Verses.forEach((v) => {
-      const vKey = v.verse_key || `${surahId}:${v.verse_number}`;
-      v.words?.forEach((w) => {
-        const p = w.page_number;
-        const l = w.line_number;
-        if (!pagesData[p]) pagesData[p] = {};
-        if (!pagesData[p][l]) pagesData[p][l] = [];
-        pagesData[p][l].push({
-          ...w,
-          verseKey: vKey,
-          verseNumber: v.verse_number,
-        });
-      });
-    });
-
-    const pageBg = isDark ? '#151d2c' : '#ffffff';
-    const pageBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.95)';
-    const pageShadow = isDark
-      ? '0 12px 36px rgba(0, 0, 0, 0.5)'
-      : '0 8px 30px rgba(0, 0, 0, 0.04)';
-    const wordColor = isDark ? '#f8fafc' : '#1e293b';
-    const activeColor = isDark ? '#34d399' : '#0f8e5d';
-    const activeGlow = isDark ? 'rgba(52, 211, 153, 0.7)' : 'rgba(15, 142, 93, 0.45)';
-    const footerNumColor = isDark ? '#94a3b8' : '#64748b';
-    const bismillahColor = isDark ? '#f8fafc' : '#1e354d';
-
-    const fontPath = mushafVersion === 'v1' ? 'v1' : 'v2';
-    const fontFaces = allRequiredPages
-      .map(
-        (p) => `
-        @font-face {
-          font-family: 'p${p}';
-          src: url('https://verses.quran.foundation/fonts/quran/hafs/${fontPath}/woff2/p${p}.woff2') format('woff2');
-          font-display: swap;
-        }`
-      )
-      .join('\n');
-
-    const bismillahGlyphs = mushafVersion === 'v1'
-      ? ['ﭑ', 'ﭒ', 'ﭓ', 'ﭔ']
-      : ['ﱁ', 'ﱂ', 'ﱃ', 'ﱄ'];
-
-    // Pages markup
-    const pagesMarkup = pages
-      .map((p) => {
-        const linesMap = pagesData[p] || {};
-        const lineNumbers = Object.keys(linesMap)
-          .map(Number)
-          .sort((a, b) => a - b);
-
-        if (lineNumbers.length === 0) return '';
-
-        const showBismillah = p === chapterMeta.start_page && currentSurah.id !== 1 && currentSurah.id !== 9;
-
-        const linesHtml = lineNumbers
-          .map((lNum) => {
-            const lineWords = linesMap[lNum] || [];
-            const isCentered = lineWords.length <= 4;
-
-            const wordsHtml = lineWords
-              .map((w) => {
-                const glyph =
-                  (mushafVersion === 'v1' ? (w.code_v1 || w.code_v2) : (w.code_v2 || w.code_v1)) ||
-                  w.text_uthmani ||
-                  '';
-                return `
-                  <span
-                    class="mushaf-word"
-                    data-verse="${w.verseKey}"
-                    data-versenum="${w.verseNumber}"
-                    style="font-family: 'p${w.page_number}';"
-                    onclick="selectVerse(${w.verseNumber}, '${w.verseKey}')"
-                  >${glyph}</span>
-                `;
-              })
-              .join('');
-
-            return `
-              <div class="mushaf-line ${isCentered ? 'centered' : ''}">
-                ${wordsHtml}
-              </div>
-            `;
-          })
-          .join('');
-
-        return `
-          <div class="mushaf-page-card" id="page-${p}">
-            ${
-              showBismillah
-                ? `
-              <div class="bismillah-header" dir="rtl">
-                ${bismillahGlyphs.map((g) => `<span class="bismillah-glyph">${g}</span>`).join('')}
-              </div>
-            `
-                : ''
-            }
-            <div class="mushaf-lines-container">
-              ${linesHtml}
-            </div>
-            <div class="page-number-footer">
-              ${toArabicDigits(p)}
-            </div>
-          </div>
-        `;
-      })
-      .join('');
-
-    const completionHtml = `
-      <div class="completion-card">
-        <div class="completion-icon-wrapper">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-          </svg>
-        </div>
-        <div class="completion-title">تمت بحمد الله قراءة سورة ${currentSurah.name_arabic}</div>
-        <div class="completion-meta">
-          عدد الآيات: ${toArabicDigits(currentSurah.verses_count)} • عدد الصفحات: ${toArabicDigits(pages.length)}
-        </div>
-        ${
-          nextSurah
-            ? `
-          <button class="next-surah-btn" onclick="onNextSurahClick()">
-            <span>السورة التالية: سورة ${nextSurah.name_arabic}</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform: rotate(180deg);">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-            </svg>
-          </button>
-        `
-            : `
-          <button class="next-surah-btn" onclick="onKhatmClick()">
-            <span>دعاء ختم القرآن الكريم</span>
-          </button>
-        `
-        }
-      </div>
-    `;
-
-    return `
-      <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <style>
-          ${fontFaces}
-          * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-          }
-          html, body {
-            margin: 0;
-            padding: 0;
-            background-color: transparent !important;
-            direction: rtl;
-            font-family: system-ui, -apple-system, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            text-rendering: optimizeLegibility;
-          }
-          body {
-            padding: 10px 12px 140px 12px;
-          }
-          .mushaf-page-card {
-            max-width: 580px;
-            width: 100%;
-            margin: 0 auto 18px auto;
-            padding: 20px 12px 14px 12px;
-            border-radius: 24px;
-            background: ${pageBg};
-            border: 1px solid ${pageBorder};
-            box-shadow: ${pageShadow};
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-          }
-          .bismillah-header {
-            width: 100%;
-            display: flex;
-            flex-direction: row;
-            flex-wrap: nowrap;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding-top: 4px;
-            padding-bottom: 12px;
-            user-select: none;
-            -webkit-user-select: none;
-          }
-          .bismillah-glyph {
-            font-family: 'p1';
-            font-size: clamp(20px, 5.2vw, 28px);
-            line-height: 2;
-            color: ${bismillahColor};
-            display: inline-block;
-          }
-          .mushaf-lines-container {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-            padding: 4px 0;
-          }
-          .mushaf-line {
-            width: 100%;
-            display: flex;
-            flex-direction: row;
-            flex-wrap: nowrap;
-            align-items: center;
-            justify-content: center;
-            gap: 3.5px;
-            padding: 1.5px 0;
-            user-select: none;
-            -webkit-user-select: none;
-          }
-          .mushaf-line.centered {
-            justify-content: center;
-            gap: 6px;
-          }
-          .mushaf-word {
-            font-size: clamp(16px, 4.4vw, 22px);
-            line-height: 2.05;
-            display: inline-block;
-            cursor: pointer;
-            transition: color 0.15s ease, text-shadow 0.15s ease;
-            color: ${wordColor};
-          }
-          .mushaf-word.active {
-            color: ${activeColor} !important;
-            text-shadow: 0 0 12px ${activeGlow};
-            font-weight: 700;
-          }
-          .page-number-footer {
-            width: 100%;
-            text-align: center;
-            padding-top: 14px;
-            padding-bottom: 4px;
-            font-size: 14px;
-            font-weight: 600;
-            color: ${footerNumColor};
-            user-select: none;
-            -webkit-user-select: none;
-          }
-          .completion-card {
-            max-width: 580px;
-            width: 100%;
-            margin: 8px auto 20px auto;
-            padding: 24px 18px;
-            border-radius: 24px;
-            background: ${pageBg};
-            border: 1px solid ${pageBorder};
-            box-shadow: ${pageShadow};
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            gap: 12px;
-          }
-          .completion-icon-wrapper {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: ${isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.12)'};
-            border: 1px solid ${isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.25)'};
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: ${isDark ? '#34d399' : '#059669'};
-          }
-          .completion-title {
-            font-size: 17px;
-            font-weight: 800;
-            color: ${isDark ? '#f8fafc' : '#1e354d'};
-          }
-          .completion-meta {
-            font-size: 13px;
-            color: ${isDark ? '#94a3b8' : '#64748b'};
-            font-weight: 500;
-          }
-          .next-surah-btn {
-            margin-top: 6px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 12px 22px;
-            border-radius: 18px;
-            background: #0f8e5d;
-            color: #ffffff;
-            font-weight: 700;
-            font-size: 14px;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 4px 14px rgba(15, 142, 93, 0.35);
-            outline: none;
-          }
-          .next-surah-btn:active {
-            transform: scale(0.97);
-            background: #0c734b;
-          }
-          @media (max-width: 375px) {
-            .mushaf-word {
-              font-size: 15px !important;
-            }
-            .mushaf-line {
-              gap: 2px !important;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        ${pagesMarkup}
-        ${completionHtml}
-
-        <script>
-          var activeVerseKey = null;
-
-          function post(obj) {
-            var str = JSON.stringify(obj);
-            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-              window.ReactNativeWebView.postMessage(str);
-            }
-            if (window.parent && window.parent.postMessage) {
-              window.parent.postMessage(str, '*');
-            }
-          }
-
-          function selectVerse(verseNum, verseKey) {
-            if (activeVerseKey === verseKey) {
-              activeVerseKey = null;
-              document.querySelectorAll('.mushaf-word').forEach(function(el) { el.classList.remove('active'); });
-              post({ type: 'DESELECT' });
-              return;
-            }
-            activeVerseKey = verseKey;
-            document.querySelectorAll('.mushaf-word').forEach(function(el) { el.classList.remove('active'); });
-            var words = document.querySelectorAll('[data-verse="' + verseKey + '"]');
-            words.forEach(function(el) { el.classList.add('active'); });
-            post({ type: 'VERSE_SELECTED', verseNumber: verseNum, verseKey: verseKey });
-          }
-
-          document.addEventListener('click', function(e) {
-            if (!e.target.closest('.mushaf-word') && !e.target.closest('.next-surah-btn')) {
-              if (activeVerseKey) {
-                activeVerseKey = null;
-                document.querySelectorAll('.mushaf-word').forEach(function(el) { el.classList.remove('active'); });
-                post({ type: 'DESELECT' });
-              }
-            }
-          });
-
-          function onNextSurahClick() {
-            post({ type: 'NEXT_SURAH' });
-          }
-
-          function onKhatmClick() {
-            post({ type: 'KHATM_DUA' });
-          }
-        </script>
-      </body>
-      </html>
-    `;
-  }, [v2Verses, isDark, pages, chapterMeta.start_page, currentSurah, nextSurah, surahId, mushafVersion]);
-
-  // Unified message handler for both Web iframe and Native WebView
-  const handleIncomingMessage = (data: any) => {
-    if (!data || !data.type) return;
-    if (data.type === 'VERSE_SELECTED') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const vNum = data.verseNumber;
-      const matching = v2Verses?.find((item) => item.verse_number === vNum);
-      if (matching) {
-        setSelectedVerse({
-          id: matching.id,
-          verse_number: matching.verse_number,
-          text_uthmani: matching.text_uthmani,
-        });
-      }
-    } else if (data.type === 'DESELECT') {
-      setSelectedVerse(null);
-    } else if (data.type === 'NEXT_SURAH') {
-      handleNextSurah();
-    } else if (data.type === 'KHATM_DUA') {
-      router.push('/dua-khatm');
-    }
-  };
-
-  // Web message listener for iframe postMessage
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-    const onWebMessage = (event: MessageEvent) => {
-      try {
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        handleIncomingMessage(data);
-      } catch {}
-    };
-    window.addEventListener('message', onWebMessage);
-    return () => window.removeEventListener('message', onWebMessage);
-  }, [v2Verses]);
-
-  // Handle messages from Native WebView
-  const handleWebViewMessage = (event: WebViewMessageEvent) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      handleIncomingMessage(data);
-    } catch {}
-  };
-
+  const isFatiha = currentSurah.id === 1;
+  const showBasmalahHeader = currentSurah.id !== 1 && currentSurah.id !== 9;
   const isSelectedBookmark = selectedVerse
     ? bookmarkedVerses.includes(`${surahId}:${selectedVerse.verse_number}`)
     : false;
+  const isSmallSurah = currentSurah.verses_count <= 11;
 
   return (
     <View style={styles.safeArea}>
       <IslamicBackground />
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <StatusBar
           barStyle={isDark ? 'light-content' : 'dark-content'}
           translucent
           backgroundColor="transparent"
         />
 
-        {/* HEADER BLOCK (Matching App & Website Header Block) */}
-        <View
-          style={[
-            styles.headerCard,
-            { backgroundColor: colors.headerCardBg, borderColor: colors.headerCardBorder },
+        <ScrollView
+          ref={scrollViewRef}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isSmallSurah && styles.smallSurahScrollContent,
           ]}
         >
-          <TouchableOpacity
+          {/* HEADER BLOCK (Matching Website Header Block) */}
+          <View
             style={[
-              styles.backButton,
-              { backgroundColor: colors.backBtnBg, borderColor: colors.backBtnBorder },
+              styles.headerCard,
+              { backgroundColor: colors.headerCardBg, borderColor: colors.headerCardBorder },
             ]}
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/quran' as any))}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="chevron-forward" size={22} color={colors.backBtnIcon} />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.backButton,
+                { backgroundColor: colors.backBtnBg, borderColor: colors.backBtnBorder },
+              ]}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/quran' as any))}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="chevron-forward" size={22} color={colors.backBtnIcon} />
+            </TouchableOpacity>
 
-          <View style={styles.headerInfo}>
-            <View style={styles.headerTitleRow}>
+            <View style={styles.headerInfo}>
               <Text style={[styles.headerTitle, { color: colors.headerTitle }]}>
                 سورة {currentSurah.name_arabic}
               </Text>
-              <TouchableOpacity
-                style={[
-                  styles.mushafBadge,
-                  { backgroundColor: colors.mushafBadgeBg, borderColor: colors.mushafBadgeBorder },
-                ]}
-                onPress={toggleMushafVersion}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons
-                  name="swap-horizontal"
-                  size={12}
-                  color={colors.mushafBadgeText}
-                  style={{ marginRight: 3 }}
-                />
-                <Text style={[styles.mushafBadgeText, { color: colors.mushafBadgeText }]}>
-                  {mushafVersion === 'v1' ? 'مجمع الملك فهد V1' : 'مجمع الملك فهد V2'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.headerMetaRow}>
-              <View
-                style={[
-                  styles.revelationBadge,
-                  { backgroundColor: colors.revelationBadgeBg },
-                ]}
-              >
-                <Text
+              <View style={styles.headerMetaRow}>
+                <View
                   style={[
-                    styles.revelationBadgeText,
-                    { color: colors.revelationBadgeText },
+                    styles.revelationBadge,
+                    { backgroundColor: colors.revelationBadgeBg },
                   ]}
                 >
-                  {currentSurah.revelation_place === 'makkah' ? 'مكية' : 'مدنية'}
+                  <Text
+                    style={[
+                      styles.revelationBadgeText,
+                      { color: colors.revelationBadgeText },
+                    ]}
+                  >
+                    {currentSurah.revelation_place === 'makkah' ? 'مكية' : 'مدنية'}
+                  </Text>
+                </View>
+                <Text style={[styles.headerMetaText, { color: colors.headerMetaText }]}>
+                  رقم {currentSurah.id} • {currentSurah.verses_count} آية
                 </Text>
               </View>
-              <Text style={[styles.headerMetaText, { color: colors.headerMetaText }]}>
-                رقم {currentSurah.id} • {currentSurah.verses_count} آية •{' '}
-                {chapterMeta.start_page === chapterMeta.end_page
-                  ? `صفحة ${toArabicDigits(chapterMeta.start_page)}`
-                  : `صفحة ${toArabicDigits(chapterMeta.start_page)} إلى ${toArabicDigits(chapterMeta.end_page)}`}
-              </Text>
             </View>
           </View>
-        </View>
 
-        {/* KING FAHAD COMPLEX V2 MUSHAF READER */}
-        {isLoadingV2 && !v2Verses ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0f8e5d" />
-            <Text style={[styles.loadingText, { color: colors.headerTitle }]}>
-              جاري تجهيز مصحف مجمع الملك فهد...
-            </Text>
-            <Text style={[styles.loadingSubtext, { color: colors.headerMetaText }]}>
-              سورة {currentSurah.name_arabic} • بالخط والتقسيم المعتمد
-            </Text>
-          </View>
-        ) : v2Error && !v2Verses ? (
-          /* Offline Fallback when network is down and surah not cached yet */
-          <View style={styles.fallbackContainer}>
-            <Ionicons name="cloud-offline-outline" size={48} color="#0f8e5d" />
-            <Text style={[styles.fallbackTitle, { color: colors.headerTitle }]}>
-              تعذر تحميل خطوط مجمع الملك فهد
-            </Text>
-            <Text style={[styles.fallbackSubtitle, { color: colors.headerMetaText }]}>
-              يتطلب التحميل الأولي اتصالاً بالإنترنت لحفظ المصحف للعمل دون إنترنت
-            </Text>
-            <View style={styles.fallbackButtonsRow}>
-              <TouchableOpacity
-                style={styles.retryBtn}
-                onPress={() => {
-                  setV2Error(false);
-                  setIsLoadingV2(true);
-                  // Trigger reload
-                  AsyncStorage.getItem(`@uns_v2_surah_${surahId}`);
-                }}
+          <View style={isSmallSurah ? styles.smallSurahWrapper : undefined}>
+            <View style={isSmallSurah ? styles.smallSurahCenterCard : undefined}>
+              {/* MAIN SURAH TEXT CARD */}
+              <View
+                style={[
+                  styles.surahTextCard,
+                  { backgroundColor: colors.surahCardBg, borderColor: colors.surahCardBorder },
+                  isSmallSurah && { marginBottom: 0 },
+                ]}
               >
-                <Ionicons name="refresh" size={18} color="#ffffff" />
-                <Text style={styles.retryBtnText}>إعادة المحاولة</Text>
-              </TouchableOpacity>
+                {/* Basmalah for Surahs other than Al-Fatiha and At-Tawbah */}
+                {showBasmalahHeader && (
+                  <View style={styles.basmalahWrapper}>
+                    <Image
+                      source={require('@/assets/images/basmalah.png')}
+                      style={[styles.basmalahImage, { tintColor: colors.basmalahTint }]}
+                      resizeMode="contain"
+                    />
+                  </View>
+                )}
 
+                {/* Verses List */}
+                <View style={styles.versesWrapper}>
+                  {/* For Surah Al-Fatihah: Verse 1 is Basmalah */}
+                  {isFatiha && (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPressIn={() => startVerseLongPress(verses[0])}
+                      onPressOut={cancelVerseLongPress}
+                      onPress={() => {
+                        if (isLongPressActiveRef.current) {
+                          isLongPressActiveRef.current = false;
+                          return;
+                        }
+                        if (selectedVerse) {
+                          setSelectedVerse(selectedVerse.verse_number === 1 ? null : verses[0]);
+                        }
+                      }}
+                      onLongPress={() => handleVerseLongPress(verses[0])}
+                      delayLongPress={320}
+                      style={[
+                        styles.fatihaBasmalahWrapper,
+                        selectedVerse?.verse_number === 1 && styles.selectedBasmalahWrapper,
+                      ]}
+                    >
+                      <Image
+                        source={require('@/assets/images/basmalah.png')}
+                        style={[styles.fatihaBasmalahImage, { tintColor: colors.basmalahTint }]}
+                        resizeMode="contain"
+                      />
+                      <AyahFrame number={1} />
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Quran Continuous Flow Paragraph with Interactive Highlight on Long Press */}
+                  <Text
+                    style={[styles.surahParagraph, { color: colors.verseText }]}
+                    onPress={handleVersePress}
+                  >
+                    {verses.map((verse) => {
+                      if (isFatiha && verse.verse_number === 1) return null;
+                      const isSelected = selectedVerse?.verse_number === verse.verse_number;
+                      return (
+                        <React.Fragment key={verse.id || verse.verse_number}>
+                          <Text
+                            onPressIn={() => startVerseLongPress(verse)}
+                            onPressOut={cancelVerseLongPress}
+                            onPress={() => {
+                              if (isLongPressActiveRef.current) {
+                                isLongPressActiveRef.current = false;
+                                return;
+                              }
+                              if (selectedVerse) {
+                                setSelectedVerse(
+                                  selectedVerse.verse_number === verse.verse_number ? null : verse
+                                );
+                              }
+                            }}
+                            onLongPress={() => handleVerseLongPress(verse)}
+                            suppressHighlighting={false}
+                            style={[
+                              styles.verseText,
+                              { color: colors.verseText },
+                              isSelected && styles.selectedVerseHighlight,
+                            ]}
+                          >
+                            {verse.text_uthmani}
+                          </Text>
+                          <Text> </Text>
+                          <Text
+                            onPressIn={() => startVerseLongPress(verse)}
+                            onPressOut={cancelVerseLongPress}
+                            onPress={() => {
+                              if (isLongPressActiveRef.current) {
+                                isLongPressActiveRef.current = false;
+                                return;
+                              }
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setSelectedVerse(
+                                selectedVerse?.verse_number === verse.verse_number ? null : verse
+                              );
+                            }}
+                            onLongPress={() => handleVerseLongPress(verse)}
+                          >
+                            <AyahFrame number={verse.verse_number} />
+                          </Text>
+                          <Text> </Text>
+                        </React.Fragment>
+                      );
+                    })}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* BUTTON TO CONTINUE READING NEXT SURAH */}
+            {nextSurah ? (
               <TouchableOpacity
                 style={[
-                  styles.plainTextBtn,
-                  { borderColor: colors.headerCardBorder, backgroundColor: colors.headerCardBg },
+                  styles.nextSurahButton,
+                  { backgroundColor: colors.nextSurahBg, borderColor: colors.nextSurahBorder },
                 ]}
-                onPress={() => setUseFallbackMode(true)}
+                activeOpacity={0.85}
+                onPress={handleNextSurah}
               >
-                <Text style={[styles.plainTextBtnText, { color: colors.headerTitle }]}>
-                  القراءة بالنص العادي
+                <View style={styles.nextSurahArrowCircle}>
+                  <Ionicons name="arrow-back" size={20} color="#ffffff" />
+                </View>
+
+                <View style={styles.nextSurahTextWrapper}>
+                  <Text style={[styles.nextSurahSubtitle, { color: colors.nextSurahSubtitle }]}>
+                    السورة التالية
+                  </Text>
+                  <Text style={[styles.nextSurahTitle, { color: colors.nextSurahTitle }]}>
+                    قراءة سورة {nextSurah.name_arabic}
+                  </Text>
+                </View>
+
+                <View style={styles.nextSurahBadge}>
+                  <Ionicons
+                    name="book-outline"
+                    size={20}
+                    color={colors.nextSurahSubtitle}
+                  />
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.finishSurahsButton,
+                  { backgroundColor: colors.finishSurahsBg, borderColor: colors.finishSurahsBorder },
+                ]}
+                activeOpacity={0.85}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/dua-khatm');
+                }}
+              >
+                <Ionicons name="checkmark-circle-outline" size={22} color="#10b981" />
+                <Text style={[styles.finishSurahsText, { color: colors.finishSurahsText }]}>
+                  ختام القرآن الكريم • دعاء الختم
                 </Text>
               </TouchableOpacity>
-            </View>
-          </View>
-        ) : useFallbackMode ? (
-          /* Plain Text ScrollView Fallback */
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.plainScrollContent}
-          >
-            <View
-              style={[
-                styles.plainCard,
-                { backgroundColor: colors.headerCardBg, borderColor: colors.headerCardBorder },
-              ]}
-            >
-              {getOfflineVerses(surahId).map((v) => (
-                <Text
-                  key={v.id}
-                  style={[styles.plainVerseText, { color: colors.headerTitle }]}
-                  onPress={() => setSelectedVerse(v)}
-                >
-                  {v.text_uthmani} <AyahFrame number={v.verse_number} />{' '}
-                </Text>
-              ))}
-            </View>
-          </ScrollView>
-        ) : Platform.OS === 'web' ? (
-          /* Web Browser Support (iframe instead of native WebView) */
-          <View style={styles.webViewWrapper}>
-            {/* @ts-ignore */}
-            <iframe
-              srcDoc={mushafHtml}
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none',
-                backgroundColor: 'transparent',
-              }}
-              onLoad={() => setIsWebViewReady(true)}
-            />
-          </View>
-        ) : (
-          /* Official King Fahad Complex Mushaf (WebView Native Accelerated) */
-          <View style={styles.webViewWrapper}>
-            <WebView
-              ref={webViewRef}
-              originWhitelist={['*']}
-              source={{ html: mushafHtml }}
-              style={[
-                styles.webView,
-                { opacity: isWebViewReady ? 1 : 0 },
-              ]}
-              containerStyle={{ backgroundColor: 'transparent' }}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              scrollEnabled={true}
-              showsVerticalScrollIndicator={false}
-              textZoom={100}
-              overScrollMode="never"
-              onMessage={handleWebViewMessage}
-              onLoadEnd={() => setIsWebViewReady(true)}
-            />
-            {!isWebViewReady && (
-              <View style={styles.webViewLoader}>
-                <ActivityIndicator size="small" color="#0f8e5d" />
-              </View>
             )}
+          </View>
+        </ScrollView>
+
+        {/* FLOATING CONTEXT MENU OVERLAY (Rendered ON TOP of ScrollView with highest elevation & soft backdrop) */}
+        {selectedVerse && (
+          <View style={styles.floatingMenuBackdrop}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setSelectedVerse(null)}
+            />
+            <View style={styles.floatingMenuFloatingBox}>
+              <VerseFloatingMenu
+                visible={true}
+                onTafsir={() => setIsTafsirVisible(true)}
+                onBookmark={() => handleToggleBookmark(selectedVerse)}
+                onPlay={() => handlePlayVerse(selectedVerse)}
+                onShare={() => handleShareVerse(selectedVerse)}
+                isBookmarked={isSelectedBookmark}
+                isPlaying={playingVerseNum === selectedVerse.verse_number}
+                isLoadingAudio={isLoadingAudio}
+              />
+            </View>
           </View>
         )}
 
-        {/* Floating Verse Action Menu (Bookmark, Audio Play, Tafsir, Share) */}
-        <VerseFloatingMenu
-          visible={!!selectedVerse}
-          onTafsir={() => setIsTafsirVisible(true)}
-          onBookmark={() => selectedVerse && handleToggleBookmark(selectedVerse)}
-          onPlay={() => selectedVerse && handlePlayVerse(selectedVerse)}
-          onShare={() => selectedVerse && handleShareVerse(selectedVerse)}
-          isBookmarked={isSelectedBookmark}
-          isPlaying={playingVerseNum === selectedVerse?.verse_number}
-          isLoadingAudio={isLoadingAudio}
-        />
-
-        {/* Tafsir Modal */}
+        {/* TAFSIR MODAL */}
         {selectedVerse && (
           <TafsirModal
             visible={isTafsirVisible}
             onClose={() => setIsTafsirVisible(false)}
             surahName={currentSurah.name_arabic}
-            surahId={surahId}
+            surahId={currentSurah.id}
             verseNumber={selectedVerse.verse_number}
             verseText={selectedVerse.text_uthmani}
           />
@@ -1011,174 +541,263 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
+  scrollContent: {
+    paddingBottom: 96,
+  },
+  smallSurahScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+  smallSurahWrapper: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  smallSurahCenterCard: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+
+  /* FLOATING MENU BACKDROP & POSITIONING */
+  floatingMenuBackdrop: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    elevation: 9999,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+  },
+  floatingMenuFloatingBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
+    zIndex: 10000,
+    elevation: 10000,
+  },
+
+  /* HEADER BLOCK */
   headerCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: '#1e293b',
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginHorizontal: 14,
-    marginTop: 6,
-    marginBottom: 8,
+    paddingVertical: 14,
     borderRadius: 22,
     borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.6)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
     elevation: 2,
-    zIndex: 10,
   },
   backButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.7)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
   },
   headerInfo: {
     flex: 1,
     alignItems: 'flex-end',
-    marginRight: 10,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    paddingRight: 12,
   },
   headerTitle: {
-    fontFamily: 'Cairo-Bold',
-    fontSize: 20,
-  },
-  mushafBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  mushafBadgeText: {
-    fontFamily: 'Cairo-Bold',
-    fontSize: 10,
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 22,
+    color: '#f8fafc',
   },
   headerMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 2,
+    marginTop: 4,
   },
   revelationBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 1.5,
-    borderRadius: 10,
+    backgroundColor: 'rgba(15, 142, 93, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 12,
   },
   revelationBadgeText: {
-    fontFamily: 'Cairo-Bold',
-    fontSize: 11,
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: '#4ade80',
   },
   headerMetaText: {
-    fontFamily: 'Cairo-Medium',
-    fontSize: 11,
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12.5,
+    color: '#94a3b8',
   },
-  webViewWrapper: {
-    flex: 1,
-    backgroundColor: 'transparent',
+
+  /* SURAH TEXT AREA */
+  surahTextCard: {
+    backgroundColor: '#1e293b',
+    marginHorizontal: 16,
+    marginBottom: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.6)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  webView: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  webViewLoader: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
+
+  /* BASMALAH */
+  basmalahWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    marginBottom: 24,
+    marginTop: 6,
   },
-  loadingContainer: {
-    flex: 1,
+  basmalahImage: {
+    width: 240,
+    height: 48,
+    tintColor: '#f8fafc',
+    opacity: 0.9,
+  },
+  fatihaBasmalahWrapper: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    gap: 12,
+    marginBottom: 20,
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+  },
+  selectedBasmalahWrapper: {
+    backgroundColor: 'rgba(74, 222, 128, 0.28)',
+    borderRadius: 14,
+  },
+  fatihaBasmalahImage: {
+    width: 210,
+    height: 42,
+    tintColor: '#f8fafc',
+    opacity: 0.9,
+  },
+
+  /* VERSES TEXT FLOW */
+  versesWrapper: {
+    width: '100%',
+  },
+  surahParagraph: {
+    fontFamily: 'Amiri_400Regular',
+    fontSize: 22.5,
+    lineHeight: 52,
+    color: '#f8fafc',
+    textAlign: 'center',
+    writingDirection: 'rtl',
+    includeFontPadding: false,
+  },
+  verseText: {
+    fontFamily: 'Amiri_400Regular',
+    fontSize: 22.5,
+    lineHeight: 52,
+    color: '#f8fafc',
+    includeFontPadding: false,
+  },
+  selectedVerseHighlight: {
+    backgroundColor: 'rgba(74, 222, 128, 0.28)',
+    color: '#ffffff',
+    borderRadius: 8,
+  },
+
+  /* LOADING */
+  loadingWrapper: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
   },
   loadingText: {
-    fontFamily: 'Cairo-Bold',
-    fontSize: 16,
-    textAlign: 'center',
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 14,
+    color: '#94a3b8',
   },
-  loadingSubtext: {
-    fontFamily: 'Cairo-Medium',
-    fontSize: 13,
-    textAlign: 'center',
+
+  /* NEXT SURAH BUTTON */
+  nextSurahButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1e293b',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  fallbackContainer: {
-    flex: 1,
+  nextSurahArrowCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#0f8e5d',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 30,
-    gap: 12,
   },
-  fallbackTitle: {
-    fontFamily: 'Cairo-Bold',
-    fontSize: 18,
-    textAlign: 'center',
+  nextSurahTextWrapper: {
+    flex: 1,
+    alignItems: 'flex-end',
+    paddingRight: 14,
   },
-  fallbackSubtitle: {
-    fontFamily: 'Cairo-Medium',
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 20,
+  nextSurahSubtitle: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: '#4ade80',
+    marginBottom: 2,
   },
-  fallbackButtonsRow: {
+  nextSurahTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: '#f8fafc',
+  },
+  nextSurahBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(15, 142, 93, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* FINISH SURAHS BUTTON */
+  finishSurahsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 10,
-  },
-  retryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#0f8e5d',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 14,
-  },
-  retryBtnText: {
-    fontFamily: 'Cairo-Bold',
-    fontSize: 13,
-    color: '#ffffff',
-  },
-  plainTextBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#1e293b',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    paddingVertical: 16,
+    borderRadius: 20,
     borderWidth: 1,
+    borderColor: '#334155',
   },
-  plainTextBtnText: {
-    fontFamily: 'Cairo-Bold',
-    fontSize: 13,
-  },
-  plainScrollContent: {
-    paddingHorizontal: 14,
-    paddingBottom: 140,
-  },
-  plainCard: {
-    padding: 20,
-    borderRadius: 22,
-    borderWidth: 1,
-    marginTop: 10,
-  },
-  plainVerseText: {
-    fontFamily: 'Amiri-Bold',
-    fontSize: 21,
-    lineHeight: 42,
-    textAlign: 'justify',
+  finishSurahsText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: '#f8fafc',
   },
 });

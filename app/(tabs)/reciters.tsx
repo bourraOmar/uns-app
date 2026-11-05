@@ -354,6 +354,10 @@ export default function RecitersScreen() {
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
             onScroll={onScroll}
             scrollEventThrottle={16}
           />

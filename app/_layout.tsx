@@ -29,7 +29,6 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     Amiri_400Regular,
     Amiri_700Bold,
     Cairo_400Regular,
@@ -146,7 +145,6 @@ function RootLayoutNav() {
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: true }} />
         <Stack.Screen name="reciter/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="surah/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="tasbih" options={{ headerShown: false }} />
