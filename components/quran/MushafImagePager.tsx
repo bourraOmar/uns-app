@@ -95,9 +95,8 @@ export default function MushafImagePager({
       const isOpeningPage = pageNum === 1 || pageNum === 2;
       const meta = getPageMetadata(pageNum);
 
-      // On pages 1 & 2 (Al-Fatihah & Al-Baqarah start), the content fills only the top half
-      // so we crop and vertically center the content between top/bottom bars matching the screenshot.
-      const contentWidth = Math.min(screenWidth - 24, 520);
+      // Scaled up content sizing for maximum readability and larger text
+      const contentWidth = Math.min(screenWidth * 1.05, 580);
       const contentHeight = contentWidth * (1005 / 1260);
       const fullImageHeight = contentWidth * (2038 / 1260);
 
@@ -109,8 +108,8 @@ export default function MushafImagePager({
             {
               width: screenWidth,
               height: screenHeight,
-              paddingTop: insets.top > 0 ? insets.top + 4 : 8,
-              paddingBottom: insets.bottom > 0 ? insets.bottom + 4 : 8,
+              paddingTop: insets.top > 0 ? insets.top + 2 : 6,
+              paddingBottom: insets.bottom > 0 ? insets.bottom + 2 : 6,
             },
           ]}
         >
@@ -135,7 +134,7 @@ export default function MushafImagePager({
                 </Text>
               </View>
 
-              {/* Vertically Centered Content Box */}
+              {/* Vertically Centered Larger Content Box */}
               <View
                 style={{
                   width: contentWidth,
@@ -257,10 +256,11 @@ const styles = StyleSheet.create({
   pageSlide: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 0,
+    overflow: 'hidden',
   },
   pageImage: {
-    width: '100%',
+    width: '107%',
     height: '100%',
   },
   loadingContainer: {
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   },
   openingHeaderText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
+    fontSize: 13,
   },
   openingBottomRow: {
     width: '100%',
@@ -293,8 +293,8 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   openingPageBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 3,
     borderRadius: 14,
     borderWidth: 1,
     justifyContent: 'center',
@@ -302,6 +302,6 @@ const styles = StyleSheet.create({
   },
   openingPageBadgeText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
+    fontSize: 14,
   },
 });
