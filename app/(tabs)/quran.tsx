@@ -354,7 +354,7 @@ export default function QuranScreen() {
         })
       );
     } catch {}
-    router.push({ pathname: '/surah/[id]', params: { id: surah.id.toString() } });
+    router.push({ pathname: '/surah/[id]', params: { id: surah.id.toString(), page: surah.start_page.toString() } });
   };
 
   const handleDeleteReading = async (id: string) => {
@@ -674,10 +674,6 @@ export default function QuranScreen() {
                 contentContainerStyle={styles.surahListContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
-                initialNumToRender={12}
-                maxToRenderPerBatch={10}
-                windowSize={5}
-                removeClippedSubviews={true}
                 onScroll={onScroll}
                 scrollEventThrottle={16}
                 onScrollToIndexFailed={(info) => {

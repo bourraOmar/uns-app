@@ -24,6 +24,7 @@ import { SurahItem } from '@/context/AudioPlayerContext';
 import AyahFrame from '@/components/quran/AyahFrame';
 import VerseFloatingMenu from '@/components/quran/VerseFloatingMenu';
 import TafsirModal from '@/components/quran/TafsirModal';
+import MushafImagePager from '@/components/quran/MushafImagePager';
 import IslamicBackground from '@/components/IslamicBackground';
 import { useAppTheme } from '@/context/ThemeContext';
 
@@ -49,7 +50,7 @@ const OFFLINE_FATIHA_VERSES: VerseData[] = [
 
 export default function SurahReaderScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, page } = useLocalSearchParams<{ id: string; page?: string }>();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const surahId = parseInt(id || '1', 10);
@@ -71,6 +72,7 @@ export default function SurahReaderScreen() {
   };
 
   const [verses, setVerses] = useState<VerseData[]>(() => getOfflineVerses(surahId));
+  const [viewMode, setViewMode] = useState<'mushaf' | 'text'>('mushaf');
 
   // Selected verse state for floating menu
   const [selectedVerse, setSelectedVerse] = useState<VerseData | null>(null);
