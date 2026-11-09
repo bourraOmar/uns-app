@@ -105,6 +105,7 @@ export default function MushafImagePager({
         <View
           style={[
             styles.pageSlide,
+            styles.rtlSlide,
             {
               width: screenWidth,
               height: screenHeight,
@@ -217,7 +218,7 @@ export default function MushafImagePager({
         translucent
       />
 
-      {/* 604-Page Horizontal Swiper (Swipe only, no buttons) */}
+      {/* 604-Page Horizontal Swiper (Swipes right-to-left to read next page) */}
       <FlatList
         ref={flatListRef}
         data={ALL_PAGES}
@@ -237,6 +238,7 @@ export default function MushafImagePager({
         windowSize={3}
         maxToRenderPerBatch={2}
         removeClippedSubviews
+        style={styles.rtlSwiper}
       />
     </View>
   );
@@ -245,6 +247,12 @@ export default function MushafImagePager({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  rtlSwiper: {
+    transform: [{ scaleX: -1 }],
+  },
+  rtlSlide: {
+    transform: [{ scaleX: -1 }],
   },
   pageSlide: {
     justifyContent: 'center',
