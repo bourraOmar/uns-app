@@ -25,6 +25,8 @@ import VerseFloatingMenu from '@/components/quran/VerseFloatingMenu';
 import TafsirModal from '@/components/quran/TafsirModal';
 import IslamicBackground from '@/components/IslamicBackground';
 import { useAppTheme } from '@/context/ThemeContext';
+import MushafPageLines from '@/components/quran/MushafPageLines';
+import { fetchChapterMushafWords, loadPagesFonts, MushafWord } from '@/services/quranMushafService';
 
 interface VerseData {
   id: number;
@@ -71,6 +73,8 @@ export default function SurahReaderScreen() {
 
   // Bookmarked verses list
   const [bookmarkedVerses, setBookmarkedVerses] = useState<string[]>([]);
+  const [mushafPagesData, setMushafPagesData] = useState<Record<number, Record<number, (MushafWord & { verseKey: string })[]>> | null>(null);
+  const [isMushafLoaded, setIsMushafLoaded] = useState<boolean>(false);
 
   // Single verse audio playback state
   const versePlayerRef = useRef<AudioPlayer | null>(null);
@@ -95,6 +99,24 @@ export default function SurahReaderScreen() {
 
   useEffect(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    setIsMushafLoaded(false);
+    setMushafPagesData(null);
+
+    let isMounted = true;
+    fetchChapterMushafWords(surahId)
+      .then(async (map) => {
+        if (!isMounted) return;
+        const pageNums = Object.keys(map).map(Number);
+        if (pageNums.length > 0) {
+          await loadPagesFonts(pageNums);
+          if (isMounted) {
+            setMushafPagesData(map);
+            setIsMushafLoaded(true);
+          }
+        }
+      })
+      .catch(() => {});
+
     const timer = setTimeout(() => {
       setVerses(getOfflineVerses(surahId));
       loadBookmarks();
@@ -353,6 +375,32 @@ export default function SurahReaderScreen() {
 
                 {/* Verses List */}
                 <View style={styles.versesWrapper}>
+                  {isMushafLoaded && mushafPagesData ? (
+                    Object.keys(mushafPagesData)
+                      .map(Number)
+                      .sort((a, b) => a - b)
+                      .map((p, idx, arr) => (
+                        <MushafPageLines
+                          key={p}
+                          pageNumber={p}
+                          linesMap={mushafPagesData[p]}
+                          textColor={colors.verseText}
+                          activeVerseKey={selectedVerse ? `${surahId}:${selectedVerse.verse_number}` : null}
+                          onWordPress={(verseKey) => {
+                            const vNum = parseInt(verseKey.split(':')[1], 10);
+                            const v = verses.find((x) => x.verse_number === vNum);
+                            if (v) setSelectedVerse(selectedVerse?.verse_number === vNum ? null : v);
+                          }}
+                          onWordLongPress={(verseKey) => {
+                            const vNum = parseInt(verseKey.split(':')[1], 10);
+                            const v = verses.find((x) => x.verse_number === vNum);
+                            if (v) handleVerseLongPress(v);
+                          }}
+                          isLastPage={idx === arr.length - 1}
+                        />
+                      ))
+                  ) : (
+                    <>
                   {/* For Surah Al-Fatihah: Verse 1 is Basmalah */}
                   {isFatiha && (
                     <TouchableOpacity
@@ -441,6 +489,8 @@ export default function SurahReaderScreen() {
                       );
                     })}
                   </Text>
+                    </>
+                  )}
                 </View>
               </View>
             </View>
