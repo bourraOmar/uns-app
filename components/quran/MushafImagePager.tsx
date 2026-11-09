@@ -95,8 +95,12 @@ export default function MushafImagePager({
       const isOpeningPage = pageNum === 1 || pageNum === 2;
       const meta = getPageMetadata(pageNum);
 
-      // Scaled up content sizing for maximum readability and larger text
-      const contentWidth = Math.min(screenWidth * 1.05, 580);
+      // On pages 1 & 2 (Al-Fatihah & Al-Baqarah start), the raw scan leaves 255px of
+      // empty margin on each side (verses span only 59.5% of width).
+      // We scale the image to 1.40x so the verses occupy ~83.5% of the screen width,
+      // perfectly matching the large, bold font in the reference screenshot.
+      const scaleMultiplier = 1.40;
+      const contentWidth = screenWidth * scaleMultiplier;
       const contentHeight = contentWidth * (1005 / 1260);
       const fullImageHeight = contentWidth * (2038 / 1260);
 
@@ -134,13 +138,14 @@ export default function MushafImagePager({
                 </Text>
               </View>
 
-              {/* Vertically Centered Larger Content Box */}
+              {/* Vertically Centered Larger Content Box (matching 83.5% width in ref screenshot) */}
               <View
                 style={{
-                  width: contentWidth,
+                  width: screenWidth,
                   height: contentHeight,
                   overflow: 'hidden',
-                  alignSelf: 'center',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
                 }}
               >
                 <Image
