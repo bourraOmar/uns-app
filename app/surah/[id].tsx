@@ -277,6 +277,18 @@ export default function SurahReaderScreen() {
     : false;
   const isSmallSurah = currentSurah.verses_count <= 11;
 
+  if (viewMode === 'mushaf') {
+    const startPage = page ? parseInt(page, 10) : currentSurah.start_page;
+    return (
+      <MushafImagePager
+        initialPage={startPage}
+        isDark={isDark}
+        onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/quran' as any))}
+        onToggleTextMode={() => setViewMode('text')}
+      />
+    );
+  }
+
   return (
     <View style={styles.safeArea}>
       <IslamicBackground />
@@ -312,6 +324,24 @@ export default function SurahReaderScreen() {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="chevron-forward" size={22} color={colors.backBtnIcon} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.backButton,
+                {
+                  backgroundColor: colors.backBtnBg,
+                  borderColor: colors.backBtnBorder,
+                  width: 'auto',
+                  paddingHorizontal: 12,
+                  marginLeft: 8,
+                },
+              ]}
+              onPress={() => setViewMode('mushaf')}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.headerTitle }}>
+                المصحف
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.headerInfo}>

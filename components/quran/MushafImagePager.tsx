@@ -169,6 +169,11 @@ export default function MushafImagePager({
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         initialScrollIndex={Math.max(0, initialPage - 1)}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({ index: info.index, animated: false });
+          }, 100);
+        }}
         getItemLayout={getItemLayout}
         onMomentumScrollEnd={onMomentumScrollEnd}
         windowSize={3}
@@ -361,12 +366,12 @@ const styles = StyleSheet.create({
   headerSurahText: {
     fontSize: 16,
     fontWeight: 'bold',
-    fontFamily: 'Cairo-Bold',
+    fontFamily: 'Cairo_700Bold',
   },
   headerSubText: {
     fontSize: 11,
     marginTop: 2,
-    fontFamily: 'Cairo-Medium',
+    fontFamily: 'Cairo_500Medium',
   },
   modeToggleBtn: {
     flexDirection: 'row',
@@ -380,7 +385,7 @@ const styles = StyleSheet.create({
     color: '#0f8e5d',
     fontSize: 12,
     fontWeight: 'bold',
-    fontFamily: 'Cairo-Bold',
+    fontFamily: 'Cairo_700Bold',
   },
   bottomFooter: {
     flexDirection: 'row',
@@ -409,7 +414,7 @@ const styles = StyleSheet.create({
   pageNavBtnText: {
     fontSize: 13,
     fontWeight: 'bold',
-    fontFamily: 'Cairo-Bold',
+    fontFamily: 'Cairo_700Bold',
   },
   pageCenterBadge: {
     alignItems: 'center',
@@ -417,12 +422,12 @@ const styles = StyleSheet.create({
   pageNumberText: {
     fontSize: 14,
     fontWeight: 'bold',
-    fontFamily: 'Cairo-Bold',
+    fontFamily: 'Cairo_700Bold',
   },
   mushafNameText: {
     fontSize: 10,
     color: '#0f8e5d',
     marginTop: 1,
-    fontFamily: 'Cairo-Medium',
+    fontFamily: 'Cairo_500Medium',
   },
 });
