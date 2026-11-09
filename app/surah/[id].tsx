@@ -18,6 +18,7 @@ import * as Haptics from 'expo-haptics';
 
 import surahsData from '@/data/surahs.json';
 import quranUthmaniData from '@/data/quran_uthmani.json';
+import quranApiV4Data from '@/data/quran_api_v4.json';
 import { toEasternArabicNumerals } from '@/data/quranPages';
 import { SurahItem } from '@/context/AudioPlayerContext';
 import AyahFrame from '@/components/quran/AyahFrame';
@@ -29,17 +30,21 @@ import { useAppTheme } from '@/context/ThemeContext';
 interface VerseData {
   id: number;
   verse_number: number;
+  verse_key: string;
   text_uthmani: string;
+  page_number?: number;
+  juz_number?: number;
+  hizb_number?: number;
 }
 
 const OFFLINE_FATIHA_VERSES: VerseData[] = [
-  { id: 1, verse_number: 1, text_uthmani: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ' },
-  { id: 2, verse_number: 2, text_uthmani: 'ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ' },
-  { id: 3, verse_number: 3, text_uthmani: 'ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ' },
-  { id: 4, verse_number: 4, text_uthmani: 'مَـٰلِكِ يَوْمِ ٱلدِّينِ' },
-  { id: 5, verse_number: 5, text_uthmani: 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ' },
-  { id: 6, verse_number: 6, text_uthmani: 'ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ' },
-  { id: 7, verse_number: 7, text_uthmani: 'صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ' },
+  { id: 1, verse_number: 1, verse_key: '1:1', text_uthmani: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ', page_number: 1, juz_number: 1, hizb_number: 1 },
+  { id: 2, verse_number: 2, verse_key: '1:2', text_uthmani: 'ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ', page_number: 1, juz_number: 1, hizb_number: 1 },
+  { id: 3, verse_number: 3, verse_key: '1:3', text_uthmani: 'ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ', page_number: 1, juz_number: 1, hizb_number: 1 },
+  { id: 4, verse_number: 4, verse_key: '1:4', text_uthmani: 'مَـٰلِكِ يَوْمِ ٱلدِّينِ', page_number: 1, juz_number: 1, hizb_number: 1 },
+  { id: 5, verse_number: 5, verse_key: '1:5', text_uthmani: 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ', page_number: 1, juz_number: 1, hizb_number: 1 },
+  { id: 6, verse_number: 6, verse_key: '1:6', text_uthmani: 'ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ', page_number: 1, juz_number: 1, hizb_number: 1 },
+  { id: 7, verse_number: 7, verse_key: '1:7', text_uthmani: 'صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ', page_number: 1, juz_number: 1, hizb_number: 1 },
 ];
 
 export default function SurahReaderScreen() {
@@ -52,11 +57,15 @@ export default function SurahReaderScreen() {
   const nextSurah = (surahsData as SurahItem[]).find((s) => s.id === surahId + 1);
 
   const getOfflineVerses = (chapterId: number): VerseData[] => {
+    const v4List = (quranApiV4Data as Record<string, VerseData[]>)[chapterId.toString()];
+    if (v4List && v4List.length > 0) return v4List;
+
     const rawList = (quranUthmaniData as Record<string, string[]>)[chapterId.toString()];
     if (!rawList || rawList.length === 0) return OFFLINE_FATIHA_VERSES;
     return rawList.map((text, idx) => ({
       id: idx + 1,
       verse_number: idx + 1,
+      verse_key: `${chapterId}:${idx + 1}`,
       text_uthmani: text,
     }));
   };
