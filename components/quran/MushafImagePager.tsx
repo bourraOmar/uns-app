@@ -11,7 +11,7 @@ import {
   StatusBar,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,6 +39,7 @@ export default function MushafImagePager({
   onToggleTextMode,
 }: MushafImagePagerProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [currentPage, setCurrentPage] = useState<number>(() => Math.max(1, Math.min(604, initialPage)));
   const [showOverlays, setShowOverlays] = useState<boolean>(true);
   const [loadedPages, setLoadedPages] = useState<Record<number, boolean>>({});
@@ -120,20 +121,31 @@ export default function MushafImagePager({
         <TouchableOpacity
           activeOpacity={1}
           onPress={toggleOverlays}
-          style={[styles.pageSlide, { width: screenWidth, height: screenHeight }]}
+          style={[
+            styles.pageSlide,
+            {
+              width: screenWidth,
+              height: screenHeight,
+              paddingTop: insets.top > 0 ? insets.top + 6 : 14,
+              paddingBottom: insets.bottom > 0 ? insets.bottom + 6 : 14,
+            },
+          ]}
         >
           {/* Subtle loading spinner for first time load */}
           {!isLoaded && (
             <View style={StyleSheet.absoluteFill}>
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#0f8e5d" />
+                <ActivityIndicator size="small" color={isDark ? '#34d399' : '#0f8e5d'} />
               </View>
             </View>
           )}
 
           <Image
             source={{ uri: imageUrl, cache: 'force-cache' }}
-            style={styles.pageImage}
+            style={[
+              styles.pageImage,
+              isDark && { tintColor: '#ffffff' },
+            ]}
             resizeMode="contain"
             fadeDuration={0}
             onLoad={() => {
@@ -143,7 +155,7 @@ export default function MushafImagePager({
         </TouchableOpacity>
       );
     },
-    [screenWidth, screenHeight, loadedPages, toggleOverlays]
+    [screenWidth, screenHeight, insets, loadedPages, isDark, toggleOverlays]
   );
 
   const getItemLayout = useCallback(
@@ -156,8 +168,13 @@ export default function MushafImagePager({
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#0b0f17' : '#f8f9fa' }]}>
-      <StatusBar hidden={!showOverlays} barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <View style={[styles.container, { backgroundColor: isDark ? '#222825' : '#fcfbfa' }]}>
+      <StatusBar
+        hidden={!showOverlays}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={isDark ? '#222825' : '#fcfbfa'}
+        translucent
+      />
 
       {/* 604-Page Horizontal Swiper (Paging Enabled) */}
       <FlatList
@@ -189,8 +206,8 @@ export default function MushafImagePager({
               style={[
                 styles.topHeader,
                 {
-                  backgroundColor: isDark ? 'rgba(18, 24, 38, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+                  backgroundColor: isDark ? 'rgba(28, 34, 31, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                  borderColor: isDark ? 'rgba(125, 149, 125, 0.25)' : 'rgba(0, 0, 0, 0.08)',
                 },
               ]}
             >
@@ -198,7 +215,7 @@ export default function MushafImagePager({
                 onPress={onBack}
                 style={[
                   styles.iconBtn,
-                  { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' },
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' },
                 ]}
                 activeOpacity={0.7}
               >
@@ -209,7 +226,7 @@ export default function MushafImagePager({
                 <Text style={[styles.headerSurahText, { color: isDark ? '#fff' : '#1e354d' }]}>
                   سورة {currentMeta.surahName}
                 </Text>
-                <Text style={[styles.headerSubText, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+                <Text style={[styles.headerSubText, { color: isDark ? '#a0b3a6' : '#64748b' }]}>
                   الجزء {toEasternArabicNumerals(currentMeta.juz)} • الحزب {toEasternArabicNumerals(currentMeta.hizb)}
                 </Text>
               </View>
@@ -219,12 +236,12 @@ export default function MushafImagePager({
                   onPress={onToggleTextMode}
                   style={[
                     styles.modeToggleBtn,
-                    { backgroundColor: isDark ? 'rgba(15, 142, 93, 0.2)' : 'rgba(15, 142, 93, 0.1)' },
+                    { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(15, 142, 93, 0.1)' },
                   ]}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="text-outline" size={17} color="#0f8e5d" />
-                  <Text style={styles.modeToggleText}>نص</Text>
+                  <Ionicons name="text-outline" size={17} color={isDark ? '#34d399' : '#0f8e5d'} />
+                  <Text style={[styles.modeToggleText, { color: isDark ? '#34d399' : '#0f8e5d' }]}>نص</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -240,8 +257,8 @@ export default function MushafImagePager({
               style={[
                 styles.bottomFooter,
                 {
-                  backgroundColor: isDark ? 'rgba(18, 24, 38, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+                  backgroundColor: isDark ? 'rgba(28, 34, 31, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                  borderColor: isDark ? 'rgba(125, 149, 125, 0.25)' : 'rgba(0, 0, 0, 0.08)',
                 },
               ]}
             >
@@ -255,12 +272,12 @@ export default function MushafImagePager({
                 <Ionicons
                   name="chevron-forward"
                   size={20}
-                  color={currentPage <= 1 ? '#64748b' : '#0f8e5d'}
+                  color={currentPage <= 1 ? '#64748b' : (isDark ? '#34d399' : '#0f8e5d')}
                 />
                 <Text
                   style={[
                     styles.pageNavBtnText,
-                    { color: currentPage <= 1 ? '#64748b' : '#0f8e5d' },
+                    { color: currentPage <= 1 ? '#64748b' : (isDark ? '#34d399' : '#0f8e5d') },
                   ]}
                 >
                   السابقة
@@ -268,11 +285,13 @@ export default function MushafImagePager({
               </TouchableOpacity>
 
               {/* Page Number Badge */}
-              <View style={styles.pageCenterBadge}>
+              <View style={[styles.pageCenterBadge, isDark && styles.pageCenterBadgeDark]}>
                 <Text style={[styles.pageNumberText, { color: isDark ? '#fff' : '#1e354d' }]}>
                   صفحة {toEasternArabicNumerals(currentPage)}
                 </Text>
-                <Text style={styles.mushafNameText}>مصحف مجمع الملك فهد</Text>
+                <Text style={[styles.mushafNameText, { color: isDark ? '#34d399' : '#0f8e5d' }]}>
+                  مصحف مجمع الملك فهد
+                </Text>
               </View>
 
               {/* Next Page Button (moves to page + 1) */}
@@ -285,7 +304,7 @@ export default function MushafImagePager({
                 <Text
                   style={[
                     styles.pageNavBtnText,
-                    { color: currentPage >= TOTAL_PAGES ? '#64748b' : '#0f8e5d' },
+                    { color: currentPage >= TOTAL_PAGES ? '#64748b' : (isDark ? '#34d399' : '#0f8e5d') },
                   ]}
                 >
                   التالية
@@ -293,7 +312,7 @@ export default function MushafImagePager({
                 <Ionicons
                   name="chevron-back"
                   size={20}
-                  color={currentPage >= TOTAL_PAGES ? '#64748b' : '#0f8e5d'}
+                  color={currentPage >= TOTAL_PAGES ? '#64748b' : (isDark ? '#34d399' : '#0f8e5d')}
                 />
               </TouchableOpacity>
             </View>
@@ -311,10 +330,11 @@ const styles = StyleSheet.create({
   pageSlide: {
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 8,
   },
   pageImage: {
     width: '100%',
-    height: '92%',
+    height: '100%',
   },
   loadingContainer: {
     flex: 1,
@@ -349,7 +369,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 4,
   },
@@ -377,12 +397,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
   modeToggleText: {
-    color: '#0f8e5d',
     fontSize: 12,
     fontWeight: 'bold',
     fontFamily: 'Cairo_700Bold',
@@ -397,7 +416,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 4,
   },
@@ -418,6 +437,14 @@ const styles = StyleSheet.create({
   },
   pageCenterBadge: {
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  pageCenterBadgeDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(125, 149, 125, 0.2)',
   },
   pageNumberText: {
     fontSize: 14,
@@ -426,7 +453,6 @@ const styles = StyleSheet.create({
   },
   mushafNameText: {
     fontSize: 10,
-    color: '#0f8e5d',
     marginTop: 1,
     fontFamily: 'Cairo_500Medium',
   },
