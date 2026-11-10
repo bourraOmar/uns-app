@@ -245,7 +245,7 @@ export function RubberFluid({
     `;
   }, [colors, speed, scale, foldDepth, gloss, sheen, roughness, lightAngle, contrast]);
 
-  if (Platform.OS === 'web') {
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
     return (
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <iframe

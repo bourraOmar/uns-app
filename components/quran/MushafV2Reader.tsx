@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { StyleSheet, View, StatusBar, BackHandler } from 'react-native';
+import { StyleSheet, View, StatusBar, BackHandler, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -30,7 +30,35 @@ export default function MushafV2Reader({
     return () => backHandler.remove();
   }, [onBack]);
 
-  // Handle messages from WebView (page changes, haptics)
+  // Handle messages on Web / Desktop platform via window message listener
+  useEffect(() => {
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android' && typeof window !== 'undefined') {
+      const handleWebMessage = (e: MessageEvent) => {
+        try {
+          const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+          if (data && data.type === 'pageChange') {
+            const pageNum = Number(data.page);
+            if (pageNum >= 1 && pageNum <= 604) {
+              const meta = getPageMetadata(pageNum);
+              const item = {
+                surahId: meta.surahId,
+                surahName: `سورة ${meta.surahName}`,
+                page: pageNum,
+                versesCount: 0,
+                revelationPlace: 'makkah',
+                timeAgo: 'الآن',
+              };
+              AsyncStorage.setItem('@uns_last_read', JSON.stringify(item)).catch(() => {});
+            }
+          }
+        } catch {}
+      };
+      window.addEventListener('message', handleWebMessage);
+      return () => window.removeEventListener('message', handleWebMessage);
+    }
+  }, []);
+
+  // Handle messages from WebView on Mobile (iOS / Android)
   const handleMessage = useCallback(
     async (event: any) => {
       try {
@@ -333,10 +361,6 @@ export default function MushafV2Reader({
           }
         });
 
-        // Determine Surah Name if first page of a chapter
-        const firstVerseKey = verses[0]?.verse_key || '';
-        const chapterId = firstVerseKey.split(':')[0];
-
         const data = {
           page: p,
           surahName: surahName,
@@ -414,9 +438,11 @@ export default function MushafV2Reader({
       const currData = await getPageData(currentPage);
       currEl.innerHTML = renderPageHTML(currentPage, currData);
 
-      // Notify React Native of Page Change
+      // Notify host environment of Page Change
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pageChange', page: currentPage }));
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage(JSON.stringify({ type: 'pageChange', page: currentPage }), '*');
       }
 
       // Pre-render Previous Page (on right for RTL)
@@ -449,7 +475,6 @@ export default function MushafV2Reader({
       currentDeltaX = 0;
       isSwiping = true;
 
-      // Disable transitions during drag for instant tracking
       document.querySelectorAll('.mushaf-page').forEach(el => {
         el.style.transition = 'none';
       });
@@ -463,8 +488,6 @@ export default function MushafV2Reader({
       const prevEl = document.getElementById('page-slot-prev');
       const nextEl = document.getElementById('page-slot-next');
 
-      // DeltaX < 0 is swipe right-to-left (moving to next page)
-      // In RTL coordinate system:
       currEl.style.transform = 'translateX(' + currentDeltaX + 'px)';
       if (prevEl) prevEl.style.transform = 'translateX(' + (currentDeltaX + window.innerWidth) + 'px)';
       if (nextEl) nextEl.style.transform = 'translateX(' + (currentDeltaX - window.innerWidth) + 'px)';
@@ -480,7 +503,6 @@ export default function MushafV2Reader({
       const prevEl = document.getElementById('page-slot-prev');
       const nextEl = document.getElementById('page-slot-next');
 
-      // Re-enable smooth transition
       [prevEl, currEl, nextEl].forEach(el => {
         if (el) el.style.transition = 'transform 0.28s cubic-bezier(0.25, 1, 0.5, 1)';
       });
@@ -519,6 +541,78 @@ export default function MushafV2Reader({
       }
     });
 
+    // Also support mouse dragging on web browser preview
+    let isMouseDown = false;
+    viewport.addEventListener('mousedown', (e) => {
+      isMouseDown = true;
+      startX = e.clientX;
+      currentDeltaX = 0;
+      document.querySelectorAll('.mushaf-page').forEach(el => el.style.transition = 'none');
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isMouseDown) return;
+      currentDeltaX = e.clientX - startX;
+      const currEl = document.getElementById('page-slot-curr');
+      const prevEl = document.getElementById('page-slot-prev');
+      const nextEl = document.getElementById('page-slot-next');
+      currEl.style.transform = 'translateX(' + currentDeltaX + 'px)';
+      if (prevEl) prevEl.style.transform = 'translateX(' + (currentDeltaX + window.innerWidth) + 'px)';
+      if (nextEl) nextEl.style.transform = 'translateX(' + (currentDeltaX - window.innerWidth) + 'px)';
+    });
+    window.addEventListener('mouseup', () => {
+      if (!isMouseDown) return;
+      isMouseDown = false;
+      const threshold = window.innerWidth * 0.18;
+      const currEl = document.getElementById('page-slot-curr');
+      const prevEl = document.getElementById('page-slot-prev');
+      const nextEl = document.getElementById('page-slot-next');
+      [prevEl, currEl, nextEl].forEach(el => {
+        if (el) el.style.transition = 'transform 0.28s cubic-bezier(0.25, 1, 0.5, 1)';
+      });
+      if (currentDeltaX < -threshold && currentPage < TOTAL_PAGES) {
+        currEl.style.transform = 'translateX(-100vw)';
+        nextEl.style.transform = 'translateX(0)';
+        setTimeout(() => {
+          currentPage++;
+          currEl.style.transition = 'none';
+          nextEl.style.transition = 'none';
+          currEl.style.transform = 'translateX(0)';
+          nextEl.style.transform = 'translateX(-100vw)';
+          updatePageSlots();
+        }, 280);
+      } else if (currentDeltaX > threshold && currentPage > 1) {
+        currEl.style.transform = 'translateX(100vw)';
+        prevEl.style.transform = 'translateX(0)';
+        setTimeout(() => {
+          currentPage--;
+          currEl.style.transition = 'none';
+          prevEl.style.transition = 'none';
+          currEl.style.transform = 'translateX(0)';
+          prevEl.style.transform = 'translateX(100vw)';
+          updatePageSlots();
+        }, 280);
+      } else {
+        currEl.style.transform = 'translateX(0)';
+        if (prevEl) prevEl.style.transform = 'translateX(100vw)';
+        if (nextEl) nextEl.style.transform = 'translateX(-100vw)';
+      }
+    });
+
+    // Support Arrow keys navigation on PC/Web
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        if (currentPage < TOTAL_PAGES) {
+          currentPage++;
+          updatePageSlots();
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (currentPage > 1) {
+          currentPage--;
+          updatePageSlots();
+        }
+      }
+    });
+
     // Initialize first render immediately
     updatePageSlots();
   </script>
@@ -526,6 +620,25 @@ export default function MushafV2Reader({
 </html>
   `;
 
+  // On Web / non-mobile (browser / emulator preview), render standard native iframe to avoid "WebView not supported" error
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? '#222825' : '#fcfbfa' }]}>
+        {React.createElement('iframe', {
+          srcDoc: htmlContent,
+          style: {
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            backgroundColor: isDark ? '#222825' : '#fcfbfa',
+          },
+          title: 'Mushaf V2',
+        })}
+      </View>
+    );
+  }
+
+  // On Native Mobile (iOS / Android), render high performance React Native WebView
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#222825' : '#fcfbfa' }]}>
       <StatusBar
