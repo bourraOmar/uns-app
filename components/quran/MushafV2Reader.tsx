@@ -127,7 +127,9 @@ export default function MushafV2Reader({
     display: flex;
     position: relative;
     overflow: hidden;
-    touch-action: pan-y;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .mushaf-page {
@@ -149,6 +151,7 @@ export default function MushafV2Reader({
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     transform: translate3d(0, 0, 0);
+    touch-action: none;
   }
 
   .page-header {
@@ -465,12 +468,11 @@ export default function MushafV2Reader({
     let isAnimating = false;
     let startX = 0;
     let startY = 0;
+    let startTime = 0;
     let currentDeltaX = 0;
     let lastX = 0;
     let lastTime = 0;
     let velocityX = 0;
-
-    const viewport = document.getElementById('mushaf-viewport');
 
     function onPointerStart(x, y) {
       if (isAnimating) return;
@@ -479,7 +481,8 @@ export default function MushafV2Reader({
       startX = x;
       startY = y;
       lastX = x;
-      lastTime = Date.now();
+      startTime = Date.now();
+      lastTime = startTime;
       velocityX = 0;
       currentDeltaX = 0;
 
@@ -496,8 +499,8 @@ export default function MushafV2Reader({
       const diffY = y - startY;
 
       if (isHorizontal === null) {
-        if (Math.abs(diffX) > 6 || Math.abs(diffY) > 6) {
-          isHorizontal = Math.abs(diffX) > Math.abs(diffY);
+        if (Math.abs(diffX) > 4 || Math.abs(diffY) > 4) {
+          isHorizontal = Math.abs(diffX) >= Math.abs(diffY);
         }
       }
 
@@ -506,17 +509,17 @@ export default function MushafV2Reader({
 
       let dx = diffX;
 
-      // Rubber-band resistance at boundaries
+      // Rubber-band resistance at boundaries (Page 1 can't go back, Page 604 can't go next)
       if ((currentPage === 1 && dx > 0) || (currentPage === TOTAL_PAGES && dx < 0)) {
-        dx *= 0.28;
+        dx *= 0.25;
       }
 
       currentDeltaX = dx;
 
-      // Velocity calculation for flick response
+      // Real-time velocity tracking for instant flick response
       const now = Date.now();
       const dt = now - lastTime;
-      if (dt > 10) {
+      if (dt > 8) {
         velocityX = (x - lastX) / dt;
         lastX = x;
         lastTime = now;
@@ -532,27 +535,47 @@ export default function MushafV2Reader({
       }
     }
 
-    function onPointerEnd() {
+    function onPointerEnd(e) {
       if (!isTracking || isAnimating) return;
       isTracking = false;
-      if (!isHorizontal) return;
 
       const W = window.innerWidth;
-      const threshold = W * 0.18;
+      const totalTime = Date.now() - startTime;
+      const absDiffX = Math.abs(currentDeltaX);
 
-      // Right-to-Left swipe (dx < -threshold or flick velocity < -0.32) -> NEXT PAGE
-      const canGoNext = currentPage < TOTAL_PAGES;
-      const shouldGoNext = canGoNext && (currentDeltaX < -threshold || velocityX < -0.32);
+      // Tap-to-turn support (tapping side edges of screen turns page)
+      if (absDiffX < 10 && totalTime < 350) {
+        // Tap on left 25% of screen -> Next Page
+        if (startX < W * 0.25 && currentPage < TOTAL_PAGES) {
+          animateToNext();
+          return;
+        }
+        // Tap on right 25% of screen -> Previous Page
+        if (startX > W * 0.75 && currentPage > 1) {
+          animateToPrev();
+          return;
+        }
+      }
 
-      // Left-to-Right swipe (dx > threshold or flick velocity > 0.32) -> PREVIOUS PAGE
-      const canGoPrev = currentPage > 1;
-      const shouldGoPrev = canGoPrev && (currentDeltaX > threshold || velocityX > 0.32);
+      if (!isHorizontal) {
+        snapBack();
+        return;
+      }
 
-      if (shouldGoNext) {
+      // Responsive threshold: only 10% of screen width (~35-40px) or quick flick velocity
+      const threshold = W * 0.10;
+      const isFlickNext = currentDeltaX < -threshold || velocityX < -0.22;
+      const isFlickPrev = currentDeltaX > threshold || velocityX > 0.22;
+
+      // Right-to-Left swipe (dx < 0: moving thumb from right to left) -> NEXT PAGE
+      if (isFlickNext && currentPage < TOTAL_PAGES) {
         animateToNext();
-      } else if (shouldGoPrev) {
+      }
+      // Left-to-Right swipe (dx > 0: moving thumb from left to right) -> PREVIOUS PAGE
+      else if (isFlickPrev && currentPage > 1) {
         animateToPrev();
-      } else {
+      }
+      else {
         snapBack();
       }
     }
@@ -650,30 +673,30 @@ export default function MushafV2Reader({
       if (currentPage > 1) setSlotTransform(prevSlot, '-100vw');
     }
 
-    // Touch Event Listeners (Mobile devices)
-    viewport.addEventListener('touchstart', (e) => {
+    // Touch Event Listeners on window (Mobile devices)
+    window.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         onPointerStart(e.touches[0].clientX, e.touches[0].clientY);
       }
     }, { passive: true });
 
-    viewport.addEventListener('touchmove', (e) => {
+    window.addEventListener('touchmove', (e) => {
       if (e.touches.length === 1) {
         onPointerMove(e.touches[0].clientX, e.touches[0].clientY, e);
       }
     }, { passive: false });
 
-    viewport.addEventListener('touchend', () => {
-      onPointerEnd();
+    window.addEventListener('touchend', (e) => {
+      onPointerEnd(e);
     }, { passive: true });
 
-    viewport.addEventListener('touchcancel', () => {
-      onPointerEnd();
+    window.addEventListener('touchcancel', (e) => {
+      onPointerEnd(e);
     }, { passive: true });
 
-    // Mouse Event Listeners (Web / Desktop browser testing)
+    // Mouse Event Listeners on window (Web / Desktop browser testing)
     let isMouseDown = false;
-    viewport.addEventListener('mousedown', (e) => {
+    window.addEventListener('mousedown', (e) => {
       isMouseDown = true;
       onPointerStart(e.clientX, e.clientY);
     });
@@ -684,10 +707,10 @@ export default function MushafV2Reader({
       }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', (e) => {
       if (isMouseDown) {
         isMouseDown = false;
-        onPointerEnd();
+        onPointerEnd(e);
       }
     });
 
