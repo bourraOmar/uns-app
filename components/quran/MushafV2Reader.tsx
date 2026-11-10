@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, StatusBar, BackHandler, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -84,6 +84,15 @@ export default function MushafV2Reader({
     []
   );
 
+  const pageMetaJson = useMemo(() => {
+    const map: Record<number, { s: string; j: number; h: number }> = {};
+    for (let p = 1; p <= 604; p++) {
+      const m = getPageMetadata(p);
+      map[p] = { s: m.surahName, j: m.juz, h: m.hizb };
+    }
+    return JSON.stringify(map);
+  }, []);
+
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -136,8 +145,10 @@ export default function MushafV2Reader({
     position: absolute;
     top: 0;
     left: 0;
-    transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.28s ease;
-    will-change: transform, opacity;
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
   }
 
   .page-header {
@@ -263,9 +274,9 @@ export default function MushafV2Reader({
 </head>
 <body>
   <div id="mushaf-viewport">
-    <div id="page-slot-prev" class="mushaf-page" style="transform: translateX(100vw);"></div>
-    <div id="page-slot-curr" class="mushaf-page" style="transform: translateX(0);"></div>
-    <div id="page-slot-next" class="mushaf-page" style="transform: translateX(-100vw);"></div>
+    <div id="slot-0" class="mushaf-page" style="transform: translate3d(-100vw, 0, 0);"></div>
+    <div id="slot-1" class="mushaf-page" style="transform: translate3d(0, 0, 0);"></div>
+    <div id="slot-2" class="mushaf-page" style="transform: translate3d(100vw, 0, 0);"></div>
   </div>
 
   <script>
@@ -273,6 +284,7 @@ export default function MushafV2Reader({
     let currentPage = ${initialPage};
     const loadedFonts = new Set();
     const pageDataCache = {};
+    const PAGE_METAS = ${pageMetaJson};
 
     // Arabic Numerals Helper
     const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
@@ -282,9 +294,6 @@ export default function MushafV2Reader({
 
     // Pre-bundled King Fahd Complex V2 Glyphs for Page 1 & Page 2 (Instant 0ms render!)
     pageDataCache[1] = {
-      surahName: "الفاتحة",
-      juz: 1,
-      hizb: 1,
       isOpening: true,
       lines: {
         2: ["ﱁ","ﱂ","ﱃ","ﱄ"],
@@ -298,9 +307,6 @@ export default function MushafV2Reader({
     };
 
     pageDataCache[2] = {
-      surahName: "البقرة",
-      juz: 1,
-      hizb: 1,
       isOpening: true,
       hasBasmalah: true,
       lines: {
@@ -315,15 +321,14 @@ export default function MushafV2Reader({
 
     // Dynamically load King Fahd Complex WOFF2 font for any page
     function loadPageFont(p) {
-      if (loadedFonts.has(p)) return Promise.resolve();
+      if (p < 1 || p > TOTAL_PAGES || loadedFonts.has(p)) return Promise.resolve();
       loadedFonts.add(p);
       const font = new FontFace('p' + p, 'url(https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p' + p + '.woff2)', { display: 'block' });
       return font.load().then(f => {
         document.fonts.add(f);
-      }).catch(err => console.warn('Font load error p' + p, err));
+      }).catch(err => console.warn('Font load p' + p, err));
     }
 
-    // Always load p1 for Basmalah calligraphy
     loadPageFont(1);
 
     // Fetch Page Data from Quran Foundation API V4 with Local Storage Cache
@@ -342,17 +347,10 @@ export default function MushafV2Reader({
         const res = await fetch('https://api.quran.com/api/v4/verses/by_page/' + p + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
         const json = await res.json();
         const verses = json.verses || [];
-
         const lines = {};
-        let surahName = 'القرآن';
-        let juz = 1;
-        let hizb = 1;
-        let isOpening = p === 1 || p === 2;
 
         verses.forEach(v => {
           if (v.words && v.words.length > 0) {
-            juz = v.words[0].juz_number || juz;
-            hizb = v.words[0].hizb_number || hizb;
             v.words.forEach(w => {
               const l = w.line_number;
               if (!lines[l]) lines[l] = [];
@@ -363,10 +361,7 @@ export default function MushafV2Reader({
 
         const data = {
           page: p,
-          surahName: surahName,
-          juz: juz,
-          hizb: hizb,
-          isOpening: isOpening,
+          isOpening: p === 1 || p === 2,
           lines: lines
         };
 
@@ -384,12 +379,12 @@ export default function MushafV2Reader({
       }
 
       loadPageFont(p);
+      const meta = PAGE_METAS[p] || { s: '', j: 1, h: 1 };
       const isOpening = p === 1 || p === 2;
       const glyphClass = isOpening ? 'opening-word-glyph' : 'standard-word-glyph';
 
       let contentHTML = '';
 
-      // Banner for Opening Pages or Chapter Starts
       if (p === 1) {
         contentHTML += '<div class="surah-banner"><div class="surah-title">سورة الفاتحة</div></div>';
       } else if (p === 2) {
@@ -397,7 +392,6 @@ export default function MushafV2Reader({
         contentHTML += '<div class="basmalah-row"><span class="word-glyph">ﱁ ﱂ ﱃ ﱄ</span></div>';
       }
 
-      // Render 15 Lines
       contentHTML += '<div class="mushaf-lines" style="font-family: \\'p' + p + '\\';">';
       const lineKeys = Object.keys(data.lines).sort((a,b) => +a - +b);
       lineKeys.forEach(lNum => {
@@ -412,8 +406,8 @@ export default function MushafV2Reader({
 
       return \`
         <div class="page-header">
-          <span>سورة \${data.surahName || ''}</span>
-          <span>الجزء \${toArabic(data.juz || 1)} &nbsp; حزب \${toArabic(data.hizb || 1)}</span>
+          <span>سورة \${meta.s || ''}</span>
+          <span>الجزء \${toArabic(meta.j || 1)} &nbsp; حزب \${toArabic(meta.h || 1)}</span>
         </div>
         <div class="content-container">
           \${contentHTML}
@@ -424,197 +418,313 @@ export default function MushafV2Reader({
       \`;
     }
 
-    async function updatePageSlots() {
-      const prevEl = document.getElementById('page-slot-prev');
-      const currEl = document.getElementById('page-slot-curr');
-      const nextEl = document.getElementById('page-slot-next');
-
-      // Preload fonts for current and adjacent pages
-      loadPageFont(currentPage);
-      if (currentPage > 1) loadPageFont(currentPage - 1);
-      if (currentPage < TOTAL_PAGES) loadPageFont(currentPage + 1);
-
-      // Render Current Page
-      const currData = await getPageData(currentPage);
-      currEl.innerHTML = renderPageHTML(currentPage, currData);
-
-      // Notify host environment of Page Change
+    function notifyPageChange(p) {
       if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pageChange', page: currentPage }));
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pageChange', page: p }));
       } else if (window.parent && window.parent !== window) {
-        window.parent.postMessage(JSON.stringify({ type: 'pageChange', page: currentPage }), '*');
-      }
-
-      // Pre-render Previous Page (on right for RTL)
-      if (currentPage > 1) {
-        const prevData = await getPageData(currentPage - 1);
-        prevEl.innerHTML = renderPageHTML(currentPage - 1, prevData);
-      } else {
-        prevEl.innerHTML = '';
-      }
-
-      // Pre-render Next Page (on left for RTL)
-      if (currentPage < TOTAL_PAGES) {
-        const nextData = await getPageData(currentPage + 1);
-        nextEl.innerHTML = renderPageHTML(currentPage + 1, nextData);
-      } else {
-        nextEl.innerHTML = '';
+        window.parent.postMessage(JSON.stringify({ type: 'pageChange', page: p }), '*');
       }
     }
 
-    // Touch Swiping Engine (RTL: Swiping Right-To-Left 👉 ⬅️ advances to Next Page)
+    // 3-Slot Virtual Sliding Engine (Perpetual Carousel with 0ms Flash)
+    const slots = [
+      document.getElementById('slot-0'),
+      document.getElementById('slot-1'),
+      document.getElementById('slot-2')
+    ];
+
+    let prevSlot = 0; // Page - 1 (left: -100vw)
+    let currSlot = 1; // Page (center: 0)
+    let nextSlot = 2; // Page + 1 (right: +100vw)
+
+    async function populateSlot(slotIndex, pageNum) {
+      const el = slots[slotIndex];
+      el.dataset.page = String(pageNum);
+      if (pageNum < 1 || pageNum > TOTAL_PAGES) {
+        el.innerHTML = '';
+        return;
+      }
+      loadPageFont(pageNum);
+      const data = await getPageData(pageNum);
+      if (el.dataset.page === String(pageNum)) {
+        el.innerHTML = renderPageHTML(pageNum, data);
+      }
+    }
+
+    function setSlotTransform(slotIndex, tx) {
+      slots[slotIndex].style.transform = 'translate3d(' + tx + ', 0, 0)';
+    }
+
+    function setSlotTransition(slotIndex, trans) {
+      slots[slotIndex].style.transition = trans;
+    }
+
+    // Gesture Tracking State
+    let isTracking = false;
+    let isHorizontal = null;
+    let isAnimating = false;
     let startX = 0;
+    let startY = 0;
     let currentDeltaX = 0;
-    let isSwiping = false;
+    let lastX = 0;
+    let lastTime = 0;
+    let velocityX = 0;
 
     const viewport = document.getElementById('mushaf-viewport');
 
-    viewport.addEventListener('touchstart', (e) => {
-      if (e.touches.length !== 1) return;
-      startX = e.touches[0].clientX;
+    function onPointerStart(x, y) {
+      if (isAnimating) return;
+      isTracking = true;
+      isHorizontal = null;
+      startX = x;
+      startY = y;
+      lastX = x;
+      lastTime = Date.now();
+      velocityX = 0;
       currentDeltaX = 0;
-      isSwiping = true;
 
-      document.querySelectorAll('.mushaf-page').forEach(el => {
-        el.style.transition = 'none';
+      // Disable transitions on all slots for immediate, lag-free 60fps tracking
+      slots.forEach(s => {
+        s.style.transition = 'none';
       });
+    }
+
+    function onPointerMove(x, y, e) {
+      if (!isTracking || isAnimating) return;
+
+      const diffX = x - startX;
+      const diffY = y - startY;
+
+      if (isHorizontal === null) {
+        if (Math.abs(diffX) > 6 || Math.abs(diffY) > 6) {
+          isHorizontal = Math.abs(diffX) > Math.abs(diffY);
+        }
+      }
+
+      if (!isHorizontal) return;
+      if (e && e.cancelable) e.preventDefault();
+
+      let dx = diffX;
+
+      // Rubber-band resistance at boundaries
+      if ((currentPage === 1 && dx > 0) || (currentPage === TOTAL_PAGES && dx < 0)) {
+        dx *= 0.28;
+      }
+
+      currentDeltaX = dx;
+
+      // Velocity calculation for flick response
+      const now = Date.now();
+      const dt = now - lastTime;
+      if (dt > 10) {
+        velocityX = (x - lastX) / dt;
+        lastX = x;
+        lastTime = now;
+      }
+
+      const W = window.innerWidth;
+      setSlotTransform(currSlot, dx + 'px');
+      if (currentPage < TOTAL_PAGES) {
+        setSlotTransform(nextSlot, (dx + W) + 'px');
+      }
+      if (currentPage > 1) {
+        setSlotTransform(prevSlot, (dx - W) + 'px');
+      }
+    }
+
+    function onPointerEnd() {
+      if (!isTracking || isAnimating) return;
+      isTracking = false;
+      if (!isHorizontal) return;
+
+      const W = window.innerWidth;
+      const threshold = W * 0.18;
+
+      // Right-to-Left swipe (dx < -threshold or flick velocity < -0.32) -> NEXT PAGE
+      const canGoNext = currentPage < TOTAL_PAGES;
+      const shouldGoNext = canGoNext && (currentDeltaX < -threshold || velocityX < -0.32);
+
+      // Left-to-Right swipe (dx > threshold or flick velocity > 0.32) -> PREVIOUS PAGE
+      const canGoPrev = currentPage > 1;
+      const shouldGoPrev = canGoPrev && (currentDeltaX > threshold || velocityX > 0.32);
+
+      if (shouldGoNext) {
+        animateToNext();
+      } else if (shouldGoPrev) {
+        animateToPrev();
+      } else {
+        snapBack();
+      }
+    }
+
+    const DURATION = 240;
+    const EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+    function animateToNext() {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      const trans = 'transform ' + DURATION + 'ms ' + EASING;
+      setSlotTransition(currSlot, trans);
+      setSlotTransition(nextSlot, trans);
+
+      setSlotTransform(currSlot, '-100vw');
+      setSlotTransform(nextSlot, '0');
+
+      setTimeout(() => {
+        currentPage++;
+
+        // Rotate slot pointers
+        const oldPrev = prevSlot;
+        prevSlot = currSlot;
+        currSlot = nextSlot; // Current page in view — UNTOUCHED!
+        nextSlot = oldPrev;  // Recycled offscreen slot
+
+        // Reposition recycled slot off-screen to the right (+100vw) without transition
+        setSlotTransition(nextSlot, 'none');
+        setSlotTransform(nextSlot, '100vw');
+        slots[nextSlot].innerHTML = '';
+
+        // Populate upcoming page in the background
+        if (currentPage < TOTAL_PAGES) {
+          populateSlot(nextSlot, currentPage + 1);
+        }
+
+        // Preload upcoming fonts
+        loadPageFont(currentPage);
+        if (currentPage < TOTAL_PAGES) loadPageFont(currentPage + 1);
+        if (currentPage + 1 < TOTAL_PAGES) loadPageFont(currentPage + 2);
+
+        isAnimating = false;
+        notifyPageChange(currentPage);
+      }, DURATION);
+    }
+
+    function animateToPrev() {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      const trans = 'transform ' + DURATION + 'ms ' + EASING;
+      setSlotTransition(currSlot, trans);
+      setSlotTransition(prevSlot, trans);
+
+      setSlotTransform(currSlot, '100vw');
+      setSlotTransform(prevSlot, '0');
+
+      setTimeout(() => {
+        currentPage--;
+
+        // Rotate slot pointers
+        const oldNext = nextSlot;
+        nextSlot = currSlot;
+        currSlot = prevSlot; // Current page in view — UNTOUCHED!
+        prevSlot = oldNext;  // Recycled offscreen slot
+
+        // Reposition recycled slot off-screen to the left (-100vw) without transition
+        setSlotTransition(prevSlot, 'none');
+        setSlotTransform(prevSlot, '-100vw');
+        slots[prevSlot].innerHTML = '';
+
+        // Populate upcoming previous page in the background
+        if (currentPage > 1) {
+          populateSlot(prevSlot, currentPage - 1);
+        }
+
+        // Preload upcoming fonts
+        loadPageFont(currentPage);
+        if (currentPage > 1) loadPageFont(currentPage - 1);
+
+        isAnimating = false;
+        notifyPageChange(currentPage);
+      }, DURATION);
+    }
+
+    function snapBack() {
+      const trans = 'transform 200ms ' + EASING;
+      setSlotTransition(currSlot, trans);
+      if (currentPage < TOTAL_PAGES) setSlotTransition(nextSlot, trans);
+      if (currentPage > 1) setSlotTransition(prevSlot, trans);
+
+      setSlotTransform(currSlot, '0');
+      if (currentPage < TOTAL_PAGES) setSlotTransform(nextSlot, '100vw');
+      if (currentPage > 1) setSlotTransform(prevSlot, '-100vw');
+    }
+
+    // Touch Event Listeners (Mobile devices)
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        onPointerStart(e.touches[0].clientX, e.touches[0].clientY);
+      }
     }, { passive: true });
 
     viewport.addEventListener('touchmove', (e) => {
-      if (!isSwiping) return;
-      currentDeltaX = e.touches[0].clientX - startX;
-
-      const currEl = document.getElementById('page-slot-curr');
-      const prevEl = document.getElementById('page-slot-prev');
-      const nextEl = document.getElementById('page-slot-next');
-
-      currEl.style.transform = 'translateX(' + currentDeltaX + 'px)';
-      if (prevEl) prevEl.style.transform = 'translateX(' + (currentDeltaX + window.innerWidth) + 'px)';
-      if (nextEl) nextEl.style.transform = 'translateX(' + (currentDeltaX - window.innerWidth) + 'px)';
-    }, { passive: true });
+      if (e.touches.length === 1) {
+        onPointerMove(e.touches[0].clientX, e.touches[0].clientY, e);
+      }
+    }, { passive: false });
 
     viewport.addEventListener('touchend', () => {
-      if (!isSwiping) return;
-      isSwiping = false;
+      onPointerEnd();
+    }, { passive: true });
 
-      const threshold = window.innerWidth * 0.18; // 18% drag triggers page change
+    viewport.addEventListener('touchcancel', () => {
+      onPointerEnd();
+    }, { passive: true });
 
-      const currEl = document.getElementById('page-slot-curr');
-      const prevEl = document.getElementById('page-slot-prev');
-      const nextEl = document.getElementById('page-slot-next');
-
-      [prevEl, currEl, nextEl].forEach(el => {
-        if (el) el.style.transition = 'transform 0.28s cubic-bezier(0.25, 1, 0.5, 1)';
-      });
-
-      // Swipe Right-to-Left (currentDeltaX < -threshold) -> NEXT PAGE
-      if (currentDeltaX < -threshold && currentPage < TOTAL_PAGES) {
-        currEl.style.transform = 'translateX(-100vw)';
-        nextEl.style.transform = 'translateX(0)';
-        setTimeout(() => {
-          currentPage++;
-          currEl.style.transition = 'none';
-          nextEl.style.transition = 'none';
-          currEl.style.transform = 'translateX(0)';
-          nextEl.style.transform = 'translateX(-100vw)';
-          updatePageSlots();
-        }, 280);
-      }
-      // Swipe Left-to-Right (currentDeltaX > threshold) -> PREVIOUS PAGE
-      else if (currentDeltaX > threshold && currentPage > 1) {
-        currEl.style.transform = 'translateX(100vw)';
-        prevEl.style.transform = 'translateX(0)';
-        setTimeout(() => {
-          currentPage--;
-          currEl.style.transition = 'none';
-          prevEl.style.transition = 'none';
-          currEl.style.transform = 'translateX(0)';
-          prevEl.style.transform = 'translateX(100vw)';
-          updatePageSlots();
-        }, 280);
-      }
-      // Snap back to current page
-      else {
-        currEl.style.transform = 'translateX(0)';
-        if (prevEl) prevEl.style.transform = 'translateX(100vw)';
-        if (nextEl) nextEl.style.transform = 'translateX(-100vw)';
-      }
-    });
-
-    // Also support mouse dragging on web browser preview
+    // Mouse Event Listeners (Web / Desktop browser testing)
     let isMouseDown = false;
     viewport.addEventListener('mousedown', (e) => {
       isMouseDown = true;
-      startX = e.clientX;
-      currentDeltaX = 0;
-      document.querySelectorAll('.mushaf-page').forEach(el => el.style.transition = 'none');
+      onPointerStart(e.clientX, e.clientY);
     });
+
     window.addEventListener('mousemove', (e) => {
-      if (!isMouseDown) return;
-      currentDeltaX = e.clientX - startX;
-      const currEl = document.getElementById('page-slot-curr');
-      const prevEl = document.getElementById('page-slot-prev');
-      const nextEl = document.getElementById('page-slot-next');
-      currEl.style.transform = 'translateX(' + currentDeltaX + 'px)';
-      if (prevEl) prevEl.style.transform = 'translateX(' + (currentDeltaX + window.innerWidth) + 'px)';
-      if (nextEl) nextEl.style.transform = 'translateX(' + (currentDeltaX - window.innerWidth) + 'px)';
+      if (isMouseDown) {
+        onPointerMove(e.clientX, e.clientY, e);
+      }
     });
+
     window.addEventListener('mouseup', () => {
-      if (!isMouseDown) return;
-      isMouseDown = false;
-      const threshold = window.innerWidth * 0.18;
-      const currEl = document.getElementById('page-slot-curr');
-      const prevEl = document.getElementById('page-slot-prev');
-      const nextEl = document.getElementById('page-slot-next');
-      [prevEl, currEl, nextEl].forEach(el => {
-        if (el) el.style.transition = 'transform 0.28s cubic-bezier(0.25, 1, 0.5, 1)';
-      });
-      if (currentDeltaX < -threshold && currentPage < TOTAL_PAGES) {
-        currEl.style.transform = 'translateX(-100vw)';
-        nextEl.style.transform = 'translateX(0)';
-        setTimeout(() => {
-          currentPage++;
-          currEl.style.transition = 'none';
-          nextEl.style.transition = 'none';
-          currEl.style.transform = 'translateX(0)';
-          nextEl.style.transform = 'translateX(-100vw)';
-          updatePageSlots();
-        }, 280);
-      } else if (currentDeltaX > threshold && currentPage > 1) {
-        currEl.style.transform = 'translateX(100vw)';
-        prevEl.style.transform = 'translateX(0)';
-        setTimeout(() => {
-          currentPage--;
-          currEl.style.transition = 'none';
-          prevEl.style.transition = 'none';
-          currEl.style.transform = 'translateX(0)';
-          prevEl.style.transform = 'translateX(100vw)';
-          updatePageSlots();
-        }, 280);
-      } else {
-        currEl.style.transform = 'translateX(0)';
-        if (prevEl) prevEl.style.transform = 'translateX(100vw)';
-        if (nextEl) nextEl.style.transform = 'translateX(-100vw)';
+      if (isMouseDown) {
+        isMouseDown = false;
+        onPointerEnd();
       }
     });
 
-    // Support Arrow keys navigation on PC/Web
+    // Keyboard Arrow Keys (Left = Next, Right = Prev in Arabic RTL)
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft') {
-        if (currentPage < TOTAL_PAGES) {
-          currentPage++;
-          updatePageSlots();
-        }
-      } else if (e.key === 'ArrowRight') {
-        if (currentPage > 1) {
-          currentPage--;
-          updatePageSlots();
-        }
+      if (isAnimating) return;
+      if (e.key === 'ArrowLeft' && currentPage < TOTAL_PAGES) {
+        animateToNext();
+      } else if (e.key === 'ArrowRight' && currentPage > 1) {
+        animateToPrev();
       }
     });
 
-    // Initialize first render immediately
-    updatePageSlots();
+    // Initial Layout Setup
+    function init() {
+      setSlotTransition(prevSlot, 'none');
+      setSlotTransition(currSlot, 'none');
+      setSlotTransition(nextSlot, 'none');
+
+      setSlotTransform(prevSlot, '-100vw');
+      setSlotTransform(currSlot, '0');
+      setSlotTransform(nextSlot, '100vw');
+
+      loadPageFont(currentPage);
+      populateSlot(currSlot, currentPage);
+
+      if (currentPage < TOTAL_PAGES) {
+        loadPageFont(currentPage + 1);
+        populateSlot(nextSlot, currentPage + 1);
+      }
+      if (currentPage > 1) {
+        loadPageFont(currentPage - 1);
+        populateSlot(prevSlot, currentPage - 1);
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>
