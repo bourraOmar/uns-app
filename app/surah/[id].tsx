@@ -695,11 +695,13 @@ const styles = StyleSheet.create({
 
   /* SURAH TEXT AREA */
   surahBannerFrameContainer: {
-    width: "100%",
-    height: 64,
+    width: "82%",
+    maxWidth: 340,
+    height: 52,
+    alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+    marginBottom: 10,
     position: "relative",
   },
   surahBannerFrameBg: {
@@ -709,9 +711,9 @@ const styles = StyleSheet.create({
   },
   surahBannerFrameText: {
     fontFamily: "Cairo_700Bold",
-    fontSize: 19,
+    fontSize: 16,
     letterSpacing: 0.5,
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
     textAlign: "center",
   },
   surahTextCard: {

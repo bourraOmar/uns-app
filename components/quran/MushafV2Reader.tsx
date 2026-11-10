@@ -193,13 +193,13 @@ export default function MushafV2Reader({
 
   .surah-banner-wrap {
     position: relative;
-    width: 92%;
-    max-width: 440px;
-    height: 74px;
+    width: 82%;
+    max-width: 340px;
+    height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 4px auto 14px auto;
+    margin: 2px auto 10px auto;
   }
 
   .surah-frame-img {
@@ -218,20 +218,20 @@ export default function MushafV2Reader({
     z-index: 2;
     color: ${isDark ? '#ffffff' : '#065f46'};
     font-family: 'Cairo', sans-serif;
-    font-size: 21px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.5px;
     text-shadow: ${isDark ? '0 1px 4px rgba(0,0,0,0.8)' : 'none'};
-    padding: 0 45px;
+    padding: 0 35px;
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
   }
 
   .basmalah-row {
-    font-size: clamp(22px, 6vw, 30px);
+    font-size: clamp(19px, 5.1vw, 25px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     text-align: center;
     font-family: 'p1';
     line-height: 1.8;
@@ -257,9 +257,9 @@ export default function MushafV2Reader({
     line-height: 1.8;
   }
 
-  /* Verses on Opening Pages (1 & 2): Large, bold font matching reference screenshot */
+  /* Verses on Opening Pages (1 & 2): Same font size as other pages */
   .opening-word-glyph {
-    font-size: clamp(25px, 6.8vw, 33px);
+    font-size: clamp(19px, 5.1vw, 25px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
