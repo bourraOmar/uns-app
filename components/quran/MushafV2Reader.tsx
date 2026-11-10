@@ -277,9 +277,9 @@ export default function MushafV2Reader({
 </head>
 <body>
   <div id="mushaf-viewport">
-    <div id="slot-0" class="mushaf-page" style="transform: translate3d(-100vw, 0, 0);"></div>
+    <div id="slot-0" class="mushaf-page" style="transform: translate3d(100vw, 0, 0);"></div>
     <div id="slot-1" class="mushaf-page" style="transform: translate3d(0, 0, 0);"></div>
-    <div id="slot-2" class="mushaf-page" style="transform: translate3d(100vw, 0, 0);"></div>
+    <div id="slot-2" class="mushaf-page" style="transform: translate3d(-100vw, 0, 0);"></div>
   </div>
 
   <script>
@@ -510,7 +510,7 @@ export default function MushafV2Reader({
       let dx = diffX;
 
       // Rubber-band resistance at boundaries (Page 1 can't go back, Page 604 can't go next)
-      if ((currentPage === 1 && dx > 0) || (currentPage === TOTAL_PAGES && dx < 0)) {
+      if ((currentPage === 1 && dx < 0) || (currentPage === TOTAL_PAGES && dx > 0)) {
         dx *= 0.25;
       }
 
@@ -527,11 +527,13 @@ export default function MushafV2Reader({
 
       const W = window.innerWidth;
       setSlotTransform(currSlot, dx + 'px');
+      // Left-to-Right swipe moves Next Page in from the Left (-W)
       if (currentPage < TOTAL_PAGES) {
-        setSlotTransform(nextSlot, (dx + W) + 'px');
+        setSlotTransform(nextSlot, (dx - W) + 'px');
       }
+      // Right-to-Left swipe moves Previous Page in from the Right (+W)
       if (currentPage > 1) {
-        setSlotTransform(prevSlot, (dx - W) + 'px');
+        setSlotTransform(prevSlot, (dx + W) + 'px');
       }
     }
 
@@ -545,13 +547,13 @@ export default function MushafV2Reader({
 
       // Tap-to-turn support (tapping side edges of screen turns page)
       if (absDiffX < 10 && totalTime < 350) {
-        // Tap on left 25% of screen -> Next Page
-        if (startX < W * 0.25 && currentPage < TOTAL_PAGES) {
+        // Tap on right 25% of screen -> Next Page
+        if (startX > W * 0.75 && currentPage < TOTAL_PAGES) {
           animateToNext();
           return;
         }
-        // Tap on right 25% of screen -> Previous Page
-        if (startX > W * 0.75 && currentPage > 1) {
+        // Tap on left 25% of screen -> Previous Page
+        if (startX < W * 0.25 && currentPage > 1) {
           animateToPrev();
           return;
         }
@@ -562,20 +564,18 @@ export default function MushafV2Reader({
         return;
       }
 
-      // Responsive threshold: only 10% of screen width (~35-40px) or quick flick velocity
+      // Responsive threshold: 10% of screen width (~35-40px) or quick flick velocity
       const threshold = W * 0.10;
-      const isFlickNext = currentDeltaX < -threshold || velocityX < -0.22;
-      const isFlickPrev = currentDeltaX > threshold || velocityX > 0.22;
+      // Left-to-Right swipe (dx > 0: thumb moves left to right) -> NEXT PAGE
+      const isFlickNext = currentDeltaX > threshold || velocityX > 0.22;
+      // Right-to-Left swipe (dx < 0: thumb moves right to left) -> PREVIOUS PAGE
+      const isFlickPrev = currentDeltaX < -threshold || velocityX < -0.22;
 
-      // Right-to-Left swipe (dx < 0: moving thumb from right to left) -> NEXT PAGE
       if (isFlickNext && currentPage < TOTAL_PAGES) {
         animateToNext();
-      }
-      // Left-to-Right swipe (dx > 0: moving thumb from left to right) -> PREVIOUS PAGE
-      else if (isFlickPrev && currentPage > 1) {
+      } else if (isFlickPrev && currentPage > 1) {
         animateToPrev();
-      }
-      else {
+      } else {
         snapBack();
       }
     }
@@ -591,7 +591,8 @@ export default function MushafV2Reader({
       setSlotTransition(currSlot, trans);
       setSlotTransition(nextSlot, trans);
 
-      setSlotTransform(currSlot, '-100vw');
+      // Current page slides out to the right (+100vw), next page slides in from the left (0)
+      setSlotTransform(currSlot, '100vw');
       setSlotTransform(nextSlot, '0');
 
       setTimeout(() => {
@@ -599,13 +600,13 @@ export default function MushafV2Reader({
 
         // Rotate slot pointers
         const oldPrev = prevSlot;
-        prevSlot = currSlot;
+        prevSlot = currSlot; // Old curr is now prev at +100vw
         currSlot = nextSlot; // Current page in view — UNTOUCHED!
         nextSlot = oldPrev;  // Recycled offscreen slot
 
-        // Reposition recycled slot off-screen to the right (+100vw) without transition
+        // Reposition recycled slot off-screen to the left (-100vw) without transition
         setSlotTransition(nextSlot, 'none');
-        setSlotTransform(nextSlot, '100vw');
+        setSlotTransform(nextSlot, '-100vw');
         slots[nextSlot].innerHTML = '';
 
         // Populate upcoming page in the background
@@ -631,7 +632,8 @@ export default function MushafV2Reader({
       setSlotTransition(currSlot, trans);
       setSlotTransition(prevSlot, trans);
 
-      setSlotTransform(currSlot, '100vw');
+      // Current page slides out to the left (-100vw), previous page slides in from the right (0)
+      setSlotTransform(currSlot, '-100vw');
       setSlotTransform(prevSlot, '0');
 
       setTimeout(() => {
@@ -639,13 +641,13 @@ export default function MushafV2Reader({
 
         // Rotate slot pointers
         const oldNext = nextSlot;
-        nextSlot = currSlot;
+        nextSlot = currSlot; // Old curr is now next at -100vw
         currSlot = prevSlot; // Current page in view — UNTOUCHED!
         prevSlot = oldNext;  // Recycled offscreen slot
 
-        // Reposition recycled slot off-screen to the left (-100vw) without transition
+        // Reposition recycled slot off-screen to the right (+100vw) without transition
         setSlotTransition(prevSlot, 'none');
-        setSlotTransform(prevSlot, '-100vw');
+        setSlotTransform(prevSlot, '100vw');
         slots[prevSlot].innerHTML = '';
 
         // Populate upcoming previous page in the background
@@ -669,8 +671,8 @@ export default function MushafV2Reader({
       if (currentPage > 1) setSlotTransition(prevSlot, trans);
 
       setSlotTransform(currSlot, '0');
-      if (currentPage < TOTAL_PAGES) setSlotTransform(nextSlot, '100vw');
-      if (currentPage > 1) setSlotTransform(prevSlot, '-100vw');
+      if (currentPage < TOTAL_PAGES) setSlotTransform(nextSlot, '-100vw');
+      if (currentPage > 1) setSlotTransform(prevSlot, '100vw');
     }
 
     // Touch Event Listeners on window (Mobile devices)
@@ -714,12 +716,12 @@ export default function MushafV2Reader({
       }
     });
 
-    // Keyboard Arrow Keys (Left = Next, Right = Prev in Arabic RTL)
+    // Keyboard Arrow Keys (Right = Next, Left = Prev)
     window.addEventListener('keydown', (e) => {
       if (isAnimating) return;
-      if (e.key === 'ArrowLeft' && currentPage < TOTAL_PAGES) {
+      if (e.key === 'ArrowRight' && currentPage < TOTAL_PAGES) {
         animateToNext();
-      } else if (e.key === 'ArrowRight' && currentPage > 1) {
+      } else if (e.key === 'ArrowLeft' && currentPage > 1) {
         animateToPrev();
       }
     });
@@ -730,9 +732,9 @@ export default function MushafV2Reader({
       setSlotTransition(currSlot, 'none');
       setSlotTransition(nextSlot, 'none');
 
-      setSlotTransform(prevSlot, '-100vw');
+      setSlotTransform(prevSlot, '100vw');
       setSlotTransform(currSlot, '0');
-      setSlotTransform(nextSlot, '100vw');
+      setSlotTransform(nextSlot, '-100vw');
 
       loadPageFont(currentPage);
       populateSlot(currSlot, currentPage);
