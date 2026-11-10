@@ -24,7 +24,7 @@ import { SurahItem } from '@/context/AudioPlayerContext';
 import AyahFrame from '@/components/quran/AyahFrame';
 import VerseFloatingMenu from '@/components/quran/VerseFloatingMenu';
 import TafsirModal from '@/components/quran/TafsirModal';
-import MushafImagePager from '@/components/quran/MushafImagePager';
+import MushafV2Reader from '@/components/quran/MushafV2Reader';
 import IslamicBackground from '@/components/IslamicBackground';
 import { useAppTheme } from '@/context/ThemeContext';
 
@@ -280,11 +280,10 @@ export default function SurahReaderScreen() {
   if (viewMode === 'mushaf') {
     const startPage = page ? parseInt(page, 10) : currentSurah.start_page;
     return (
-      <MushafImagePager
+      <MushafV2Reader
         initialPage={startPage}
         isDark={isDark}
         onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/quran' as any))}
-        onToggleTextMode={() => setViewMode('text')}
       />
     );
   }
