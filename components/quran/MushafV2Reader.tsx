@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getPageMetadata } from '@/services/mushafPageService';
+import surahsData from '@/data/surahs.json';
+import { SURAH_FRAME_BASE64 } from '@/constants/surahFrameBase64';
 
 interface MushafV2ReaderProps {
   initialPage: number;
@@ -85,10 +87,22 @@ export default function MushafV2Reader({
   );
 
   const pageMetaJson = useMemo(() => {
-    const map: Record<number, { s: string; j: number; h: number }> = {};
+    const startPages: Record<number, string[]> = {};
+    (surahsData as any[]).forEach((s) => {
+      const p = s.start_page;
+      if (!startPages[p]) startPages[p] = [];
+      startPages[p].push(s.name_arabic);
+    });
+
+    const map: Record<number, { s: string; j: number; h: number; starts?: string[] }> = {};
     for (let p = 1; p <= 604; p++) {
       const m = getPageMetadata(p);
-      map[p] = { s: m.surahName, j: m.juz, h: m.hizb };
+      map[p] = {
+        s: m.surahName,
+        j: m.juz,
+        h: m.hizb,
+        starts: startPages[p] || undefined,
+      };
     }
     return JSON.stringify(map);
   }, []);
@@ -177,27 +191,41 @@ export default function MushafV2Reader({
     margin: auto 0;
   }
 
-  .surah-banner {
+  .surah-banner-wrap {
+    position: relative;
     width: 92%;
-    background: ${
-      isDark
-        ? 'linear-gradient(135deg, rgba(46, 77, 59, 0.95), rgba(35, 60, 45, 0.98))'
-        : 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.2))'
-    };
-    border: 1.5px solid ${isDark ? 'rgba(125, 170, 140, 0.45)' : 'rgba(16, 185, 129, 0.35)'};
-    border-radius: 14px;
-    padding: 8px 16px;
-    text-align: center;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    max-width: 440px;
+    height: 74px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 4px auto 14px auto;
   }
 
-  .surah-title {
-    font-family: 'Cairo', sans-serif;
-    font-size: 20px;
-    font-weight: 700;
+  .surah-frame-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    ${isDark ? 'filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45));' : 'filter: invert(1) brightness(0.25) sepia(1) hue-rotate(110deg) saturate(3);'}
+  }
+
+  .surah-title-text {
+    position: relative;
+    z-index: 2;
     color: ${isDark ? '#ffffff' : '#065f46'};
+    font-family: 'Cairo', sans-serif;
+    font-size: 21px;
+    font-weight: 700;
     letter-spacing: 0.5px;
+    text-shadow: ${isDark ? '0 1px 4px rgba(0,0,0,0.8)' : 'none'};
+    padding: 0 45px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
   }
 
   .basmalah-row {
@@ -288,6 +316,7 @@ export default function MushafV2Reader({
     const loadedFonts = new Set();
     const pageDataCache = {};
     const PAGE_METAS = ${pageMetaJson};
+    const SURAH_FRAME_SRC = "${SURAH_FRAME_BASE64}";
 
     // Arabic Numerals Helper
     const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
@@ -388,11 +417,15 @@ export default function MushafV2Reader({
 
       let contentHTML = '';
 
-      if (p === 1) {
-        contentHTML += '<div class="surah-banner"><div class="surah-title">سورة الفاتحة</div></div>';
-      } else if (p === 2) {
-        contentHTML += '<div class="surah-banner"><div class="surah-title">سورة البقرة</div></div>';
-        contentHTML += '<div class="basmalah-row"><span class="word-glyph">ﱁ ﱂ ﱃ ﱄ</span></div>';
+      // Render Surah Ornamental Frame if this page starts any Surah
+      const chapterStarts = meta.starts || [];
+      if (chapterStarts.length > 0) {
+        chapterStarts.forEach(sName => {
+          contentHTML += '<div class="surah-banner-wrap"><img class="surah-frame-img" src="' + SURAH_FRAME_SRC + '" alt="frame" /><span class="surah-title-text">سورة ' + sName + '</span></div>';
+          if (sName !== 'الفاتحة' && sName !== 'التوبة') {
+            contentHTML += '<div class="basmalah-row"><span class="word-glyph">ﱁ ﱂ ﱃ ﱄ</span></div>';
+          }
+        });
       }
 
       contentHTML += '<div class="mushaf-lines" style="font-family: \\'p' + p + '\\';">';

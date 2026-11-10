@@ -380,6 +380,21 @@ export default function SurahReaderScreen() {
                   isSmallSurah && { marginBottom: 0 },
                 ]}
               >
+                {/* Surah Ornamental Header Banner */}
+                <View style={styles.surahBannerFrameContainer}>
+                  <Image
+                    source={require("@/assets/images/surah_banner_frame.png")}
+                    style={[
+                      styles.surahBannerFrameBg,
+                      { tintColor: isDark ? "#ffffff" : "#065f46" },
+                    ]}
+                    resizeMode="contain"
+                  />
+                  <Text style={[styles.surahBannerFrameText, { color: isDark ? "#ffffff" : "#065f46" }]}>
+                    سورة {currentSurah.name_arabic}
+                  </Text>
+                </View>
+
                 {/* Basmalah for Surahs other than Al-Fatiha and At-Tawbah */}
                 {showBasmalahHeader && (
                   <View style={styles.basmalahWrapper}>
@@ -679,6 +694,26 @@ const styles = StyleSheet.create({
   },
 
   /* SURAH TEXT AREA */
+  surahBannerFrameContainer: {
+    width: "100%",
+    height: 64,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+    position: "relative",
+  },
+  surahBannerFrameBg: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+  },
+  surahBannerFrameText: {
+    fontFamily: "Cairo_700Bold",
+    fontSize: 19,
+    letterSpacing: 0.5,
+    paddingHorizontal: 40,
+    textAlign: "center",
+  },
   surahTextCard: {
     backgroundColor: '#1e293b',
     marginHorizontal: 16,
