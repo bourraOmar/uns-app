@@ -248,9 +248,9 @@ export function RubberFluid({
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
     return (
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <iframe
-          srcDoc={htmlContent}
-          style={{
+        {React.createElement('iframe', {
+          srcDoc: htmlContent,
+          style: {
             width: '100%',
             height: '100%',
             border: 'none',
@@ -258,9 +258,9 @@ export function RubberFluid({
             inset: 0,
             pointerEvents: 'none',
             backgroundColor: '#070b13',
-          }}
-          title="RubberFluidBackground"
-        />
+          },
+          title: 'RubberFluidBackground',
+        })}
         <View style={styles.vignetteOverlay} pointerEvents="none" />
       </View>
     );

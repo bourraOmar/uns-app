@@ -229,12 +229,12 @@ export default function MushafV2Reader({
   }
 
   .basmalah-row {
-    font-size: clamp(19px, 5.1vw, 25px);
+    font-size: 20px;
     color: ${isDark ? '#ffffff' : '#1e293b'};
     margin-bottom: 12px;
     text-align: center;
     font-family: 'p1';
-    line-height: 1.8;
+    line-height: 1.95;
   }
 
   .mushaf-lines {
@@ -243,7 +243,7 @@ export default function MushafV2Reader({
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 6px;
   }
 
   .mushaf-line {
@@ -254,19 +254,19 @@ export default function MushafV2Reader({
     align-items: center;
     justify-content: center;
     gap: 4px;
-    line-height: 1.8;
+    line-height: 1.95;
   }
 
-  /* Verses on Opening Pages (1 & 2): Same font size as other pages */
+  /* Verses on Opening Pages (1 & 2): 20px */
   .opening-word-glyph {
-    font-size: clamp(19px, 5.1vw, 25px);
+    font-size: 20px;
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
 
-  /* Verses on Standard 15-line Pages (3 to 604) */
+  /* Verses on Standard 15-line Pages (3 to 604): 20px */
   .standard-word-glyph {
-    font-size: clamp(19px, 5.1vw, 25px);
+    font-size: 20px;
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
