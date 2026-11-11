@@ -191,6 +191,12 @@ export default function MushafV2Reader({
     margin: auto 0;
   }
 
+  /* Fixed vertical placement for Opening Pages (Pages 1 & 2) exactly matching Mushaf spread */
+  .content-container.opening-container {
+    justify-content: flex-start;
+    padding-top: clamp(45px, 9vh, 75px);
+  }
+
   .surah-banner-wrap {
     position: relative;
     width: 85%;
@@ -208,7 +214,17 @@ export default function MushafV2Reader({
     width: 88%;
     max-width: 360px;
     height: 60px;
-    margin: 4px auto 16px auto;
+    margin: 0 auto;
+  }
+
+  /* On Page 1 (Al-Fatihah), balance space to align Line 1 identically with Page 2 */
+  .surah-banner-wrap.page-1-banner {
+    margin-bottom: clamp(48px, 7.5vh, 64px);
+  }
+
+  /* On Page 2 (Al-Baqarah), tight margin before Basmalah row */
+  .surah-banner-wrap.page-2-banner {
+    margin-bottom: 8px;
   }
 
   .surah-frame-img {
@@ -240,10 +256,10 @@ export default function MushafV2Reader({
   .basmalah-row {
     font-size: clamp(22px, 5.6vw, 25px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
-    margin-bottom: 14px;
+    margin-bottom: clamp(14px, 2.2vh, 18px);
     text-align: center;
     font-family: 'p1';
-    line-height: 1.95;
+    line-height: 1.85;
   }
 
   .mushaf-lines {
@@ -254,9 +270,9 @@ export default function MushafV2Reader({
     justify-content: center;
   }
 
-  /* Moderately compact line gap for Opening Pages (Pages 1 & 2) close to standard pages */
+  /* Elegantly proportioned line gap for Opening Pages (Pages 1 & 2) matching authentic Mushaf layout */
   .mushaf-lines.opening-lines {
-    gap: clamp(8px, 1.5vh, 12px);
+    gap: clamp(10px, 1.8vh, 14px);
   }
 
   /* Compact line gap for Standard 15-line Pages (Pages 3 to 604) */
@@ -440,7 +456,11 @@ export default function MushafV2Reader({
       const meta = PAGE_METAS[p] || { s: '', j: 1, h: 1 };
       const isOpening = p === 1 || p === 2;
       const glyphClass = isOpening ? 'opening-word-glyph' : 'standard-word-glyph';
-      const bannerWrapClass = isOpening ? 'surah-banner-wrap opening-banner' : 'surah-banner-wrap';
+      let bannerWrapClass = 'surah-banner-wrap';
+      if (p === 1) bannerWrapClass = 'surah-banner-wrap opening-banner page-1-banner';
+      else if (p === 2) bannerWrapClass = 'surah-banner-wrap opening-banner page-2-banner';
+      else if (isOpening) bannerWrapClass = 'surah-banner-wrap opening-banner';
+
       const linesContainerClass = isOpening ? 'mushaf-lines opening-lines' : 'mushaf-lines standard-lines';
       const lineClass = isOpening ? 'mushaf-line opening-line' : 'mushaf-line standard-line';
 
@@ -474,7 +494,7 @@ export default function MushafV2Reader({
           <span>سورة \${meta.s || ''}</span>
           <span>الجزء \${toArabic(meta.j || 1)} &nbsp; حزب \${toArabic(meta.h || 1)}</span>
         </div>
-        <div class="content-container">
+        <div class="content-container \${isOpening ? 'opening-container' : 'standard-container'}">
           \${contentHTML}
         </div>
         <div class="page-footer">
