@@ -234,7 +234,7 @@ export default function MushafV2Reader({
     margin-bottom: 12px;
     text-align: center;
     font-family: 'p1';
-    line-height: 1.95;
+    line-height: 1.85;
   }
 
   .mushaf-lines {
@@ -243,7 +243,7 @@ export default function MushafV2Reader({
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 5px;
   }
 
   .mushaf-line {
@@ -254,7 +254,7 @@ export default function MushafV2Reader({
     align-items: center;
     justify-content: center;
     gap: 4px;
-    line-height: 1.95;
+    line-height: 1.85;
   }
 
   /* Verses on Opening Pages (1 & 2): 20px */
