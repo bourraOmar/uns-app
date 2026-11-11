@@ -501,8 +501,8 @@ export default function MushafV2Reader({
     <div id="slot-2" class="mushaf-page" style="transform: translate3d(-100vw, 0, 0);"></div>
   </div>
 
-  <!-- Floating Controls Overlay (Visible by default, toggled on screen tap) -->
-  <div id="controls-overlay" class="floating-controls-overlay">
+  <!-- Floating Controls Overlay (Hidden by default, shows on tap and hides on tap) -->
+  <div id="controls-overlay" class="floating-controls-overlay hidden">
     <!-- Top-Left Close Button -->
     <button class="floating-ctrl-btn btn-top-left" onclick="onCloseClick(event)" aria-label="Close">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -695,7 +695,7 @@ export default function MushafV2Reader({
       }
     }
 
-    let controlsVisible = true;
+    let controlsVisible = false;
 
     function toggleControls() {
       controlsVisible = !controlsVisible;
@@ -869,19 +869,8 @@ export default function MushafV2Reader({
       const totalTime = Date.now() - startTime;
       const absDiffX = Math.abs(currentDeltaX);
 
-      // Tap detection (tapping screen toggles controls or turns page at outer edges)
-      if (absDiffX < 12 && totalTime < 450) {
-        // Tap on outer right 18% of screen -> Next Page
-        if (startX > W * 0.82 && currentPage < TOTAL_PAGES) {
-          animateToNext();
-          return;
-        }
-        // Tap on outer left 18% of screen -> Previous Page
-        if (startX < W * 0.18 && currentPage > 1) {
-          animateToPrev();
-          return;
-        }
-        // Tap anywhere else on the screen -> Toggle Controls!
+      // Tap detection: clicking or tapping anywhere on the screen shows / hides the floating controls
+      if (absDiffX < 15 && totalTime < 500) {
         toggleControls();
         return;
       }
