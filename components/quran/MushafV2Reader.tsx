@@ -191,10 +191,10 @@ export default function MushafV2Reader({
     margin: auto 0;
   }
 
-  /* Fixed vertical placement for Opening Pages (Pages 1 & 2) exactly matching Mushaf spread */
+  /* Balanced vertical placement for Opening Pages (Pages 1 & 2) exactly matching Image 1 layout */
   .content-container.opening-container {
-    justify-content: flex-start;
-    padding-top: clamp(45px, 9vh, 75px);
+    justify-content: center;
+    margin: auto 0;
   }
 
   .surah-banner-wrap {
@@ -217,9 +217,9 @@ export default function MushafV2Reader({
     margin: 0 auto;
   }
 
-  /* On Page 1 (Al-Fatihah), balance space to align Line 1 identically with Page 2 */
+  /* On Page 1 (Al-Fatihah), graceful space between Surah Banner and Line 1 */
   .surah-banner-wrap.page-1-banner {
-    margin-bottom: clamp(48px, 7.5vh, 64px);
+    margin-bottom: clamp(20px, 3.2vh, 30px);
   }
 
   /* On Page 2 (Al-Baqarah), tight margin before Basmalah row */
@@ -235,7 +235,7 @@ export default function MushafV2Reader({
     height: 100%;
     object-fit: fill;
     pointer-events: none;
-    ${isDark ? 'filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45));' : 'filter: invert(1) brightness(0.25) sepia(1) hue-rotate(110deg) saturate(3);'}
+    ${isDark ? 'filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45)) sepia(1) hue-rotate(85deg) saturate(2.8) brightness(0.95);' : 'filter: invert(1) brightness(0.25) sepia(1) hue-rotate(110deg) saturate(3);'}
   }
 
   .surah-title-text {
@@ -272,7 +272,7 @@ export default function MushafV2Reader({
 
   /* Elegantly proportioned line gap for Opening Pages (Pages 1 & 2) matching authentic Mushaf layout */
   .mushaf-lines.opening-lines {
-    gap: clamp(10px, 1.8vh, 14px);
+    gap: clamp(7px, 1.4vh, 11px);
   }
 
   /* Compact line gap for Standard 15-line Pages (Pages 3 to 604) */
@@ -290,8 +290,8 @@ export default function MushafV2Reader({
   }
 
   .mushaf-line.opening-line {
-    gap: 5px;
-    line-height: 1.95;
+    gap: 4px;
+    line-height: 1.85;
   }
 
   .mushaf-line.standard-line {
@@ -299,9 +299,9 @@ export default function MushafV2Reader({
     line-height: 1.85;
   }
 
-  /* Verses on Opening Pages (1 & 2): Large and beautifully spaced */
+  /* Verses on Opening Pages (1 & 2): Authentic proportion matching standard pages */
   .opening-word-glyph {
-    font-size: clamp(24px, 6.4vw, 28px);
+    font-size: clamp(21px, 5.2vw, 24px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
@@ -366,17 +366,17 @@ export default function MushafV2Reader({
       return String(num).replace(/[0-9]/g, d => arabicDigits[+d]);
     }
 
-    // Pre-bundled King Fahd Complex V2 Glyphs for Page 1 & Page 2 (Instant 0ms render!)
+    // Pre-bundled King Fahd Complex V2 Glyphs for Page 1 & Page 2 (Exact official 15-line layout)
     pageDataCache[1] = {
       isOpening: true,
       lines: {
-        2: ["ﱁ","ﱂ","ﱃ","ﱄ"],
-        3: ["ﱅ","ﱆ","ﱇ","ﱈ"],
-        4: ["ﱉ","ﱊ","ﱋ","ﱌ","ﱍ"],
-        5: ["ﱎ","ﱏ","ﱐ","ﱑ"],
-        6: ["ﱒ","ﱓ","ﱔ","ﱕ"],
-        7: ["ﱖ","ﱗ","ﱘ","ﱙ"],
-        8: ["ﱚ","ﱛ","ﱜ","ﱝ"]
+        2: ["ﱁ", "ﱂ", "ﱃ", "ﱄ", "ﱅ"],
+        3: ["ﱆ", "ﱇ", "ﱈ", "ﱉ", "ﱊ"],
+        4: ["ﱋ", "ﱌ", "ﱍ", "ﱎ", "ﱏ", "ﱐ", "ﱑ"],
+        5: ["ﱒ", "ﱓ", "ﱔ", "ﱕ", "ﱖ", "ﱗ"],
+        6: ["ﱘ", "ﱙ", "ﱚ", "ﱛ", "ﱜ", "ﱝ"],
+        7: ["ﱞ", "ﱟ", "ﱠ", "ﱡ"],
+        8: ["ﱢ", "ﱣ", "ﱤ"]
       }
     };
 
@@ -384,12 +384,12 @@ export default function MushafV2Reader({
       isOpening: true,
       hasBasmalah: true,
       lines: {
-        3: ["ﱁ","ﱂ","ﱃ","ﱄ","ﱅ","ﱆﱇ","ﱈﱉ","ﱊ"],
-        4: ["ﱋ","ﱌ","ﱍ","ﱎ","ﱏ","ﱐ","ﱑ"],
-        5: ["ﱒ","ﱓ","ﱔ","ﱕ","ﱖ","ﱗ","ﱘ"],
-        6: ["ﱙ","ﱚ","ﱛ","ﱜ","ﱝ","ﱞ"],
-        7: ["ﱟ","ﱠ","ﱡ","ﱢ","ﱣ","ﱤ"],
-        8: ["ﱥ","ﱦ","ﱧ","ﱨ"]
+        3: ["ﱁ", "ﱂ", "ﱃ", "ﱄ", "ﱅ", "ﱆﱇ", "ﱈﱉ", "ﱊ"],
+        4: ["ﱋ", "ﱌ", "ﱍ", "ﱎ", "ﱏ", "ﱐ", "ﱑ"],
+        5: ["ﱒ", "ﱓ", "ﱔ", "ﱕ", "ﱖ", "ﱗ", "ﱘ", "ﱙ"],
+        6: ["ﱚ", "ﱛ", "ﱜ", "ﱝ", "ﱞ", "ﱟ", "ﱠ", "ﱡ", "ﱢ"],
+        7: ["ﱣ", "ﱤ", "ﱥ", "ﱦ", "ﱧﱨ", "ﱩ"],
+        8: ["ﱪ", "ﱫ", "ﱬ"]
       }
     };
 
@@ -407,6 +407,9 @@ export default function MushafV2Reader({
 
     // Fetch Page Data from Quran Foundation API V4 with Local Storage Cache
     async function getPageData(p) {
+      if (p === 1 || p === 2) {
+        return pageDataCache[p];
+      }
       if (pageDataCache[p]) return pageDataCache[p];
       const cached = localStorage.getItem('qpc_v2_p' + p);
       if (cached) {
