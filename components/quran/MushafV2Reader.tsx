@@ -41,6 +41,24 @@ export default function MushafV2Reader({
   const [showControls, setShowControls] = useState<boolean>(false);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState<boolean>(false);
 
+  const currentPageRef = useRef(currentPage);
+  currentPageRef.current = currentPage;
+
+  const audioPlayerRef = useRef(audioPlayer);
+  audioPlayerRef.current = audioPlayer;
+
+  // Sync Audio Playing state to WebView HTML
+  useEffect(() => {
+    const isPlaying = audioPlayer.isPlaying;
+    const js = `
+      if (window.setAudioPlaying) {
+        window.setAudioPlaying(${isPlaying});
+      }
+      true;
+    `;
+    webViewRef.current?.injectJavaScript(js);
+  }, [audioPlayer.isPlaying]);
+
   // Handle hardware Android back button
   useEffect(() => {
     const backAction = () => {
@@ -72,15 +90,28 @@ export default function MushafV2Reader({
               };
               AsyncStorage.setItem('@uns_last_read', JSON.stringify(item)).catch(() => {});
             }
-          } else if (data && data.type === 'toggleOverlay') {
-            setShowControls(prev => !prev);
+          } else if (data && data.type === 'controlAction') {
+            if (data.action === 'close') {
+              onBack();
+            } else if (data.action === 'search') {
+              router.push('/(tabs)/quran');
+            } else if (data.action === 'play') {
+              const meta = getPageMetadata(currentPageRef.current);
+              if (audioPlayerRef.current.isPlaying) {
+                audioPlayerRef.current.togglePlay();
+              } else {
+                audioPlayerRef.current.playSurah(meta.surahId);
+              }
+            } else if (data.action === 'settings') {
+              setIsSettingsModalVisible(true);
+            }
           }
         } catch {}
       };
       window.addEventListener('message', handleWebMessage);
       return () => window.removeEventListener('message', handleWebMessage);
     }
-  }, []);
+  }, [onBack, router]);
 
   // Handle messages from WebView on Mobile (iOS / Android)
   const handleMessage = useCallback(
@@ -103,13 +134,26 @@ export default function MushafV2Reader({
             };
             await AsyncStorage.setItem('@uns_last_read', JSON.stringify(item));
           }
-        } else if (data.type === 'toggleOverlay') {
+        } else if (data.type === 'controlAction') {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          setShowControls(prev => !prev);
+          if (data.action === 'close') {
+            onBack();
+          } else if (data.action === 'search') {
+            router.push('/(tabs)/quran');
+          } else if (data.action === 'play') {
+            const meta = getPageMetadata(currentPageRef.current);
+            if (audioPlayerRef.current.isPlaying) {
+              await audioPlayerRef.current.togglePlay();
+            } else {
+              await audioPlayerRef.current.playSurah(meta.surahId);
+            }
+          } else if (data.action === 'settings') {
+            setIsSettingsModalVisible(true);
+          }
         }
       } catch {}
     },
-    []
+    [onBack, router]
   );
 
   const pageMetaJson = useMemo(() => {
@@ -369,6 +413,85 @@ export default function MushafV2Reader({
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
+
+  /* Interactive Floating Controls Overlay (Toggleable on screen tap) */
+  .floating-controls-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    transition: opacity 0.25s cubic-bezier(0.2, 0, 0, 1), transform 0.25s cubic-bezier(0.2, 0, 0, 1), visibility 0.25s;
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+  }
+
+  .floating-controls-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none !important;
+    transform: scale(0.96);
+  }
+
+  .floating-controls-overlay.hidden .floating-ctrl-btn {
+    pointer-events: none !important;
+  }
+
+  .floating-ctrl-btn {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: ${isDark ? 'rgba(38, 48, 42, 0.85)' : 'rgba(255, 255, 255, 0.92)'};
+    border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.12)'};
+    color: ${isDark ? '#ffffff' : '#1e293b'};
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s ease, background 0.15s ease;
+    outline: none;
+    padding: 0;
+  }
+
+  .floating-ctrl-btn:active {
+    transform: scale(0.92);
+    background: ${isDark ? 'rgba(48, 62, 54, 0.95)' : 'rgba(240, 240, 240, 0.98)'};
+  }
+
+  .btn-top-left {
+    position: fixed;
+    top: ${Math.max(insets.top, 16) + 12}px;
+    left: 20px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .btn-bottom-left {
+    position: fixed;
+    bottom: ${Math.max(insets.bottom, 16) + 16}px;
+    left: 20px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .group-bottom-right {
+    position: fixed;
+    bottom: ${Math.max(insets.bottom, 16) + 16}px;
+    right: 20px;
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .group-bottom-right .floating-ctrl-btn {
+    width: 48px;
+    height: 48px;
+  }
 </style>
 </head>
 <body>
@@ -376,6 +499,38 @@ export default function MushafV2Reader({
     <div id="slot-0" class="mushaf-page" style="transform: translate3d(100vw, 0, 0);"></div>
     <div id="slot-1" class="mushaf-page" style="transform: translate3d(0, 0, 0);"></div>
     <div id="slot-2" class="mushaf-page" style="transform: translate3d(-100vw, 0, 0);"></div>
+  </div>
+
+  <!-- Floating Controls Overlay (Visible by default, toggled on screen tap) -->
+  <div id="controls-overlay" class="floating-controls-overlay">
+    <!-- Top-Left Close Button -->
+    <button class="floating-ctrl-btn btn-top-left" onclick="onCloseClick(event)" aria-label="Close">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- Bottom-Left Search Button -->
+    <button class="floating-ctrl-btn btn-bottom-left" onclick="onSearchClick(event)" aria-label="Search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </button>
+
+    <!-- Bottom-Right Group: Play + AA -->
+    <div class="group-bottom-right">
+      <button class="floating-ctrl-btn" onclick="onPlayClick(event)" aria-label="Play Audio">
+        <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 2px;">
+          <polygon points="6 4 20 12 6 20 6 4"></polygon>
+        </svg>
+      </button>
+
+      <button class="floating-ctrl-btn" onclick="onSettingsClick(event)" aria-label="Font Settings">
+        <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0.5px;">AA</span>
+      </button>
+    </div>
   </div>
 
   <script>
@@ -540,15 +695,63 @@ export default function MushafV2Reader({
       }
     }
 
-    function notifyToggleOverlay() {
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'toggleOverlay' }));
-      } else if (window.parent && window.parent !== window) {
-        window.parent.postMessage(JSON.stringify({ type: 'toggleOverlay' }), '*');
-      } else {
-        window.postMessage(JSON.stringify({ type: 'toggleOverlay' }), '*');
+    let controlsVisible = true;
+
+    function toggleControls() {
+      controlsVisible = !controlsVisible;
+      const overlay = document.getElementById('controls-overlay');
+      if (overlay) {
+        if (controlsVisible) {
+          overlay.classList.remove('hidden');
+        } else {
+          overlay.classList.add('hidden');
+        }
       }
     }
+
+    function onCloseClick(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      notifyAction('close');
+    }
+
+    function onSearchClick(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      notifyAction('search');
+    }
+
+    function onPlayClick(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      notifyAction('play');
+    }
+
+    function onSettingsClick(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      notifyAction('settings');
+    }
+
+    function notifyAction(action) {
+      const msg = JSON.stringify({ type: 'controlAction', action: action });
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(msg);
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage(msg, '*');
+      } else {
+        window.postMessage(msg, '*');
+      }
+    }
+
+    window.setAudioPlaying = function(isPlaying) {
+      const icon = document.getElementById('play-icon');
+      if (icon) {
+        if (isPlaying) {
+          icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+          icon.style.marginLeft = '0px';
+        } else {
+          icon.innerHTML = '<polygon points="6 4 20 12 6 20 6 4"></polygon>';
+          icon.style.marginLeft = '2px';
+        }
+      }
+    };
 
     // 3-Slot Virtual Sliding Engine (Perpetual Carousel with 0ms Flash)
     const slots = [
@@ -667,7 +870,7 @@ export default function MushafV2Reader({
       const absDiffX = Math.abs(currentDeltaX);
 
       // Tap detection (tapping screen toggles controls or turns page at outer edges)
-      if (absDiffX < 10 && totalTime < 350) {
+      if (absDiffX < 12 && totalTime < 450) {
         // Tap on outer right 18% of screen -> Next Page
         if (startX > W * 0.82 && currentPage < TOTAL_PAGES) {
           animateToNext();
@@ -679,7 +882,7 @@ export default function MushafV2Reader({
           return;
         }
         // Tap anywhere else on the screen -> Toggle Controls!
-        notifyToggleOverlay();
+        toggleControls();
         return;
       }
 
@@ -801,6 +1004,9 @@ export default function MushafV2Reader({
 
     // Touch Event Listeners on window (Mobile devices)
     window.addEventListener('touchstart', (e) => {
+      if (e.target && e.target.closest && e.target.closest('.floating-ctrl-btn')) {
+        return;
+      }
       if (e.touches.length === 1) {
         onPointerStart(e.touches[0].clientX, e.touches[0].clientY);
       }
@@ -813,6 +1019,9 @@ export default function MushafV2Reader({
     }, { passive: false });
 
     window.addEventListener('touchend', (e) => {
+      if (e.target && e.target.closest && e.target.closest('.floating-ctrl-btn')) {
+        return;
+      }
       onPointerEnd(e);
     }, { passive: true });
 
@@ -823,6 +1032,9 @@ export default function MushafV2Reader({
     // Mouse Event Listeners on window (Web / Desktop browser testing)
     let isMouseDown = false;
     window.addEventListener('mousedown', (e) => {
+      if (e.target && e.target.closest && e.target.closest('.floating-ctrl-btn')) {
+        return;
+      }
       isMouseDown = true;
       onPointerStart(e.clientX, e.clientY);
     });
@@ -836,6 +1048,9 @@ export default function MushafV2Reader({
     window.addEventListener('mouseup', (e) => {
       if (isMouseDown) {
         isMouseDown = false;
+        if (e.target && e.target.closest && e.target.closest('.floating-ctrl-btn')) {
+          return;
+        }
         onPointerEnd(e);
       }
     });
@@ -881,166 +1096,66 @@ export default function MushafV2Reader({
 
   const currentMeta = useMemo(() => getPageMetadata(currentPage), [currentPage]);
 
-  const renderFloatingControls = () => {
-    if (!showControls) return null;
-
-    return (
-      <>
-        {/* Top-Left Close Button (Matching Screenshot) */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onBack();
-          }}
-          style={[
-            styles.floatingBtn,
-            styles.closeBtn,
-            {
-              top: Math.max(insets.top, 16) + 12,
-              backgroundColor: isDark ? 'rgba(38, 48, 42, 0.85)' : 'rgba(255, 255, 255, 0.92)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)',
-            },
-          ]}
-        >
-          <Ionicons name="close" size={24} color={isDark ? '#ffffff' : '#1e293b'} />
-        </TouchableOpacity>
-
-        {/* Bottom-Left Search Button (Matching Screenshot) */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push('/(tabs)/quran');
-          }}
-          style={[
-            styles.floatingBtn,
-            styles.searchBtn,
-            {
-              bottom: Math.max(insets.bottom, 16) + 16,
-              backgroundColor: isDark ? 'rgba(38, 48, 42, 0.85)' : 'rgba(255, 255, 255, 0.92)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)',
-            },
-          ]}
-        >
-          <Ionicons name="search" size={20} color={isDark ? '#ffffff' : '#1e293b'} />
-        </TouchableOpacity>
-
-        {/* Bottom-Right Action Buttons Group: Play + AA (Matching Screenshot) */}
+  const renderSettingsModal = () => (
+    <Modal
+      visible={isSettingsModalVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setIsSettingsModalVisible(false)}
+    >
+      <Pressable
+        style={styles.modalBackdrop}
+        onPress={() => setIsSettingsModalVisible(false)}
+      >
         <View
           style={[
-            styles.bottomRightGroup,
-            { bottom: Math.max(insets.bottom, 16) + 16 },
+            styles.modalCard,
+            {
+              backgroundColor: isDark ? '#1e2621' : '#ffffff',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+              paddingBottom: Math.max(insets.bottom, 16) + 16,
+            },
           ]}
+          onStartShouldSetResponder={() => true}
         >
-          {/* Audio Play/Pause Button */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={async () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              if (audioPlayer.isPlaying) {
-                await audioPlayer.togglePlay();
-              } else {
-                await audioPlayer.playSurah(currentMeta.surahId);
-              }
-            }}
-            style={[
-              styles.floatingBtn,
-              {
-                backgroundColor: isDark ? 'rgba(38, 48, 42, 0.85)' : 'rgba(255, 255, 255, 0.92)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)',
-              },
-            ]}
-          >
-            <Ionicons
-              name={audioPlayer.isPlaying ? 'pause' : 'play'}
-              size={20}
-              color={isDark ? '#ffffff' : '#1e293b'}
-              style={audioPlayer.isPlaying ? undefined : { marginLeft: 2 }}
-            />
-          </TouchableOpacity>
+          <View style={styles.modalDragHandle} />
+          <View style={styles.modalHeaderRow}>
+            <Text style={[styles.modalTitle, { color: isDark ? '#ffffff' : '#1e293b' }]}>
+              سورة {currentMeta.surahName} • صفحة {currentPage}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setIsSettingsModalVisible(false)}
+              style={styles.modalCloseBtn}
+            >
+              <Ionicons name="close" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
+            </TouchableOpacity>
+          </View>
 
-          {/* Reading / Display Settings Button (AA) */}
+          <View style={styles.modalInfoRow}>
+            <Text style={[styles.modalInfoText, { color: isDark ? '#cbd5e1' : '#475569' }]}>
+              الجزء {currentMeta.juz} • الحزب {currentMeta.hizb}
+            </Text>
+          </View>
+
           <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setIsSettingsModalVisible(true);
-            }}
             style={[
-              styles.floatingBtn,
-              {
-                backgroundColor: isDark ? 'rgba(38, 48, 42, 0.85)' : 'rgba(255, 255, 255, 0.92)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)',
-              },
+              styles.modalActionBtn,
+              { backgroundColor: isDark ? '#2d3b32' : '#f1f5f9' },
             ]}
+            onPress={() => {
+              setIsSettingsModalVisible(false);
+              audioPlayer.openPlayerModal();
+            }}
           >
-            <Text style={[styles.aaBtnText, { color: isDark ? '#ffffff' : '#1e293b' }]}>AA</Text>
+            <Ionicons name="headset-outline" size={20} color={isDark ? '#4ade80' : '#059669'} />
+            <Text style={[styles.modalActionBtnText, { color: isDark ? '#ffffff' : '#1e293b' }]}>
+              مشغل التلاوة الصوتية
+            </Text>
           </TouchableOpacity>
         </View>
-
-        {/* Reading Settings Modal */}
-        <Modal
-          visible={isSettingsModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setIsSettingsModalVisible(false)}
-        >
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={() => setIsSettingsModalVisible(false)}
-          >
-            <View
-              style={[
-                styles.modalCard,
-                {
-                  backgroundColor: isDark ? '#1e2621' : '#ffffff',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-                  paddingBottom: Math.max(insets.bottom, 16) + 16,
-                },
-              ]}
-              onStartShouldSetResponder={() => true}
-            >
-              <View style={styles.modalDragHandle} />
-              <View style={styles.modalHeaderRow}>
-                <Text style={[styles.modalTitle, { color: isDark ? '#ffffff' : '#1e293b' }]}>
-                  سورة {currentMeta.surahName} • صفحة {currentPage}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setIsSettingsModalVisible(false)}
-                  style={styles.modalCloseBtn}
-                >
-                  <Ionicons name="close" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.modalInfoRow}>
-                <Text style={[styles.modalInfoText, { color: isDark ? '#cbd5e1' : '#475569' }]}>
-                  الجزء {currentMeta.juz} • الحزب {currentMeta.hizb}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.modalActionBtn,
-                  { backgroundColor: isDark ? '#2d3b32' : '#f1f5f9' },
-                ]}
-                onPress={() => {
-                  setIsSettingsModalVisible(false);
-                  audioPlayer.openPlayerModal();
-                }}
-              >
-                <Ionicons name="headset-outline" size={20} color={isDark ? '#4ade80' : '#059669'} />
-                <Text style={[styles.modalActionBtnText, { color: isDark ? '#ffffff' : '#1e293b' }]}>
-                  مشغل التلاوة الصوتية
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Modal>
-      </>
-    );
-  };
+      </Pressable>
+    </Modal>
+  );
 
   // On Web / non-mobile (browser / emulator preview), render standard native iframe to avoid "WebView not supported" error
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
@@ -1056,7 +1171,7 @@ export default function MushafV2Reader({
           },
           title: 'Mushaf V2',
         })}
-        {renderFloatingControls()}
+        {renderSettingsModal()}
       </View>
     );
   }
@@ -1081,7 +1196,7 @@ export default function MushafV2Reader({
         showsVerticalScrollIndicator={false}
         style={styles.webView}
       />
-      {renderFloatingControls()}
+      {renderSettingsModal()}
     </View>
   );
 }
