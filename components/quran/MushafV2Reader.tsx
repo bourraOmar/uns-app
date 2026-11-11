@@ -208,7 +208,7 @@ export default function MushafV2Reader({
     width: 88%;
     max-width: 360px;
     height: 60px;
-    margin: 4px auto 18px auto;
+    margin: 4px auto 16px auto;
   }
 
   .surah-frame-img {
@@ -254,9 +254,9 @@ export default function MushafV2Reader({
     justify-content: center;
   }
 
-  /* Refined, slightly shorter line gap for Opening Pages (Pages 1 & 2) */
+  /* Moderately compact line gap for Opening Pages (Pages 1 & 2) close to standard pages */
   .mushaf-lines.opening-lines {
-    gap: clamp(9px, 1.6vh, 14px);
+    gap: clamp(8px, 1.5vh, 12px);
   }
 
   /* Compact line gap for Standard 15-line Pages (Pages 3 to 604) */
@@ -274,8 +274,8 @@ export default function MushafV2Reader({
   }
 
   .mushaf-line.opening-line {
-    gap: 6px;
-    line-height: 2.0;
+    gap: 5px;
+    line-height: 1.95;
   }
 
   .mushaf-line.standard-line {
@@ -283,9 +283,9 @@ export default function MushafV2Reader({
     line-height: 1.85;
   }
 
-  /* Verses on Opening Pages (1 & 2): Large and beautifully proportioned */
+  /* Verses on Opening Pages (1 & 2): Large and beautifully spaced */
   .opening-word-glyph {
-    font-size: clamp(23px, 6vw, 26px);
+    font-size: clamp(24px, 6.4vw, 28px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
