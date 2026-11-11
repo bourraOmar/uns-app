@@ -174,10 +174,10 @@ export default function MushafV2Reader({
     justify-content: space-between;
     align-items: center;
     font-family: 'Cairo', sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
-    color: ${isDark ? '#94a3b8' : '#64748b'};
-    padding: 0 10px;
+    color: ${isDark ? '#e2e8f0' : '#475569'};
+    padding: 0 12px;
   }
 
   .content-container {
@@ -193,13 +193,22 @@ export default function MushafV2Reader({
 
   .surah-banner-wrap {
     position: relative;
-    width: 82%;
-    max-width: 340px;
-    height: 56px;
+    width: 85%;
+    max-width: 350px;
+    height: 58px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 2px auto 10px auto;
+    margin: 2px auto 14px auto;
+    background: ${isDark ? 'rgba(38, 64, 48, 0.45)' : 'rgba(16, 185, 129, 0.08)'};
+    border-radius: 8px;
+  }
+
+  .surah-banner-wrap.opening-banner {
+    width: 88%;
+    max-width: 360px;
+    height: 60px;
+    margin: 4px auto 26px auto;
   }
 
   .surah-frame-img {
@@ -218,7 +227,7 @@ export default function MushafV2Reader({
     z-index: 2;
     color: ${isDark ? '#ffffff' : '#065f46'};
     font-family: 'Cairo', sans-serif;
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 700;
     letter-spacing: 0.5px;
     text-shadow: ${isDark ? '0 1px 4px rgba(0,0,0,0.8)' : 'none'};
@@ -229,12 +238,12 @@ export default function MushafV2Reader({
   }
 
   .basmalah-row {
-    font-size: 20px;
+    font-size: clamp(22px, 5.6vw, 25px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     text-align: center;
     font-family: 'p1';
-    line-height: 1.85;
+    line-height: 1.95;
   }
 
   .mushaf-lines {
@@ -243,7 +252,16 @@ export default function MushafV2Reader({
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+  }
+
+  /* Spacious line gap for Opening Pages (Pages 1 & 2) matching authentic Mushaf layout */
+  .mushaf-lines.opening-lines {
+    gap: clamp(14px, 2.6vh, 22px);
+  }
+
+  /* Compact line gap for Standard 15-line Pages (Pages 3 to 604) */
+  .mushaf-lines.standard-lines {
+    gap: clamp(6px, 1.3vh, 10px);
   }
 
   .mushaf-line {
@@ -253,20 +271,28 @@ export default function MushafV2Reader({
     white-space: nowrap;
     align-items: center;
     justify-content: center;
+  }
+
+  .mushaf-line.opening-line {
+    gap: 6px;
+    line-height: 2.2;
+  }
+
+  .mushaf-line.standard-line {
     gap: 4px;
     line-height: 1.85;
   }
 
-  /* Verses on Opening Pages (1 & 2): 20px */
+  /* Verses on Opening Pages (1 & 2): Large and beautifully spaced */
   .opening-word-glyph {
-    font-size: 20px;
+    font-size: clamp(24px, 6.4vw, 28px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
 
-  /* Verses on Standard 15-line Pages (3 to 604): 20px */
+  /* Verses on Standard 15-line Pages (3 to 604) */
   .standard-word-glyph {
-    font-size: 20px;
+    font-size: clamp(21px, 5.2vw, 24px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
@@ -279,14 +305,14 @@ export default function MushafV2Reader({
   }
 
   .page-badge {
-    padding: 3px 18px;
-    border-radius: 16px;
-    background: ${isDark ? 'rgba(45, 68, 55, 0.45)' : 'rgba(15, 142, 93, 0.1)'};
-    border: 1px solid ${isDark ? 'rgba(74, 104, 84, 0.5)' : 'rgba(15, 142, 93, 0.25)'};
+    padding: 4px 20px;
+    border-radius: 20px;
+    background: ${isDark ? 'rgba(42, 60, 50, 0.7)' : 'rgba(15, 142, 93, 0.1)'};
+    border: 1px solid ${isDark ? 'rgba(84, 120, 98, 0.6)' : 'rgba(15, 142, 93, 0.25)'};
     font-family: 'Cairo', sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
-    color: ${isDark ? '#f8fafc' : '#0f8e5d'};
+    color: ${isDark ? '#f1f5f9' : '#0f8e5d'};
   }
 
   .spinner {
@@ -414,6 +440,9 @@ export default function MushafV2Reader({
       const meta = PAGE_METAS[p] || { s: '', j: 1, h: 1 };
       const isOpening = p === 1 || p === 2;
       const glyphClass = isOpening ? 'opening-word-glyph' : 'standard-word-glyph';
+      const bannerWrapClass = isOpening ? 'surah-banner-wrap opening-banner' : 'surah-banner-wrap';
+      const linesContainerClass = isOpening ? 'mushaf-lines opening-lines' : 'mushaf-lines standard-lines';
+      const lineClass = isOpening ? 'mushaf-line opening-line' : 'mushaf-line standard-line';
 
       let contentHTML = '';
 
@@ -421,18 +450,18 @@ export default function MushafV2Reader({
       const chapterStarts = meta.starts || [];
       if (chapterStarts.length > 0) {
         chapterStarts.forEach(sName => {
-          contentHTML += '<div class="surah-banner-wrap"><img class="surah-frame-img" src="' + SURAH_FRAME_SRC + '" alt="frame" /><span class="surah-title-text">سورة ' + sName + '</span></div>';
+          contentHTML += '<div class="' + bannerWrapClass + '"><img class="surah-frame-img" src="' + SURAH_FRAME_SRC + '" alt="frame" /><span class="surah-title-text">سورة ' + sName + '</span></div>';
           if (sName !== 'الفاتحة' && sName !== 'التوبة') {
             contentHTML += '<div class="basmalah-row"><span class="word-glyph">ﱁ ﱂ ﱃ ﱄ</span></div>';
           }
         });
       }
 
-      contentHTML += '<div class="mushaf-lines" style="font-family: \\'p' + p + '\\';">';
+      contentHTML += '<div class="' + linesContainerClass + '" style="font-family: \\'p' + p + '\\';">';
       const lineKeys = Object.keys(data.lines).sort((a,b) => +a - +b);
       lineKeys.forEach(lNum => {
         const words = data.lines[lNum] || [];
-        contentHTML += '<div class="mushaf-line">';
+        contentHTML += '<div class="' + lineClass + '">';
         words.forEach(w => {
           contentHTML += '<span class="' + glyphClass + '">' + w + '</span>';
         });
