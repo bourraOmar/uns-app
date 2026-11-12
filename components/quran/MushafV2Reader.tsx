@@ -157,23 +157,23 @@ export default function MushafV2Reader({
   );
 
   const pageMetaJson = useMemo(() => {
-    const startPages: Record<number, string[]> = {};
-    (surahsData as any[]).forEach((s) => {
-      const p = s.start_page;
-      if (!startPages[p]) startPages[p] = [];
-      startPages[p].push(s.name_arabic);
-    });
-
-    const map: Record<number, { s: string; j: number; h: number; starts?: string[] }> = {};
+    const map: Record<number, { s: string; j: number; h: number }> = {};
     for (let p = 1; p <= 604; p++) {
       const m = getPageMetadata(p);
       map[p] = {
         s: m.surahName,
         j: m.juz,
         h: m.hizb,
-        starts: startPages[p] || undefined,
       };
     }
+    return JSON.stringify(map);
+  }, []);
+
+  const surahNamesJson = useMemo(() => {
+    const map: Record<number, string> = {};
+    (surahsData as any[]).forEach((s) => {
+      map[s.id] = s.name_arabic;
+    });
     return JSON.stringify(map);
   }, []);
 
@@ -269,13 +269,13 @@ export default function MushafV2Reader({
 
   .surah-banner-wrap {
     position: relative;
-    width: 85%;
-    max-width: 350px;
-    height: 58px;
+    width: 88%;
+    max-width: 340px;
+    height: clamp(38px, 6vh, 46px);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 2px auto 14px auto;
+    margin: 4px auto 2px auto;
     background: ${isDark ? 'rgba(38, 64, 48, 0.45)' : 'rgba(16, 185, 129, 0.08)'};
     border-radius: 8px;
   }
@@ -289,12 +289,12 @@ export default function MushafV2Reader({
 
   /* On Page 1 (Al-Fatihah), graceful space between Surah Banner and Line 1 */
   .surah-banner-wrap.page-1-banner {
-    margin-bottom: clamp(20px, 3.2vh, 30px);
+    margin-bottom: clamp(18px, 3vh, 26px);
   }
 
   /* On Page 2 (Al-Baqarah), tight margin before Basmalah row */
   .surah-banner-wrap.page-2-banner {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .surah-frame-img {
@@ -313,7 +313,7 @@ export default function MushafV2Reader({
     z-index: 2;
     color: ${isDark ? '#ffffff' : '#065f46'};
     font-family: 'Cairo', sans-serif;
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.5px;
     text-shadow: ${isDark ? '0 1px 4px rgba(0,0,0,0.8)' : 'none'};
@@ -324,12 +324,12 @@ export default function MushafV2Reader({
   }
 
   .basmalah-row {
-    font-size: clamp(22px, 5.6vw, 25px);
+    font-size: clamp(19px, 5vw, 23px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
-    margin-bottom: clamp(14px, 2.2vh, 18px);
+    margin: 2px auto 6px auto;
     text-align: center;
-    font-family: 'p1';
-    line-height: 1.85;
+    font-family: 'p1' !important;
+    line-height: 1.5;
   }
 
   .mushaf-lines {
@@ -539,6 +539,7 @@ export default function MushafV2Reader({
     const loadedFonts = new Set();
     const pageDataCache = {};
     const PAGE_METAS = ${pageMetaJson};
+    const SURAH_NAMES = ${surahNamesJson};
     const SURAH_FRAME_SRC = "${SURAH_FRAME_BASE64}";
 
     // Arabic Numerals Helper
@@ -550,6 +551,9 @@ export default function MushafV2Reader({
     // Pre-bundled King Fahd Complex V2 Glyphs for Page 1 & Page 2 (Exact official 15-line layout)
     pageDataCache[1] = {
       isOpening: true,
+      surahStarts: {
+        2: { id: 1, name: 'الفاتحة', hasBasmalah: false }
+      },
       lines: {
         2: ["ﱁ", "ﱂ", "ﱃ", "ﱄ", "ﱅ"],
         3: ["ﱆ", "ﱇ", "ﱈ", "ﱉ", "ﱊ"],
@@ -563,7 +567,9 @@ export default function MushafV2Reader({
 
     pageDataCache[2] = {
       isOpening: true,
-      hasBasmalah: true,
+      surahStarts: {
+        3: { id: 2, name: 'البقرة', hasBasmalah: true }
+      },
       lines: {
         3: ["ﱁ", "ﱂ", "ﱃ", "ﱄ", "ﱅ", "ﱆﱇ", "ﱈﱉ", "ﱊ"],
         4: ["ﱋ", "ﱌ", "ﱍ", "ﱎ", "ﱏ", "ﱐ", "ﱑ"],
@@ -592,7 +598,8 @@ export default function MushafV2Reader({
         return pageDataCache[p];
       }
       if (pageDataCache[p]) return pageDataCache[p];
-      const cached = localStorage.getItem('qpc_v2_p' + p);
+      const cacheKey = 'qpc_v4_p' + p;
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -605,14 +612,32 @@ export default function MushafV2Reader({
         const res = await fetch('https://api.quran.com/api/v4/verses/by_page/' + p + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
         const json = await res.json();
         const verses = json.verses || [];
-        const lines = {};
+        
+        // Identify which surahs start on this page and at which line
+        const surahStarts = {};
+        verses.forEach(v => {
+          if (v.verse_number === 1) {
+            const sId = parseInt(v.verse_key.split(':')[0], 10);
+            const w1 = v.words ? v.words.find(w => w.page_number === p) : null;
+            if (w1) {
+              surahStarts[w1.line_number] = {
+                id: sId,
+                name: SURAH_NAMES[sId] || '',
+                hasBasmalah: sId !== 1 && sId !== 9
+              };
+            }
+          }
+        });
 
+        const lines = {};
         verses.forEach(v => {
           if (v.words && v.words.length > 0) {
             v.words.forEach(w => {
-              const l = w.line_number;
-              if (!lines[l]) lines[l] = [];
-              if (w.code_v2) lines[l].push(w.code_v2);
+              if (w.page_number === p) {
+                const l = w.line_number;
+                if (!lines[l]) lines[l] = [];
+                if (w.code_v2) lines[l].push(w.code_v2);
+              }
             });
           }
         });
@@ -620,11 +645,12 @@ export default function MushafV2Reader({
         const data = {
           page: p,
           isOpening: p === 1 || p === 2,
-          lines: lines
+          lines: lines,
+          surahStarts: surahStarts
         };
 
         pageDataCache[p] = data;
-        try { localStorage.setItem('qpc_v2_p' + p, JSON.stringify(data)); } catch {}
+        try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
         return data;
       } catch (e) {
         return null;
@@ -649,21 +675,21 @@ export default function MushafV2Reader({
       const lineClass = isOpening ? 'mushaf-line opening-line' : 'mushaf-line standard-line';
 
       let contentHTML = '';
-
-      // Render Surah Ornamental Frame if this page starts any Surah
-      const chapterStarts = meta.starts || [];
-      if (chapterStarts.length > 0) {
-        chapterStarts.forEach(sName => {
-          contentHTML += '<div class="' + bannerWrapClass + '"><img class="surah-frame-img" src="' + SURAH_FRAME_SRC + '" alt="frame" /><span class="surah-title-text">سورة ' + sName + '</span></div>';
-          if (sName !== 'الفاتحة' && sName !== 'التوبة') {
-            contentHTML += '<div class="basmalah-row"><span class="word-glyph">ﱁ ﱂ ﱃ ﱄ</span></div>';
-          }
-        });
-      }
-
       contentHTML += '<div class="' + linesContainerClass + '" style="font-family: \\'p' + p + '\\';">';
+
       const lineKeys = Object.keys(data.lines).sort((a,b) => +a - +b);
       lineKeys.forEach(lNum => {
+        const lineNum = Number(lNum);
+
+        // If a Surah starts at this line, render its ornamental frame and Basmalah immediately before it!
+        if (data.surahStarts && data.surahStarts[lineNum]) {
+          const sInfo = data.surahStarts[lineNum];
+          contentHTML += '<div class="' + bannerWrapClass + '"><img class="surah-frame-img" src="' + SURAH_FRAME_SRC + '" alt="frame" /><span class="surah-title-text">سورة ' + sInfo.name + '</span></div>';
+          if (sInfo.hasBasmalah) {
+            contentHTML += '<div class="basmalah-row"><span class="word-glyph" style="font-family: \\'p1\\' !important;">ﱁ ﱂ ﱃ ﱄ</span></div>';
+          }
+        }
+
         const words = data.lines[lNum] || [];
         contentHTML += '<div class="' + lineClass + '">';
         words.forEach(w => {
