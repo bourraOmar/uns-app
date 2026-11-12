@@ -622,7 +622,7 @@ export default function MushafV2Reader({
         return pageDataCache[p];
       }
       if (pageDataCache[p]) return pageDataCache[p];
-      const cacheKey = 'qpc_v7_p' + p;
+      const cacheKey = 'qpc_v8_p' + p;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
@@ -684,6 +684,16 @@ export default function MushafV2Reader({
             const prevRes = await fetch('https://api.quran.com/api/v4/verses/by_page/' + (p - 1) + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
             const prevJson = await prevRes.json();
             ingestVerses(prevJson.verses);
+          } catch {}
+        }
+
+        // Check if the page has ending boundary words stored in p + 1 in the API
+        const PAGES_LEAKING_TO_NEXT = [120, 121, 122, 531, 532, 533, 564, 567, 569, 575, 583];
+        if (p < TOTAL_PAGES && PAGES_LEAKING_TO_NEXT.indexOf(p) !== -1) {
+          try {
+            const nextRes = await fetch('https://api.quran.com/api/v4/verses/by_page/' + (p + 1) + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
+            const nextJson = await nextRes.json();
+            ingestVerses(nextJson.verses);
           } catch {}
         }
 
