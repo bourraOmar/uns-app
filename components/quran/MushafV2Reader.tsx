@@ -622,7 +622,7 @@ export default function MushafV2Reader({
         return pageDataCache[p];
       }
       if (pageDataCache[p]) return pageDataCache[p];
-      const cacheKey = 'qpc_v6_p' + p;
+      const cacheKey = 'qpc_v7_p' + p;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
@@ -637,45 +637,25 @@ export default function MushafV2Reader({
         const json = await res.json();
         const verses = json.verses || [];
         
-        // Identify which surahs start on this page and at which line
         const surahStarts = {};
-        verses.forEach(v => {
-          if (v.verse_number === 1) {
-            const sId = parseInt(v.verse_key.split(':')[0], 10);
-            const w1 = v.words ? v.words.find(w => w.page_number === p) : null;
-            if (w1) {
-              surahStarts[w1.line_number] = {
-                id: sId,
-                name: SURAH_NAMES[sId] || '',
-                hasBasmalah: sId !== 1 && sId !== 9
-              };
-            }
-          }
-        });
-
         const lineWords = {};
-        verses.forEach(v => {
-          if (v.words && v.words.length > 0) {
-            v.words.forEach(w => {
-              if (w.page_number === p) {
-                const l = w.line_number;
-                if (!lineWords[l]) lineWords[l] = [];
-                if (w.code_v2 && !lineWords[l].some(item => item.id === w.id)) {
-                  lineWords[l].push({ id: w.id, code: w.code_v2 });
-                }
-              }
-            });
-          }
-        });
 
-        // If line 1 is missing and no Surah starts at lines 1, 2, or 3, fetch boundary verses from previous page
-        const hasTopSurah = surahStarts[1] || surahStarts[2] || surahStarts[3];
-        if (p > 1 && !lineWords[1] && !hasTopSurah) {
-          try {
-            const prevRes = await fetch('https://api.quran.com/api/v4/verses/by_page/' + (p - 1) + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
-            const prevJson = await prevRes.json();
-            (prevJson.verses || []).forEach(v => {
-              (v.words || []).forEach(w => {
+        function ingestVerses(vList) {
+          (vList || []).forEach(v => {
+            if (v.verse_number === 1) {
+              const sId = parseInt(v.verse_key.split(':')[0], 10);
+              const w1 = v.words ? v.words.find(w => w.page_number === p) : null;
+              if (w1) {
+                surahStarts[w1.line_number] = {
+                  id: sId,
+                  name: SURAH_NAMES[sId] || '',
+                  hasBasmalah: sId !== 1 && sId !== 9
+                };
+              }
+            }
+
+            if (v.words && v.words.length > 0) {
+              v.words.forEach(w => {
                 if (w.page_number === p) {
                   const l = w.line_number;
                   if (!lineWords[l]) lineWords[l] = [];
@@ -684,7 +664,26 @@ export default function MushafV2Reader({
                   }
                 }
               });
-            });
+            }
+          });
+        }
+
+        ingestVerses(verses);
+
+        // Check if the page is missing its beginning words (which sit in p - 1 in the API)
+        // In King Fahad Complex V2, the very first word of every page has glyph code starting with 'ﱁ'
+        let hasStartGlyph = false;
+        Object.values(lineWords).forEach(arr => {
+          if (arr.some(w => w.code && w.code.startsWith('ﱁ'))) {
+            hasStartGlyph = true;
+          }
+        });
+
+        if (p > 1 && !hasStartGlyph) {
+          try {
+            const prevRes = await fetch('https://api.quran.com/api/v4/verses/by_page/' + (p - 1) + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
+            const prevJson = await prevRes.json();
+            ingestVerses(prevJson.verses);
           } catch {}
         }
 
