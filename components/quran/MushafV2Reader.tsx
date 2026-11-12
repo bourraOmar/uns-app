@@ -598,7 +598,7 @@ export default function MushafV2Reader({
         return pageDataCache[p];
       }
       if (pageDataCache[p]) return pageDataCache[p];
-      const cacheKey = 'qpc_v4_p' + p;
+      const cacheKey = 'qpc_v5_p' + p;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
@@ -629,17 +629,45 @@ export default function MushafV2Reader({
           }
         });
 
-        const lines = {};
+        const lineWords = {};
         verses.forEach(v => {
           if (v.words && v.words.length > 0) {
             v.words.forEach(w => {
               if (w.page_number === p) {
                 const l = w.line_number;
-                if (!lines[l]) lines[l] = [];
-                if (w.code_v2) lines[l].push(w.code_v2);
+                if (!lineWords[l]) lineWords[l] = [];
+                if (w.code_v2 && !lineWords[l].some(item => item.id === w.id)) {
+                  lineWords[l].push({ id: w.id, code: w.code_v2 });
+                }
               }
             });
           }
+        });
+
+        // If line 1 is missing and no Surah starts at lines 1, 2, or 3, fetch boundary verses from previous page
+        const hasTopSurah = surahStarts[1] || surahStarts[2] || surahStarts[3];
+        if (p > 1 && !lineWords[1] && !hasTopSurah) {
+          try {
+            const prevRes = await fetch('https://api.quran.com/api/v4/verses/by_page/' + (p - 1) + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
+            const prevJson = await prevRes.json();
+            (prevJson.verses || []).forEach(v => {
+              (v.words || []).forEach(w => {
+                if (w.page_number === p) {
+                  const l = w.line_number;
+                  if (!lineWords[l]) lineWords[l] = [];
+                  if (w.code_v2 && !lineWords[l].some(item => item.id === w.id)) {
+                    lineWords[l].push({ id: w.id, code: w.code_v2 });
+                  }
+                }
+              });
+            });
+          } catch {}
+        }
+
+        const lines = {};
+        Object.keys(lineWords).forEach(l => {
+          lineWords[l].sort((a, b) => a.id - b.id);
+          lines[l] = lineWords[l].map(x => x.code);
         });
 
         const data = {
