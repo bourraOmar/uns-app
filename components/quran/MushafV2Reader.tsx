@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getPageMetadata } from '@/services/mushafPageService';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
 import surahsData from '@/data/surahs.json';
+import mushafPagesData from '@/data/mushaf_v2_pages.json';
 import { SURAH_FRAME_BASE64 } from '@/constants/surahFrameBase64';
 
 interface MushafV2ReaderProps {
@@ -175,6 +176,10 @@ export default function MushafV2Reader({
       map[s.id] = s.name_arabic;
     });
     return JSON.stringify(map);
+  }, []);
+
+  const mushafPagesJson = useMemo(() => {
+    return JSON.stringify(mushafPagesData);
   }, []);
 
   const htmlContent = `
@@ -537,7 +542,7 @@ export default function MushafV2Reader({
     const TOTAL_PAGES = 604;
     let currentPage = ${initialPage};
     const loadedFonts = new Set();
-    const pageDataCache = {};
+    const pageDataCache = ${mushafPagesJson};
     const PAGE_METAS = ${pageMetaJson};
     const SURAH_NAMES = ${surahNamesJson};
     const SURAH_FRAME_SRC = "${SURAH_FRAME_BASE64}";
@@ -547,62 +552,6 @@ export default function MushafV2Reader({
     function toArabic(num) {
       return String(num).replace(/[0-9]/g, d => arabicDigits[+d]);
     }
-
-    // Pre-bundled King Fahd Complex V2 Glyphs for Page 1 & Page 2 (Exact official 15-line layout)
-    pageDataCache[1] = {
-      isOpening: true,
-      surahStarts: {
-        2: { id: 1, name: 'الفاتحة', hasBasmalah: false }
-      },
-      lines: {
-        2: ["ﱁ", "ﱂ", "ﱃ", "ﱄ", "ﱅ"],
-        3: ["ﱆ", "ﱇ", "ﱈ", "ﱉ", "ﱊ"],
-        4: ["ﱋ", "ﱌ", "ﱍ", "ﱎ", "ﱏ", "ﱐ", "ﱑ"],
-        5: ["ﱒ", "ﱓ", "ﱔ", "ﱕ", "ﱖ", "ﱗ"],
-        6: ["ﱘ", "ﱙ", "ﱚ", "ﱛ", "ﱜ", "ﱝ"],
-        7: ["ﱞ", "ﱟ", "ﱠ", "ﱡ"],
-        8: ["ﱢ", "ﱣ", "ﱤ"]
-      }
-    };
-
-    pageDataCache[2] = {
-      isOpening: true,
-      surahStarts: {
-        3: { id: 2, name: 'البقرة', hasBasmalah: true }
-      },
-      lines: {
-        3: ["ﱁ", "ﱂ", "ﱃ", "ﱄ", "ﱅ", "ﱆﱇ", "ﱈﱉ", "ﱊ"],
-        4: ["ﱋ", "ﱌ", "ﱍ", "ﱎ", "ﱏ", "ﱐ", "ﱑ"],
-        5: ["ﱒ", "ﱓ", "ﱔ", "ﱕ", "ﱖ", "ﱗ", "ﱘ", "ﱙ"],
-        6: ["ﱚ", "ﱛ", "ﱜ", "ﱝ", "ﱞ", "ﱟ", "ﱠ", "ﱡ", "ﱢ"],
-        7: ["ﱣ", "ﱤ", "ﱥ", "ﱦ", "ﱧﱨ", "ﱩ"],
-        8: ["ﱪ", "ﱫ", "ﱬ"]
-      }
-    };
-
-    // Pre-bundled King Fahd Complex V2 Glyphs for Page 525 (Corrected authentic 15-line layout)
-    pageDataCache[525] = {
-      page: 525,
-      isOpening: false,
-      surahStarts: {},
-      lines: {
-        1: ["ﱁ", "ﱂ", "ﱃ", "ﱄﱅ", "ﱆ", "ﱇ", "ﱈ", "ﱉ", "ﱊ", "ﱋ", "ﱌ"],
-        2: ["ﱍﱎ", "ﱏ", "ﱐ", "ﱑ", "ﱒ", "ﱓ", "ﱔ", "ﱕ", "ﱖ", "ﱗ"],
-        3: ["ﱘ", "ﱙ", "ﱚ", "ﱛ", "ﱜ", "ﱝ", "ﱞ", "ﱟ", "ﱠ", "ﱡ", "ﱢ"],
-        4: ["ﱣ", "ﱤ", "ﱥ", "ﱦﱧ", "ﱨ", "ﱩ", "ﱪ", "ﱫ", "ﱬ", "ﱭ"],
-        5: ["ﱮ", "ﱯ", "ﱰ", "ﱱ", "ﱲ", "ﱳ", "ﱴ", "ﱵ", "ﱶ"],
-        6: ["ﱷ", "ﱸﱹ", "ﱺ", "ﱻ", "ﱼ", "ﱽ", "ﱾ"],
-        7: ["ﱿ", "ﲀ", "ﲁ", "ﲂ", "ﲃ", "ﲄ", "ﲅ", "ﲆ", "ﲇ", "ﲈ", "ﲉ", "ﲊ"],
-        8: ["ﲋ", "ﲌ", "ﲍ", "ﲎ", "ﲏ", "ﲐ", "ﲑ", "ﲒ"],
-        9: ["ﲓ", "ﲔ", "ﲕﲖ", "ﲗ", "ﲘ", "ﲙ", "ﲚ", "ﲛ"],
-        10: ["ﲜ", "ﲝ", "ﲞ", "ﲟ", "ﲠﲡ", "ﲢ", "ﲣ", "ﲤ", "ﲥ", "ﲦ", "ﲧ", "ﲨ", "ﲩ"],
-        11: ["ﲪ", "ﲫ", "ﲬ", "ﲭ", "ﲮ", "ﲯ", "ﲰ", "ﲱ", "ﲲ", "ﲳ"],
-        12: ["ﲴ", "ﲵ", "ﲶ", "ﲷ", "ﲸ", "ﲹ", "ﲺ", "ﲻ", "ﲼ", "ﲽ", "ﲾ"],
-        13: ["ﲿ", "ﳀ", "ﳁ", "ﳂ", "ﳃ", "ﳄ", "ﳅ", "ﳆ", "ﳇ", "ﳈ", "ﳉ"],
-        14: ["ﳊ", "ﳋ", "ﳌ", "ﳍ", "ﳎ", "ﳏ", "ﳐ", "ﳑ", "ﳒﳓ", "ﳔ", "ﳕ"],
-        15: ["ﳖ", "ﳗ", "ﳘ", "ﳙ", "ﳚ", "ﳛ", "ﳜ", "ﳝ", "ﳞ", "ﳟ"]
-      }
-    };
 
     // Dynamically load King Fahd Complex WOFF2 font for any page
     function loadPageFont(p) {
@@ -616,106 +565,12 @@ export default function MushafV2Reader({
 
     loadPageFont(1);
 
-    // Fetch Page Data from Quran Foundation API V4 with Local Storage Cache
+    // Retrieve Page Data directly from Pre-bundled Offline Dataset (0ms, 100% Offline)
     async function getPageData(p) {
-      if (p === 1 || p === 2 || p === 525) {
+      if (pageDataCache[p]) {
         return pageDataCache[p];
       }
-      if (pageDataCache[p]) return pageDataCache[p];
-      const cacheKey = 'qpc_v8_p' + p;
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          pageDataCache[p] = parsed;
-          return parsed;
-        } catch {}
-      }
-
-      try {
-        const res = await fetch('https://api.quran.com/api/v4/verses/by_page/' + p + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
-        const json = await res.json();
-        const verses = json.verses || [];
-        
-        const surahStarts = {};
-        const lineWords = {};
-
-        function ingestVerses(vList) {
-          (vList || []).forEach(v => {
-            if (v.verse_number === 1) {
-              const sId = parseInt(v.verse_key.split(':')[0], 10);
-              const w1 = v.words ? v.words.find(w => w.page_number === p) : null;
-              if (w1) {
-                surahStarts[w1.line_number] = {
-                  id: sId,
-                  name: SURAH_NAMES[sId] || '',
-                  hasBasmalah: sId !== 1 && sId !== 9
-                };
-              }
-            }
-
-            if (v.words && v.words.length > 0) {
-              v.words.forEach(w => {
-                if (w.page_number === p) {
-                  const l = w.line_number;
-                  if (!lineWords[l]) lineWords[l] = [];
-                  if (w.code_v2 && !lineWords[l].some(item => item.id === w.id)) {
-                    lineWords[l].push({ id: w.id, code: w.code_v2 });
-                  }
-                }
-              });
-            }
-          });
-        }
-
-        ingestVerses(verses);
-
-        // Check if the page is missing its beginning words (which sit in p - 1 in the API)
-        // In King Fahad Complex V2, the very first word of every page has glyph code starting with 'ﱁ'
-        let hasStartGlyph = false;
-        Object.values(lineWords).forEach(arr => {
-          if (arr.some(w => w.code && w.code.startsWith('ﱁ'))) {
-            hasStartGlyph = true;
-          }
-        });
-
-        if (p > 1 && !hasStartGlyph) {
-          try {
-            const prevRes = await fetch('https://api.quran.com/api/v4/verses/by_page/' + (p - 1) + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
-            const prevJson = await prevRes.json();
-            ingestVerses(prevJson.verses);
-          } catch {}
-        }
-
-        // Check if the page has ending boundary words stored in p + 1 in the API
-        const PAGES_LEAKING_TO_NEXT = [120, 121, 122, 531, 532, 533, 564, 567, 569, 575, 583];
-        if (p < TOTAL_PAGES && PAGES_LEAKING_TO_NEXT.indexOf(p) !== -1) {
-          try {
-            const nextRes = await fetch('https://api.quran.com/api/v4/verses/by_page/' + (p + 1) + '?words=true&word_fields=code_v2,text_uthmani,line_number,page_number&mushaf=1');
-            const nextJson = await nextRes.json();
-            ingestVerses(nextJson.verses);
-          } catch {}
-        }
-
-        const lines = {};
-        Object.keys(lineWords).forEach(l => {
-          lineWords[l].sort((a, b) => a.id - b.id);
-          lines[l] = lineWords[l].map(x => x.code);
-        });
-
-        const data = {
-          page: p,
-          isOpening: p === 1 || p === 2,
-          lines: lines,
-          surahStarts: surahStarts
-        };
-
-        pageDataCache[p] = data;
-        try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
-        return data;
-      } catch (e) {
-        return null;
-      }
+      return null;
     }
 
     function renderPageHTML(p, data) {
