@@ -580,6 +580,30 @@ export default function MushafV2Reader({
       }
     };
 
+    // Pre-bundled King Fahd Complex V2 Glyphs for Page 525 (Corrected authentic 15-line layout)
+    pageDataCache[525] = {
+      page: 525,
+      isOpening: false,
+      surahStarts: {},
+      lines: {
+        1: ["ﱁ", "ﱂ", "ﱃ", "ﱄﱅ", "ﱆ", "ﱇ", "ﱈ", "ﱉ", "ﱊ", "ﱋ", "ﱌ"],
+        2: ["ﱍﱎ", "ﱏ", "ﱐ", "ﱑ", "ﱒ", "ﱓ", "ﱔ", "ﱕ", "ﱖ", "ﱗ"],
+        3: ["ﱘ", "ﱙ", "ﱚ", "ﱛ", "ﱜ", "ﱝ", "ﱞ", "ﱟ", "ﱠ", "ﱡ", "ﱢ"],
+        4: ["ﱣ", "ﱤ", "ﱥ", "ﱦﱧ", "ﱨ", "ﱩ", "ﱪ", "ﱫ", "ﱬ", "ﱭ"],
+        5: ["ﱮ", "ﱯ", "ﱰ", "ﱱ", "ﱲ", "ﱳ", "ﱴ", "ﱵ", "ﱶ"],
+        6: ["ﱷ", "ﱸﱹ", "ﱺ", "ﱻ", "ﱼ", "ﱽ", "ﱾ"],
+        7: ["ﱿ", "ﲀ", "ﲁ", "ﲂ", "ﲃ", "ﲄ", "ﲅ", "ﲆ", "ﲇ", "ﲈ", "ﲉ", "ﲊ"],
+        8: ["ﲋ", "ﲌ", "ﲍ", "ﲎ", "ﲏ", "ﲐ", "ﲑ", "ﲒ"],
+        9: ["ﲓ", "ﲔ", "ﲕﲖ", "ﲗ", "ﲘ", "ﲙ", "ﲚ", "ﲛ"],
+        10: ["ﲜ", "ﲝ", "ﲞ", "ﲟ", "ﲠﲡ", "ﲢ", "ﲣ", "ﲤ", "ﲥ", "ﲦ", "ﲧ", "ﲨ", "ﲩ"],
+        11: ["ﲪ", "ﲫ", "ﲬ", "ﲭ", "ﲮ", "ﲯ", "ﲰ", "ﲱ", "ﲲ", "ﲳ"],
+        12: ["ﲴ", "ﲵ", "ﲶ", "ﲷ", "ﲸ", "ﲹ", "ﲺ", "ﲻ", "ﲼ", "ﲽ", "ﲾ"],
+        13: ["ﲿ", "ﳀ", "ﳁ", "ﳂ", "ﳃ", "ﳄ", "ﳅ", "ﳆ", "ﳇ", "ﳈ", "ﳉ"],
+        14: ["ﳊ", "ﳋ", "ﳌ", "ﳍ", "ﳎ", "ﳏ", "ﳐ", "ﳑ", "ﳒﳓ", "ﳔ", "ﳕ"],
+        15: ["ﳖ", "ﳗ", "ﳘ", "ﳙ", "ﳚ", "ﳛ", "ﳜ", "ﳝ", "ﳞ", "ﳟ"]
+      }
+    };
+
     // Dynamically load King Fahd Complex WOFF2 font for any page
     function loadPageFont(p) {
       if (p < 1 || p > TOTAL_PAGES || loadedFonts.has(p)) return Promise.resolve();
@@ -594,11 +618,11 @@ export default function MushafV2Reader({
 
     // Fetch Page Data from Quran Foundation API V4 with Local Storage Cache
     async function getPageData(p) {
-      if (p === 1 || p === 2) {
+      if (p === 1 || p === 2 || p === 525) {
         return pageDataCache[p];
       }
       if (pageDataCache[p]) return pageDataCache[p];
-      const cacheKey = 'qpc_v5_p' + p;
+      const cacheKey = 'qpc_v6_p' + p;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
