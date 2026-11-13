@@ -258,14 +258,14 @@ export default function MushafV2Reader({
 
   .content-container {
     width: 100%;
-    max-width: 540px;
+    max-width: 580px;
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     margin: auto 0;
-    padding: 0 8px;
+    padding: 0 4px;
     box-sizing: border-box;
     overflow: hidden;
   }
@@ -356,7 +356,7 @@ export default function MushafV2Reader({
 
   /* Compact line gap for Standard 15-line Pages (Pages 3 to 604) */
   .mushaf-lines.standard-lines {
-    gap: clamp(4px, 1.1vh, 8px);
+    gap: clamp(3px, 0.8vh, 6px);
   }
 
   .mushaf-line {
@@ -370,25 +370,25 @@ export default function MushafV2Reader({
   }
 
   .mushaf-line.opening-line {
-    gap: clamp(1px, 0.4vw, 2.5px);
-    line-height: 1.8;
+    gap: clamp(1px, 0.45vw, 2.8px);
+    line-height: 1.75;
   }
 
   .mushaf-line.standard-line {
-    gap: clamp(1px, 0.4vw, 2.5px);
-    line-height: 1.8;
+    gap: clamp(1px, 0.45vw, 2.8px);
+    line-height: 1.75;
   }
 
   /* Verses on Opening Pages (1 & 2): Authentic proportion matching standard pages */
   .opening-word-glyph {
-    font-size: clamp(16px, 4.3vw, 22px);
+    font-size: clamp(20px, min(5.6vw, 3.2vh), 26px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
 
   /* Verses on Standard 15-line Pages (3 to 604) */
   .standard-word-glyph {
-    font-size: clamp(16px, 4.3vw, 22px);
+    font-size: clamp(20px, min(5.6vw, 3.2vh), 26px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
@@ -719,14 +719,14 @@ export default function MushafV2Reader({
       const container = slotEl.querySelector('.content-container');
       if (!container) return;
       const containerWidth = container.clientWidth || window.innerWidth;
-      const maxWidth = Math.max(260, containerWidth - 16);
+      const maxWidth = Math.max(260, containerWidth - 8);
 
       const lines = slotEl.querySelectorAll('.mushaf-line');
       lines.forEach(line => {
         line.style.transform = '';
         const sw = line.scrollWidth;
         if (sw > maxWidth && maxWidth > 0) {
-          const scale = Math.max(0.72, +(maxWidth / sw).toFixed(4));
+          const scale = Math.max(0.70, +(maxWidth / sw).toFixed(4));
           line.style.transform = 'scale(' + scale + ')';
           line.style.transformOrigin = 'center center';
         }
