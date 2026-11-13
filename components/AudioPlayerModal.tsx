@@ -695,13 +695,13 @@ export default function AudioPlayerModal({
               }}
             >
               <Ionicons
-                name={activeBgSound.id !== 'none' ? (activeBgSound.icon as any) : 'rainy-outline'}
+                name={activeBgSound.icon as any}
                 size={16}
-                color="#ffffff"
+                color={activeBgSound.id !== 'none' ? '#34d399' : '#ffffff'}
                 style={{ marginRight: 6 }}
               />
               <Text style={styles.ambientPillText}>
-                {activeBgSound.id !== 'none' ? activeBgSound.name : 'Rain'}
+                {activeBgSound.name}
               </Text>
             </TouchableOpacity>
           </View>
