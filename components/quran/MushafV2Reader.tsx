@@ -182,6 +182,19 @@ export default function MushafV2Reader({
     return JSON.stringify(mushafPagesData);
   }, []);
 
+  const preloadLinks = useMemo(() => {
+    const links = [
+      `<link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${initialPage}.woff2">`,
+    ];
+    if (initialPage < 604) {
+      links.push(`<link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${initialPage + 1}.woff2">`);
+    }
+    if (initialPage > 1) {
+      links.push(`<link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${initialPage - 1}.woff2">`);
+    }
+    return links.join('\n');
+  }, [initialPage]);
+
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -189,9 +202,7 @@ export default function MushafV2Reader({
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>King Fahd Complex V2</title>
-<link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${initialPage}.woff2">
-\${initialPage < 604 ? \`<link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p\${initialPage + 1}.woff2">\` : ''}
-\${initialPage > 1 ? \`<link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p\${initialPage - 1}.woff2">\` : ''}
+${preloadLinks}
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700&display=swap');
 
