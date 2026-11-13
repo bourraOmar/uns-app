@@ -620,6 +620,17 @@ ${preloadLinks}
   <script>
     const TOTAL_PAGES = 604;
     let currentPage = ${initialPage};
+    const PAGE_METAS = ${pageMetaJson};
+    const SURAH_NAMES = ${surahNamesJson};
+    const pageDataCache = ${mushafPagesJson};
+    const SURAH_FRAME_SRC = '${SURAH_FRAME_BASE64}';
+
+    function toArabic(num) {
+      if (num === undefined || num === null) return '';
+      const digits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+      return String(num).replace(/\d/g, function(d) { return digits[+d]; });
+    }
+
     const loadedFonts = new Set();
     const loadingFonts = new Map();
 
@@ -629,24 +640,39 @@ ${preloadLinks}
       if (loadingFonts.has(p)) return loadingFonts.get(p);
 
       const url = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p' + p + '.woff2';
-      const font = new FontFace('p' + p, 'url(' + url + ')', { display: 'block' });
 
-      const promise = font.load().then(f => {
-        document.fonts.add(f);
-        loadedFonts.add(p);
-        requestAnimationFrame(() => {
-          slots.forEach(s => fitSlotLines(s));
+      // Inject native @font-face style rule for maximum reliability across WebViews
+      const styleId = 'font-p' + p;
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = '@font-face { font-family: "p' + p + '"; src: url("' + url + '") format("woff2"); font-display: block; }';
+        document.head.appendChild(style);
+      }
+
+      if (typeof FontFace !== 'undefined') {
+        const font = new FontFace('p' + p, 'url(' + url + ')', { display: 'block' });
+        const promise = font.load().then(function(f) {
+          document.fonts.add(f);
+          loadedFonts.add(p);
+          requestAnimationFrame(function() {
+            slots.forEach(function(s) { fitSlotLines(s); });
+          });
+          return true;
+        }).catch(function(err) {
+          console.warn('FontFace load p' + p, err);
+          loadedFonts.add(p);
+          return true;
+        }).finally(function() {
+          loadingFonts.delete(p);
         });
-        return true;
-      }).catch(err => {
-        console.warn('Font load failed p' + p, err);
-        return false;
-      }).finally(() => {
-        loadingFonts.delete(p);
-      });
 
-      loadingFonts.set(p, promise);
-      return promise;
+        loadingFonts.set(p, promise);
+        return promise;
+      } else {
+        loadedFonts.add(p);
+        return Promise.resolve(true);
+      }
     }
 
     loadPageFont(currentPage);
@@ -655,7 +681,7 @@ ${preloadLinks}
 
     // Retrieve Page Data directly from Pre-bundled Offline Dataset (0ms, 100% Offline)
     async function getPageData(p) {
-      if (pageDataCache[p]) {
+      if (pageDataCache && pageDataCache[p]) {
         return pageDataCache[p];
       }
       return null;
@@ -667,7 +693,7 @@ ${preloadLinks}
       }
 
       loadPageFont(p);
-      const meta = PAGE_METAS[p] || { s: '', j: 1, h: 1 };
+      const meta = (PAGE_METAS && PAGE_METAS[p]) || { s: '', j: 1, h: 1 };
       const isOpening = p === 1 || p === 2;
       const glyphClass = isOpening ? 'opening-word-glyph' : 'standard-word-glyph';
       let bannerWrapClass = 'surah-banner-wrap';
@@ -681,8 +707,8 @@ ${preloadLinks}
       let contentHTML = '';
       contentHTML += '<div class="' + linesContainerClass + '" style="font-family: \\'p' + p + '\\';">';
 
-      const lineKeys = Object.keys(data.lines).sort((a,b) => +a - +b);
-      lineKeys.forEach(lNum => {
+      const lineKeys = Object.keys(data.lines).sort(function(a, b) { return +a - +b; });
+      lineKeys.forEach(function(lNum) {
         const lineNum = Number(lNum);
 
         // If a Surah starts at this line, render its ornamental frame and Basmalah immediately before it!
@@ -696,25 +722,23 @@ ${preloadLinks}
 
         const words = data.lines[lNum] || [];
         contentHTML += '<div class="' + lineClass + '">';
-        words.forEach(w => {
+        words.forEach(function(w) {
           contentHTML += '<span class="' + glyphClass + '">' + w + '</span>';
         });
         contentHTML += '</div>';
       });
       contentHTML += '</div>';
 
-      return \`
-        <div class="page-header">
-          <span>سورة \${meta.s || ''}</span>
-          <span dir="rtl">الجزء \${toArabic(meta.j || 1)} &nbsp;•&nbsp; حزب \${toArabic(meta.h || 1)}</span>
-        </div>
-        <div class="content-container \${isOpening ? 'opening-container' : 'standard-container'}">
-          \${contentHTML}
-        </div>
-        <div class="page-footer">
-          <div class="page-badge">\${toArabic(p)}</div>
-        </div>
-      \`;
+      return '<div class="page-header">' +
+        '<span>سورة ' + (meta.s || '') + '</span>' +
+        '<span dir="rtl">الجزء ' + toArabic(meta.j || 1) + ' &nbsp;•&nbsp; حزب ' + toArabic(meta.h || 1) + '</span>' +
+        '</div>' +
+        '<div class="content-container ' + (isOpening ? 'opening-container' : 'standard-container') + '">' +
+        contentHTML +
+        '</div>' +
+        '<div class="page-footer">' +
+        '<div class="page-badge">' + toArabic(p) + '</div>' +
+        '</div>';
     }
 
     function notifyPageChange(p) {
@@ -841,15 +865,21 @@ ${preloadLinks}
 
         loadPageFont(pageNum).then(success => {
           if (el.dataset.page !== String(pageNum)) return;
-          if (success) {
-            if (lines) lines.style.visibility = 'visible';
+          if (lines) lines.style.visibility = 'visible';
+          requestAnimationFrame(() => {
+            fitSlotLines(el);
+          });
+        });
+
+        // Safety fallback: ensure text is NEVER stuck hidden
+        setTimeout(() => {
+          if (el.dataset.page === String(pageNum) && lines && lines.style.visibility === 'hidden') {
+            lines.style.visibility = 'visible';
             requestAnimationFrame(() => {
               fitSlotLines(el);
             });
-          } else {
-            el.innerHTML = '<div class="page-offline-wrap"><div class="offline-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg></div><div class="offline-title">صفحة ' + toArabic(pageNum) + ' بحاجة لاتصال</div><div class="offline-desc">يتطلب تحميل خط هذه الصفحة الاتصال بالإنترنت لأول مرة، وسيتم حفظها تلقائياً بعد ذلك.</div><button class="offline-retry-btn" onclick="retryPage(' + pageNum + ', ' + slotIndex + ')">إعادة المحاولة</button></div>';
           }
-        });
+        }, 400);
       }
     }
 
