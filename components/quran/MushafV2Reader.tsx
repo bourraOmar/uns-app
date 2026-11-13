@@ -695,98 +695,30 @@ export default function MushafV2Reader({
   <script>
     const TOTAL_PAGES = 604;
     let currentPage = ${initialPage};
-    // IndexedDB Persistent Offline Font Storage
-    const DB_NAME = 'QuranV2FontsDB';
-    const DB_VERSION = 1;
-    const STORE_NAME = 'fonts';
-
-    let dbPromise = null;
-    function getDB() {
-      if (!dbPromise) {
-        dbPromise = new Promise((resolve, reject) => {
-          try {
-            const req = indexedDB.open(DB_NAME, DB_VERSION);
-            req.onupgradeneeded = (e) => {
-              const db = e.target.result;
-              if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME);
-              }
-            };
-            req.onsuccess = (e) => resolve(e.target.result);
-            req.onerror = (e) => reject(e.target.error);
-          } catch (err) {
-            reject(err);
-          }
-        });
-      }
-      return dbPromise;
-    }
-
-    async function getFontFromDB(p) {
-      try {
-        const db = await getDB();
-        return new Promise((resolve) => {
-          const tx = db.transaction(STORE_NAME, 'readonly');
-          const store = tx.objectStore(STORE_NAME);
-          const req = store.get(p);
-          req.onsuccess = () => resolve(req.result || null);
-          req.onerror = () => resolve(null);
-        });
-      } catch {
-        return null;
-      }
-    }
-
-    async function saveFontToDB(p, arrayBuffer) {
-      try {
-        const db = await getDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        store.put(arrayBuffer, p);
-      } catch (err) {}
-    }
-
-    async function hasFontInDB(p) {
-      const buf = await getFontFromDB(p);
-      return buf !== null;
-    }
-
     const loadedFonts = new Set();
     const loadingFonts = new Map();
 
-    async function loadPageFont(p) {
-      if (p < 1 || p > TOTAL_PAGES) return false;
-      if (loadedFonts.has(p)) return true;
+    function loadPageFont(p) {
+      if (p < 1 || p > TOTAL_PAGES) return Promise.resolve(false);
+      if (loadedFonts.has(p)) return Promise.resolve(true);
       if (loadingFonts.has(p)) return loadingFonts.get(p);
 
-      const promise = (async () => {
-        try {
-          // 1. Try reading from persistent IndexedDB (0ms, 100% offline)
-          let buffer = await getFontFromDB(p);
-          if (!buffer) {
-            // 2. Fetch from network
-            const res = await fetch('https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p' + p + '.woff2');
-            if (!res.ok) throw new Error('Fetch failed ' + res.status);
-            buffer = await res.arrayBuffer();
-            saveFontToDB(p, buffer);
-          }
+      const url = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p' + p + '.woff2';
+      const font = new FontFace('p' + p, 'url(' + url + ')', { display: 'block' });
 
-          // 3. Register FontFace with browser
-          const font = new FontFace('p' + p, buffer, { display: 'block' });
-          await font.load();
-          document.fonts.add(font);
-          loadedFonts.add(p);
-          requestAnimationFrame(() => {
-            slots.forEach(s => fitSlotLines(s));
-          });
-          return true;
-        } catch (err) {
-          console.warn('Font load failed p' + p, err);
-          return false;
-        } finally {
-          loadingFonts.delete(p);
-        }
-      })();
+      const promise = font.load().then(f => {
+        document.fonts.add(f);
+        loadedFonts.add(p);
+        requestAnimationFrame(() => {
+          slots.forEach(s => fitSlotLines(s));
+        });
+        return true;
+      }).catch(err => {
+        console.warn('Font load failed p' + p, err);
+        return false;
+      }).finally(() => {
+        loadingFonts.delete(p);
+      });
 
       loadingFonts.set(p, promise);
       return promise;
@@ -1297,7 +1229,8 @@ export default function MushafV2Reader({
 
     async function startAutoDownloadAll(force) {
       if (isDownloadingAll) return;
-      if (!force && localStorage.getItem('@uns_quran_all_downloaded') === 'true') {
+      const storageKey = '@uns_quran_all_downloaded_v3';
+      if (!force && localStorage.getItem(storageKey) === 'true') {
         return;
       }
 
@@ -1305,14 +1238,15 @@ export default function MushafV2Reader({
       isBannerDismissed = false;
       showDownloadBanner();
 
-      // Quick count of existing pages in IndexedDB
-      let cachedCount = 0;
-      for (let p = 1; p <= TOTAL_PAGES; p++) {
-        if (await hasFontInDB(p)) cachedCount++;
-      }
+      const downloadedSet = new Set();
+      try {
+        const saved = JSON.parse(localStorage.getItem('@uns_downloaded_pages_set') || '[]');
+        saved.forEach(p => downloadedSet.add(p));
+      } catch {}
 
-      if (cachedCount >= TOTAL_PAGES) {
-        localStorage.setItem('@uns_quran_all_downloaded', 'true');
+      let downloadedCount = downloadedSet.size;
+      if (downloadedCount >= TOTAL_PAGES) {
+        localStorage.setItem(storageKey, 'true');
         const statusEl = document.getElementById('download-banner-status');
         if (statusEl) statusEl.innerText = '✓ المصحف محمل بالكامل (٦٠٤ صفحة)';
         setTimeout(() => { hideDownloadBanner(); }, 2500);
@@ -1320,7 +1254,7 @@ export default function MushafV2Reader({
         return;
       }
 
-      updateDownloadUI(cachedCount, TOTAL_PAGES);
+      updateDownloadUI(downloadedCount, TOTAL_PAGES);
 
       // Priority queue: current page neighborhood first, then 1 to 604
       const queue = [];
@@ -1338,18 +1272,21 @@ export default function MushafV2Reader({
       async function worker() {
         while (qIndex < queue.length) {
           const p = queue[qIndex++];
-          const inDB = await hasFontInDB(p);
-          if (!inDB) {
+          if (!downloadedSet.has(p)) {
             try {
-              const res = await fetch('https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p' + p + '.woff2');
+              const url = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p' + p + '.woff2';
+              const res = await fetch(url, { cache: 'force-cache' });
               if (res.ok) {
-                const buf = await res.arrayBuffer();
-                await saveFontToDB(p, buf);
-                cachedCount++;
-                updateDownloadUI(cachedCount, TOTAL_PAGES);
+                downloadedSet.add(p);
+                downloadedCount++;
+                updateDownloadUI(downloadedCount, TOTAL_PAGES);
+                if (downloadedCount % 12 === 0) {
+                  localStorage.setItem('@uns_downloaded_pages_set', JSON.stringify(Array.from(downloadedSet)));
+                  localStorage.setItem('@uns_font_downloaded_count', String(downloadedCount));
+                }
               }
-            } catch (e) {
-              // Network error or pause, continue silently
+            } catch (err) {
+              // network error or pause, continue
             }
           }
         }
@@ -1361,8 +1298,11 @@ export default function MushafV2Reader({
       }
       await Promise.all(workers);
 
-      if (cachedCount >= TOTAL_PAGES) {
-        localStorage.setItem('@uns_quran_all_downloaded', 'true');
+      localStorage.setItem('@uns_downloaded_pages_set', JSON.stringify(Array.from(downloadedSet)));
+      localStorage.setItem('@uns_font_downloaded_count', String(downloadedSet.size));
+
+      if (downloadedSet.size >= TOTAL_PAGES) {
+        localStorage.setItem(storageKey, 'true');
         const statusEl = document.getElementById('download-banner-status');
         if (statusEl) statusEl.innerText = '✓ تم تحميل المصحف كاملاً للقراءة بدون إنترنت';
         setTimeout(() => { hideDownloadBanner(); }, 3500);
@@ -1516,7 +1456,7 @@ export default function MushafV2Reader({
       <WebView
         ref={webViewRef}
         originWhitelist={['*']}
-        source={{ html: htmlContent }}
+        source={{ html: htmlContent, baseUrl: 'https://verses.quran.foundation' }}
         onMessage={handleMessage}
         scrollEnabled={false}
         overScrollMode="never"
