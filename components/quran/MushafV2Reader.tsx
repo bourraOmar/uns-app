@@ -248,11 +248,12 @@ export default function MushafV2Reader({
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-family: 'Cairo', sans-serif;
-    font-size: 14px;
+    font-family: 'Cairo', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", "Geeza Pro", Tahoma, sans-serif;
+    font-size: 13.5px;
     font-weight: 600;
     color: ${isDark ? '#e2e8f0' : '#475569'};
-    padding: 0 12px;
+    padding: 0 16px;
+    box-sizing: border-box;
   }
 
   .content-container {
@@ -264,6 +265,9 @@ export default function MushafV2Reader({
     justify-content: center;
     align-items: center;
     margin: auto 0;
+    padding: 0 8px;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   /* Balanced vertical placement for Opening Pages (Pages 1 & 2) exactly matching Image 1 layout */
@@ -352,7 +356,7 @@ export default function MushafV2Reader({
 
   /* Compact line gap for Standard 15-line Pages (Pages 3 to 604) */
   .mushaf-lines.standard-lines {
-    gap: clamp(6px, 1.3vh, 10px);
+    gap: clamp(4px, 1.1vh, 8px);
   }
 
   .mushaf-line {
@@ -362,28 +366,29 @@ export default function MushafV2Reader({
     white-space: nowrap;
     align-items: center;
     justify-content: center;
+    will-change: transform;
   }
 
   .mushaf-line.opening-line {
-    gap: 4px;
-    line-height: 1.85;
+    gap: clamp(1px, 0.4vw, 2.5px);
+    line-height: 1.8;
   }
 
   .mushaf-line.standard-line {
-    gap: 4px;
-    line-height: 1.85;
+    gap: clamp(1px, 0.4vw, 2.5px);
+    line-height: 1.8;
   }
 
   /* Verses on Opening Pages (1 & 2): Authentic proportion matching standard pages */
   .opening-word-glyph {
-    font-size: clamp(21px, 5.2vw, 24px);
+    font-size: clamp(16px, 4.3vw, 22px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
 
   /* Verses on Standard 15-line Pages (3 to 604) */
   .standard-word-glyph {
-    font-size: clamp(21px, 5.2vw, 24px);
+    font-size: clamp(16px, 4.3vw, 22px);
     color: ${isDark ? '#ffffff' : '#1e293b'};
     display: inline-block;
   }
@@ -560,6 +565,9 @@ export default function MushafV2Reader({
       const font = new FontFace('p' + p, 'url(https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p' + p + '.woff2)', { display: 'block' });
       return font.load().then(f => {
         document.fonts.add(f);
+        requestAnimationFrame(() => {
+          slots.forEach(s => fitSlotLines(s));
+        });
       }).catch(err => console.warn('Font load p' + p, err));
     }
 
@@ -618,7 +626,7 @@ export default function MushafV2Reader({
       return \`
         <div class="page-header">
           <span>سورة \${meta.s || ''}</span>
-          <span>الجزء \${toArabic(meta.j || 1)} &nbsp; حزب \${toArabic(meta.h || 1)}</span>
+          <span dir="rtl">الجزء \${toArabic(meta.j || 1)} &nbsp;•&nbsp; حزب \${toArabic(meta.h || 1)}</span>
         </div>
         <div class="content-container \${isOpening ? 'opening-container' : 'standard-container'}">
           \${contentHTML}
@@ -706,6 +714,25 @@ export default function MushafV2Reader({
     let currSlot = 1; // Page (center: 0)
     let nextSlot = 2; // Page + 1 (right: +100vw)
 
+    function fitSlotLines(slotEl) {
+      if (!slotEl) return;
+      const container = slotEl.querySelector('.content-container');
+      if (!container) return;
+      const containerWidth = container.clientWidth || window.innerWidth;
+      const maxWidth = Math.max(260, containerWidth - 16);
+
+      const lines = slotEl.querySelectorAll('.mushaf-line');
+      lines.forEach(line => {
+        line.style.transform = '';
+        const sw = line.scrollWidth;
+        if (sw > maxWidth && maxWidth > 0) {
+          const scale = Math.max(0.72, +(maxWidth / sw).toFixed(4));
+          line.style.transform = 'scale(' + scale + ')';
+          line.style.transformOrigin = 'center center';
+        }
+      });
+    }
+
     async function populateSlot(slotIndex, pageNum) {
       const el = slots[slotIndex];
       el.dataset.page = String(pageNum);
@@ -717,6 +744,9 @@ export default function MushafV2Reader({
       const data = await getPageData(pageNum);
       if (el.dataset.page === String(pageNum)) {
         el.innerHTML = renderPageHTML(pageNum, data);
+        requestAnimationFrame(() => {
+          fitSlotLines(el);
+        });
       }
     }
 
@@ -877,6 +907,7 @@ export default function MushafV2Reader({
         if (currentPage < TOTAL_PAGES) loadPageFont(currentPage + 1);
         if (currentPage + 1 < TOTAL_PAGES) loadPageFont(currentPage + 2);
 
+        fitSlotLines(slots[currSlot]);
         isAnimating = false;
         notifyPageChange(currentPage);
       }, DURATION);
@@ -917,6 +948,7 @@ export default function MushafV2Reader({
         loadPageFont(currentPage);
         if (currentPage > 1) loadPageFont(currentPage - 1);
 
+        fitSlotLines(slots[currSlot]);
         isAnimating = false;
         notifyPageChange(currentPage);
       }, DURATION);
@@ -1017,6 +1049,10 @@ export default function MushafV2Reader({
         loadPageFont(currentPage - 1);
         populateSlot(prevSlot, currentPage - 1);
       }
+
+      window.addEventListener('resize', () => {
+        slots.forEach(s => fitSlotLines(s));
+      });
     }
 
     init();
