@@ -189,6 +189,9 @@ export default function MushafV2Reader({
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>King Fahd Complex V2</title>
+<link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${initialPage}.woff2">
+\${initialPage < 604 ? \`<link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p\${initialPage + 1}.woff2">\` : ''}
+\${initialPage > 1 ? \`<link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p\${initialPage - 1}.woff2">\` : ''}
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700&display=swap');
 
@@ -503,84 +506,6 @@ export default function MushafV2Reader({
     height: 48px;
   }
 
-  /* Offline Download Progress Banner */
-  .download-banner {
-    position: fixed;
-    top: ${Math.max(insets.top, 16) + 12}px;
-    right: 16px;
-    left: 16px;
-    max-width: 440px;
-    margin: 0 auto;
-    background: ${isDark ? 'rgba(30, 41, 35, 0.96)' : 'rgba(255, 255, 255, 0.97)'};
-    border: 1px solid ${isDark ? 'rgba(52, 211, 153, 0.4)' : 'rgba(16, 185, 129, 0.35)'};
-    border-radius: 14px;
-    padding: 10px 14px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    z-index: 10000;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    font-family: 'Cairo', sans-serif;
-  }
-
-  .download-banner.hidden {
-    opacity: 0;
-    transform: translateY(-20px);
-    pointer-events: none;
-  }
-
-  .download-banner-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-    font-weight: 700;
-    color: ${isDark ? '#e2e8f0' : '#1e293b'};
-    margin-bottom: 6px;
-  }
-
-  .download-banner-pct {
-    color: #10b981;
-    font-weight: 700;
-    font-size: 13px;
-  }
-
-  .download-progress-track {
-    width: 100%;
-    height: 6px;
-    background: ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)'};
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 6px;
-  }
-
-  .download-progress-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #10b981, #34d399);
-    border-radius: 3px;
-    transition: width 0.25s ease;
-  }
-
-  .download-banner-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 11.5px;
-    color: ${isDark ? '#94a3b8' : '#64748b'};
-  }
-
-  .download-banner-close {
-    cursor: pointer;
-    color: ${isDark ? '#cbd5e1' : '#475569'};
-    text-decoration: underline;
-    background: none;
-    border: none;
-    font-family: inherit;
-    font-size: 11.5px;
-    padding: 2px 6px;
-  }
-
   /* Page Loading and Offline States */
   .page-loading-wrap, .page-offline-wrap {
     display: flex;
@@ -608,7 +533,10 @@ export default function MushafV2Reader({
   }
 
   .offline-icon {
-    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: ${isDark ? '#34d399' : '#059669'};
     margin-bottom: 8px;
   }
 
@@ -640,20 +568,6 @@ export default function MushafV2Reader({
 </style>
 </head>
 <body>
-  <!-- Offline Download Progress Banner (Shows automatically on first launch) -->
-  <div id="offline-download-banner" class="download-banner hidden">
-    <div class="download-banner-header">
-      <span class="download-banner-title">تحميل المصحف كاملاً للقراءة بدون إنترنت</span>
-      <span id="download-banner-pct" class="download-banner-pct">٠٪</span>
-    </div>
-    <div class="download-progress-track">
-      <div id="download-progress-fill" class="download-progress-fill"></div>
-    </div>
-    <div class="download-banner-footer">
-      <span id="download-banner-status">جارٍ التحميل في الخلفية...</span>
-      <button class="download-banner-close" onclick="hideDownloadBanner()">إخفاء</button>
-    </div>
-  </div>
   <div id="mushaf-viewport">
     <div id="slot-0" class="mushaf-page" style="transform: translate3d(100vw, 0, 0);"></div>
     <div id="slot-1" class="mushaf-page" style="transform: translate3d(0, 0, 0);"></div>
@@ -724,7 +638,9 @@ export default function MushafV2Reader({
       return promise;
     }
 
-    loadPageFont(1);
+    loadPageFont(currentPage);
+    if (currentPage < TOTAL_PAGES) loadPageFont(currentPage + 1);
+    if (currentPage > 1) loadPageFont(currentPage - 1);
 
     // Retrieve Page Data directly from Pre-bundled Offline Dataset (0ms, 100% Offline)
     async function getPageData(p) {
@@ -894,26 +810,35 @@ export default function MushafV2Reader({
         return;
       }
 
-      // If font is not loaded yet, show clean loader so broken glyph ligatures never appear!
-      if (!loadedFonts.has(pageNum)) {
-        el.innerHTML = '<div class="page-loading-wrap"><div class="spinner"></div><div class="page-loading-text">جارٍ تحميل صفحة ' + toArabic(pageNum) + '...</div></div>';
-      }
+      // Preload current, next, and previous fonts immediately in background
+      loadPageFont(pageNum);
+      if (pageNum < TOTAL_PAGES) loadPageFont(pageNum + 1);
+      if (pageNum > 1) loadPageFont(pageNum - 1);
 
-      const [data, fontLoaded] = await Promise.all([
-        getPageData(pageNum),
-        loadPageFont(pageNum)
-      ]);
+      const data = await getPageData(pageNum);
+      if (el.dataset.page !== String(pageNum) || !data) return;
 
-      if (el.dataset.page !== String(pageNum)) return;
+      el.innerHTML = renderPageHTML(pageNum, data);
 
-      if (fontLoaded && data) {
-        el.innerHTML = renderPageHTML(pageNum, data);
+      if (loadedFonts.has(pageNum)) {
         requestAnimationFrame(() => {
           fitSlotLines(el);
         });
       } else {
-        // Offline and font not downloaded yet
-        el.innerHTML = '<div class="page-offline-wrap"><div class="offline-icon">📶</div><div class="offline-title">خط الصفحة ' + toArabic(pageNum) + ' غير متوفر بدون إنترنت</div><div class="offline-desc">يرجى الاتصال بالإنترنت لتحميل هذه الصفحة، أو انتظر اكتمال التحميل التلقائي لكامل المصحف.</div><button class="offline-retry-btn" onclick="retryPage(' + pageNum + ', ' + slotIndex + ')">إعادة المحاولة</button></div>';
+        const lines = el.querySelector('.mushaf-lines');
+        if (lines) lines.style.visibility = 'hidden';
+
+        loadPageFont(pageNum).then(success => {
+          if (el.dataset.page !== String(pageNum)) return;
+          if (success) {
+            if (lines) lines.style.visibility = 'visible';
+            requestAnimationFrame(() => {
+              fitSlotLines(el);
+            });
+          } else {
+            el.innerHTML = '<div class="page-offline-wrap"><div class="offline-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg></div><div class="offline-title">صفحة ' + toArabic(pageNum) + ' بحاجة لاتصال</div><div class="offline-desc">يتطلب تحميل خط هذه الصفحة الاتصال بالإنترنت لأول مرة، وسيتم حفظها تلقائياً بعد ذلك.</div><button class="offline-retry-btn" onclick="retryPage(' + pageNum + ', ' + slotIndex + ')">إعادة المحاولة</button></div>';
+          }
+        });
       }
     }
 
@@ -1199,118 +1124,6 @@ export default function MushafV2Reader({
       }
     });
 
-    // Offline Font Downloader (Runs on first open and downloads all 604 pages in background)
-    let isDownloadingAll = false;
-    let isBannerDismissed = false;
-
-    window.hideDownloadBanner = function() {
-      isBannerDismissed = true;
-      const b = document.getElementById('offline-download-banner');
-      if (b) b.classList.add('hidden');
-    };
-
-    function showDownloadBanner() {
-      if (isBannerDismissed) return;
-      const b = document.getElementById('offline-download-banner');
-      if (b) b.classList.remove('hidden');
-    }
-
-    function updateDownloadUI(downloaded, total) {
-      if (isBannerDismissed) return;
-      const pct = Math.min(100, Math.round((downloaded / total) * 100));
-      const pctEl = document.getElementById('download-banner-pct');
-      const fillEl = document.getElementById('download-progress-fill');
-      const statusEl = document.getElementById('download-banner-status');
-
-      if (pctEl) pctEl.innerText = toArabic(pct) + '٪';
-      if (fillEl) fillEl.style.width = pct + '%';
-      if (statusEl) statusEl.innerText = 'صفحة ' + toArabic(downloaded) + ' من ' + toArabic(total);
-    }
-
-    async function startAutoDownloadAll(force) {
-      if (isDownloadingAll) return;
-      const storageKey = '@uns_quran_all_downloaded_v3';
-      if (!force && localStorage.getItem(storageKey) === 'true') {
-        return;
-      }
-
-      isDownloadingAll = true;
-      isBannerDismissed = false;
-      showDownloadBanner();
-
-      const downloadedSet = new Set();
-      try {
-        const saved = JSON.parse(localStorage.getItem('@uns_downloaded_pages_set') || '[]');
-        saved.forEach(p => downloadedSet.add(p));
-      } catch {}
-
-      let downloadedCount = downloadedSet.size;
-      if (downloadedCount >= TOTAL_PAGES) {
-        localStorage.setItem(storageKey, 'true');
-        const statusEl = document.getElementById('download-banner-status');
-        if (statusEl) statusEl.innerText = '✓ المصحف محمل بالكامل (٦٠٤ صفحة)';
-        setTimeout(() => { hideDownloadBanner(); }, 2500);
-        isDownloadingAll = false;
-        return;
-      }
-
-      updateDownloadUI(downloadedCount, TOTAL_PAGES);
-
-      // Priority queue: current page neighborhood first, then 1 to 604
-      const queue = [];
-      const priorityPages = [currentPage, currentPage + 1, currentPage - 1, currentPage + 2, currentPage - 2];
-      priorityPages.forEach(p => {
-        if (p >= 1 && p <= TOTAL_PAGES && !queue.includes(p)) queue.push(p);
-      });
-      for (let p = 1; p <= TOTAL_PAGES; p++) {
-        if (!queue.includes(p)) queue.push(p);
-      }
-
-      const CONCURRENCY = 6;
-      let qIndex = 0;
-
-      async function worker() {
-        while (qIndex < queue.length) {
-          const p = queue[qIndex++];
-          if (!downloadedSet.has(p)) {
-            try {
-              const url = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p' + p + '.woff2';
-              const res = await fetch(url, { cache: 'force-cache' });
-              if (res.ok) {
-                downloadedSet.add(p);
-                downloadedCount++;
-                updateDownloadUI(downloadedCount, TOTAL_PAGES);
-                if (downloadedCount % 12 === 0) {
-                  localStorage.setItem('@uns_downloaded_pages_set', JSON.stringify(Array.from(downloadedSet)));
-                  localStorage.setItem('@uns_font_downloaded_count', String(downloadedCount));
-                }
-              }
-            } catch (err) {
-              // network error or pause, continue
-            }
-          }
-        }
-      }
-
-      const workers = [];
-      for (let i = 0; i < CONCURRENCY; i++) {
-        workers.push(worker());
-      }
-      await Promise.all(workers);
-
-      localStorage.setItem('@uns_downloaded_pages_set', JSON.stringify(Array.from(downloadedSet)));
-      localStorage.setItem('@uns_font_downloaded_count', String(downloadedSet.size));
-
-      if (downloadedSet.size >= TOTAL_PAGES) {
-        localStorage.setItem(storageKey, 'true');
-        const statusEl = document.getElementById('download-banner-status');
-        if (statusEl) statusEl.innerText = '✓ تم تحميل المصحف كاملاً للقراءة بدون إنترنت';
-        setTimeout(() => { hideDownloadBanner(); }, 3500);
-      }
-      isDownloadingAll = false;
-    }
-    window.startAutoDownloadAll = startAutoDownloadAll;
-
     // Initial Layout Setup
     function init() {
       setSlotTransition(prevSlot, 'none');
@@ -1333,11 +1146,6 @@ export default function MushafV2Reader({
       window.addEventListener('resize', () => {
         slots.forEach(s => fitSlotLines(s));
       });
-
-      // Automatically start downloading all 604 pages for offline use when app is opened!
-      setTimeout(() => {
-        startAutoDownloadAll();
-      }, 1200);
     }
 
     init();
@@ -1402,23 +1210,6 @@ export default function MushafV2Reader({
             <Ionicons name="headset-outline" size={20} color={isDark ? '#4ade80' : '#059669'} />
             <Text style={[styles.modalActionBtnText, { color: isDark ? '#ffffff' : '#1e293b' }]}>
               مشغل التلاوة الصوتية
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.modalActionBtn,
-              { backgroundColor: isDark ? '#2d3b32' : '#f1f5f9', marginTop: 10 },
-            ]}
-            onPress={() => {
-              setIsSettingsModalVisible(false);
-              const js = `if (window.startAutoDownloadAll) { window.startAutoDownloadAll(true); } true;`;
-              webViewRef.current?.injectJavaScript(js);
-            }}
-          >
-            <Ionicons name="cloud-download-outline" size={20} color={isDark ? '#4ade80' : '#059669'} />
-            <Text style={[styles.modalActionBtnText, { color: isDark ? '#ffffff' : '#1e293b' }]}>
-              تحميل المصحف كاملاً للقراءة بدون إنترنت
             </Text>
           </TouchableOpacity>
         </View>
