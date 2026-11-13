@@ -24,7 +24,6 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { Reciter } from '@/data/reciters';
 import { AnimatedGradientBackground } from '@/components/AnimatedGradientBackground';
-import { VideoBackground } from '@/components/VideoBackground';
 import { getSyncedVerses, SyncedVerse } from '@/services/quranTimingService';
 import surahsData from '@/data/surahs.json';
 import {
@@ -668,12 +667,8 @@ export default function AudioPlayerModal({
       onRequestClose={onClose}
     >
       <View style={styles.modalBackdrop}>
-        {/* FULLSCREEN VIDEO BACKGROUND OR ANIMATED GRADIENT */}
-        {activeBgSound.id !== 'none' && activeBgSound.videoSource ? (
-          <VideoBackground source={activeBgSound.videoSource} overlayOpacity={0.35} />
-        ) : (
-          <AnimatedGradientBackground />
-        )}
+        {/* FULLSCREEN ANIMATED GRADIENT BACKGROUND */}
+        <AnimatedGradientBackground mode="shader" />
 
         {/* Soft veil behind verses so text glows brilliantly over video */}
         {showVerses && <View style={styles.versesOverlayScrim} pointerEvents="none" />}
