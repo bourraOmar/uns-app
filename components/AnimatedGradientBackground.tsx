@@ -1,23 +1,44 @@
 import React from 'react';
-import { RubberFluid } from './RubberFluid';
+import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 /**
  * AnimatedGradientBackground:
- * High-performance animated gradient shader background with emerald and ocean blue tones.
+ * Dignified, serene, dark spiritual Islamic gradient for the Quran player.
+ * Clean, reverent, 100% native, and battery-friendly without any distracting 3D shaders or textures.
  */
-export function AnimatedGradientBackground({ mode = 'shader' }: { mode?: 'shader' }) {
+export function AnimatedGradientBackground({ mode }: { mode?: string }) {
   return (
-    <RubberFluid
-      colors={['#0f8e5d', '#0284c7']}
-      speed={0.7}
-      scale={1.1}
-      foldDepth={1.3}
-      gloss={0.38}
-      sheen={0.25}
-      roughness={0.32}
-      contrast={4.8}
-    />
+    <View style={StyleSheet.absoluteFill}>
+      {/* Primary Deep Islamic Dark Emerald to Midnight Charcoal Gradient */}
+      <LinearGradient
+        colors={['#09130f', '#0f241a', '#0b1a13', '#050907']}
+        locations={[0, 0.35, 0.7, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Gentle Top Ambient Lighting */}
+      <LinearGradient
+        colors={['rgba(16, 185, 129, 0.07)', 'transparent']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.35 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
+      {/* Subtle Center Serene Glow */}
+      <LinearGradient
+        colors={['transparent', 'rgba(16, 185, 129, 0.04)', 'transparent']}
+        locations={[0.15, 0.5, 0.85]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+    </View>
   );
 }
 
-export { RubberFluid };
+export { AnimatedGradientBackground as RubberFluid };
