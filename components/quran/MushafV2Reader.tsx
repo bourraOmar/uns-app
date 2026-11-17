@@ -614,18 +614,56 @@ ${preloadLinks}
     display: flex;
     justify-content: center;
     align-items: center;
+    padding-bottom: 2px;
   }
 
   .page-badge {
-    padding: 4px 20px;
-    border-radius: 20px;
-    background: var(--badge-bg);
-    border: 1px solid var(--badge-border);
-    font-family: 'Cairo', sans-serif;
-    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 68px;
+    height: 32px;
+    position: relative;
+  }
+
+  .page-badge-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .badge-bg-path {
+    fill: var(--badge-bg);
+    transition: fill 0.2s ease;
+  }
+
+  .badge-stroke-main {
+    stroke: var(--ayah-number-color);
+    stroke-width: 1.3;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 0.2s ease;
+  }
+
+  .badge-stroke-sub {
+    stroke: var(--ayah-number-color);
+    stroke-width: 0.95;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.85;
+    transition: stroke 0.2s ease;
+  }
+
+  .badge-number-text {
+    font-family: 'Cairo', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-weight: 700;
-    color: var(--badge-text);
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    font-size: 14px;
+    fill: var(--badge-text);
+    text-anchor: middle;
+    dominant-baseline: central;
+    transition: fill 0.2s ease;
   }
 
   .spinner {
@@ -960,7 +998,22 @@ ${preloadLinks}
         contentHTML +
         '</div>' +
         '<div class="page-footer">' +
-        '<div class="page-badge">' + toArabic(p) + '</div>' +
+        '<div class="page-badge">' +
+        '<svg class="page-badge-svg" viewBox="0 0 76 36" preserveAspectRatio="xMidYMid meet">' +
+        '<path class="badge-bg-path" d="M 22,3 L 54,3 C 60,3 65,8 68,13 C 71,16 75,18 75,18 C 75,18 71,20 68,23 C 65,28 60,33 54,33 L 22,33 C 16,33 11,28 8,23 C 5,20 1,18 1,18 C 1,18 5,16 8,13 C 11,8 16,3 22,3 Z" />' +
+        '<path class="badge-stroke-main" d="M 22,3 L 54,3 C 60,3 65,8 68,13 C 71,16 75,18 75,18 C 75,18 71,20 68,23 C 65,28 60,33 54,33 L 22,33 C 16,33 11,28 8,23 C 5,20 1,18 1,18 C 1,18 5,16 8,13 C 11,8 16,3 22,3 Z" />' +
+        '<rect x="18" y="5" width="40" height="26" rx="13" class="badge-stroke-main" />' +
+        '<path class="badge-stroke-sub" d="M 8,13 C 12,15 15,16 18,18 C 15,20 12,21 8,23" />' +
+        '<path class="badge-stroke-sub" d="M 2,18 L 11,18" />' +
+        '<path class="badge-stroke-sub" d="M 12,9 C 14.5,12 16.5,13 18,13" />' +
+        '<path class="badge-stroke-sub" d="M 12,27 C 14.5,24 16.5,23 18,23" />' +
+        '<path class="badge-stroke-sub" d="M 68,13 C 64,15 61,16 58,18 C 61,20 64,21 68,23" />' +
+        '<path class="badge-stroke-sub" d="M 74,18 L 65,18" />' +
+        '<path class="badge-stroke-sub" d="M 64,9 C 61.5,12 59.5,13 58,13" />' +
+        '<path class="badge-stroke-sub" d="M 64,27 C 61.5,24 59.5,23 58,23" />' +
+        '<text x="38" y="19" class="badge-number-text">' + toArabic(p) + '</text>' +
+        '</svg>' +
+        '</div>' +
         '</div>';
     }
 
