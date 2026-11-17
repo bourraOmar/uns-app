@@ -28,6 +28,119 @@ interface MushafV2ReaderProps {
   onBack: () => void;
 }
 
+export type MushafThemeId = 'white' | 'night' | 'calm' | 'comfort';
+
+export interface MushafThemeConfig {
+  id: MushafThemeId;
+  name: string;
+  bg: string;
+  textColor: string;
+  headerColor: string;
+  badgeBg: string;
+  badgeBorder: string;
+  badgeText: string;
+  surahBannerBg: string;
+  surahTitleColor: string;
+  surahFrameFilter: string;
+  ctrlBtnBg: string;
+  ctrlBtnColor: string;
+  ctrlBtnBorder: string;
+  isDark: boolean;
+  previewBg: string;
+  previewLetterColor: string;
+  previewTextColor: string;
+}
+
+export const MUSHAF_THEMES: Record<MushafThemeId, MushafThemeConfig> = {
+  white: {
+    id: 'white',
+    name: 'أبيض',
+    bg: '#ffffff',
+    textColor: '#111827',
+    headerColor: '#64748b',
+    badgeBg: 'rgba(0, 0, 0, 0.05)',
+    badgeBorder: 'rgba(0, 0, 0, 0.12)',
+    badgeText: '#334155',
+    surahBannerBg: 'rgba(16, 185, 129, 0.08)',
+    surahTitleColor: '#065f46',
+    surahFrameFilter: 'invert(1) brightness(0.25) sepia(1) hue-rotate(110deg) saturate(3);',
+    ctrlBtnBg: 'rgba(255, 255, 255, 0.95)',
+    ctrlBtnColor: '#1e293b',
+    ctrlBtnBorder: 'rgba(0, 0, 0, 0.12)',
+    isDark: false,
+    previewBg: '#ffffff',
+    previewLetterColor: '#1e293b',
+    previewTextColor: '#1e293b',
+  },
+  night: {
+    id: 'night',
+    name: 'ليلي',
+    bg: '#222825',
+    textColor: '#ffffff',
+    headerColor: '#94a3b8',
+    badgeBg: 'rgba(42, 60, 50, 0.7)',
+    badgeBorder: 'rgba(84, 120, 98, 0.6)',
+    badgeText: '#f1f5f9',
+    surahBannerBg: 'rgba(38, 64, 48, 0.45)',
+    surahTitleColor: '#ffffff',
+    surahFrameFilter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.45)) sepia(1) hue-rotate(85deg) saturate(2.8) brightness(0.95);',
+    ctrlBtnBg: 'rgba(38, 48, 42, 0.92)',
+    ctrlBtnColor: '#ffffff',
+    ctrlBtnBorder: 'rgba(255, 255, 255, 0.18)',
+    isDark: true,
+    previewBg: '#252e27',
+    previewLetterColor: '#ffffff',
+    previewTextColor: '#ffffff',
+  },
+  calm: {
+    id: 'calm',
+    name: 'هادئ',
+    bg: '#dff1ec',
+    textColor: '#10241e',
+    headerColor: '#44665b',
+    badgeBg: 'rgba(16, 36, 30, 0.07)',
+    badgeBorder: 'rgba(16, 36, 30, 0.15)',
+    badgeText: '#1b3b30',
+    surahBannerBg: 'rgba(13, 148, 136, 0.10)',
+    surahTitleColor: '#0f766e',
+    surahFrameFilter: 'invert(1) brightness(0.25) sepia(1) hue-rotate(130deg) saturate(3);',
+    ctrlBtnBg: 'rgba(235, 247, 243, 0.95)',
+    ctrlBtnColor: '#10241e',
+    ctrlBtnBorder: 'rgba(16, 36, 30, 0.12)',
+    isDark: false,
+    previewBg: '#d8ede5',
+    previewLetterColor: '#10241e',
+    previewTextColor: '#10241e',
+  },
+  comfort: {
+    id: 'comfort',
+    name: 'مريح',
+    bg: '#edf5ed',
+    textColor: '#152618',
+    headerColor: '#47664c',
+    badgeBg: 'rgba(21, 38, 24, 0.07)',
+    badgeBorder: 'rgba(21, 38, 24, 0.15)',
+    badgeText: '#203824',
+    surahBannerBg: 'rgba(16, 185, 129, 0.09)',
+    surahTitleColor: '#047857',
+    surahFrameFilter: 'invert(1) brightness(0.25) sepia(1) hue-rotate(90deg) saturate(3);',
+    ctrlBtnBg: 'rgba(240, 248, 241, 0.95)',
+    ctrlBtnColor: '#152618',
+    ctrlBtnBorder: 'rgba(21, 38, 24, 0.12)',
+    isDark: false,
+    previewBg: '#e2f0e3',
+    previewLetterColor: '#152618',
+    previewTextColor: '#152618',
+  },
+};
+
+export const MUSHAF_THEME_LIST: MushafThemeConfig[] = [
+  MUSHAF_THEMES.white,
+  MUSHAF_THEMES.night,
+  MUSHAF_THEMES.calm,
+  MUSHAF_THEMES.comfort,
+];
+
 export default function MushafV2Reader({
   initialPage,
   isDark,
@@ -41,6 +154,60 @@ export default function MushafV2Reader({
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [showControls, setShowControls] = useState<boolean>(false);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState<boolean>(false);
+  const [scrollMode, setScrollMode] = useState<'horizontal' | 'auto'>('horizontal');
+
+  const [selectedThemeId, setSelectedThemeId] = useState<MushafThemeId>(() => {
+    return isDark ? 'night' : 'comfort';
+  });
+
+  const currentTheme = useMemo(() => {
+    return MUSHAF_THEMES[selectedThemeId] || (isDark ? MUSHAF_THEMES.night : MUSHAF_THEMES.comfort);
+  }, [selectedThemeId, isDark]);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@uns_mushaf_theme').then((saved) => {
+      if (saved && (saved === 'white' || saved === 'night' || saved === 'calm' || saved === 'comfort')) {
+        setSelectedThemeId(saved as MushafThemeId);
+        const t = MUSHAF_THEMES[saved as MushafThemeId];
+        if (t && webViewRef.current) {
+          const js = `if (window.applyTheme) { window.applyTheme(${JSON.stringify(t)}); } true;`;
+          webViewRef.current.injectJavaScript(js);
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handleSelectTheme = (themeId: MushafThemeId) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedThemeId(themeId);
+    const t = MUSHAF_THEMES[themeId];
+    if (t && webViewRef.current) {
+      const js = `if (window.applyTheme) { window.applyTheme(${JSON.stringify(t)}); } true;`;
+      webViewRef.current.injectJavaScript(js);
+    }
+  };
+
+  const handleApplyTheme = async () => {
+    try {
+      await AsyncStorage.setItem('@uns_mushaf_theme', selectedThemeId);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {}
+    setIsSettingsModalVisible(false);
+  };
+
+  // Auto-scroll handler
+  useEffect(() => {
+    let timer: any = null;
+    if (scrollMode === 'auto') {
+      timer = setInterval(() => {
+        const js = `if (typeof animateToNext === 'function' && currentPage < TOTAL_PAGES) { animateToNext(); } true;`;
+        webViewRef.current?.injectJavaScript(js);
+      }, 25000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [scrollMode]);
 
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
@@ -206,6 +373,21 @@ ${preloadLinks}
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700&display=swap');
 
+  :root {
+    --bg-color: ${currentTheme.bg};
+    --text-color: ${currentTheme.textColor};
+    --header-color: ${currentTheme.headerColor};
+    --badge-bg: ${currentTheme.badgeBg};
+    --badge-border: ${currentTheme.badgeBorder};
+    --badge-text: ${currentTheme.badgeText};
+    --surah-banner-bg: ${currentTheme.surahBannerBg};
+    --surah-title-color: ${currentTheme.surahTitleColor};
+    --surah-frame-filter: ${currentTheme.surahFrameFilter};
+    --ctrl-btn-bg: ${currentTheme.ctrlBtnBg};
+    --ctrl-btn-color: ${currentTheme.ctrlBtnColor};
+    --ctrl-btn-border: ${currentTheme.ctrlBtnBorder};
+  }
+
   * {
     box-sizing: border-box;
     margin: 0;
@@ -217,11 +399,12 @@ ${preloadLinks}
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: ${isDark ? '#222825' : '#fcfbfa'};
-    color: ${isDark ? '#ffffff' : '#1e293b'};
+    background-color: var(--bg-color);
+    color: var(--text-color);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     user-select: none;
     -webkit-user-select: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   #mushaf-viewport {
@@ -265,9 +448,10 @@ ${preloadLinks}
     font-family: 'Cairo', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", "Geeza Pro", Tahoma, sans-serif;
     font-size: 13.5px;
     font-weight: 600;
-    color: ${isDark ? '#e2e8f0' : '#475569'};
+    color: var(--header-color);
     padding: 0 16px;
     box-sizing: border-box;
+    transition: color 0.2s ease;
   }
 
   .content-container {
@@ -299,8 +483,9 @@ ${preloadLinks}
     align-items: center;
     justify-content: center;
     margin: 4px auto 2px auto;
-    background: ${isDark ? 'rgba(38, 64, 48, 0.45)' : 'rgba(16, 185, 129, 0.08)'};
+    background: var(--surah-banner-bg);
     border-radius: 8px;
+    transition: background 0.2s ease;
   }
 
   .surah-banner-wrap.opening-banner {
@@ -328,31 +513,33 @@ ${preloadLinks}
     height: 100%;
     object-fit: fill;
     pointer-events: none;
-    ${isDark ? 'filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45)) sepia(1) hue-rotate(85deg) saturate(2.8) brightness(0.95);' : 'filter: invert(1) brightness(0.25) sepia(1) hue-rotate(110deg) saturate(3);'}
+    filter: var(--surah-frame-filter);
+    transition: filter 0.2s ease;
   }
 
   .surah-title-text {
     position: relative;
     z-index: 2;
-    color: ${isDark ? '#ffffff' : '#065f46'};
+    color: var(--surah-title-color);
     font-family: 'Cairo', sans-serif;
     font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    text-shadow: ${isDark ? '0 1px 4px rgba(0,0,0,0.8)' : 'none'};
     padding: 0 35px;
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
+    transition: color 0.2s ease;
   }
 
   .basmalah-row {
     font-size: clamp(19px, 5vw, 23px);
-    color: ${isDark ? '#ffffff' : '#1e293b'};
+    color: var(--text-color);
     margin: 2px auto 6px auto;
     text-align: center;
     font-family: 'p1' !important;
     line-height: 1.5;
+    transition: color 0.2s ease;
   }
 
   .mushaf-lines {
@@ -396,15 +583,17 @@ ${preloadLinks}
   /* Verses on Opening Pages (1 & 2): Authentic proportion matching standard pages */
   .opening-word-glyph {
     font-size: clamp(20px, min(5.6vw, 3.2vh), 26px);
-    color: ${isDark ? '#ffffff' : '#1e293b'};
+    color: var(--text-color);
     display: inline-block;
+    transition: color 0.2s ease;
   }
 
   /* Verses on Standard 15-line Pages (3 to 604) */
   .standard-word-glyph {
     font-size: clamp(20px, min(5.6vw, 3.2vh), 26px);
-    color: ${isDark ? '#ffffff' : '#1e293b'};
+    color: var(--text-color);
     display: inline-block;
+    transition: color 0.2s ease;
   }
 
   .page-footer {
@@ -417,12 +606,13 @@ ${preloadLinks}
   .page-badge {
     padding: 4px 20px;
     border-radius: 20px;
-    background: ${isDark ? 'rgba(42, 60, 50, 0.7)' : 'rgba(15, 142, 93, 0.1)'};
-    border: 1px solid ${isDark ? 'rgba(84, 120, 98, 0.6)' : 'rgba(15, 142, 93, 0.25)'};
+    background: var(--badge-bg);
+    border: 1px solid var(--badge-border);
     font-family: 'Cairo', sans-serif;
     font-size: 15px;
     font-weight: 700;
-    color: ${isDark ? '#f1f5f9' : '#0f8e5d'};
+    color: var(--badge-text);
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
 
   .spinner {
@@ -467,23 +657,22 @@ ${preloadLinks}
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: ${isDark ? 'rgba(38, 48, 42, 0.85)' : 'rgba(255, 255, 255, 0.92)'};
-    border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.12)'};
-    color: ${isDark ? '#ffffff' : '#1e293b'};
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    background: var(--ctrl-btn-bg);
+    border: 1px solid var(--ctrl-btn-border);
+    color: var(--ctrl-btn-color);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    transition: transform 0.15s ease, background 0.15s ease;
+    transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
     outline: none;
     padding: 0;
   }
 
   .floating-ctrl-btn:active {
     transform: scale(0.92);
-    background: ${isDark ? 'rgba(48, 62, 54, 0.95)' : 'rgba(240, 240, 240, 0.98)'};
   }
 
   .btn-top-left {
@@ -630,6 +819,24 @@ ${preloadLinks}
       const digits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
       return String(num).replace(/\d/g, function(d) { return digits[+d]; });
     }
+
+    window.applyTheme = function(theme) {
+      if (!theme) return;
+      document.body.style.backgroundColor = theme.bg;
+      var root = document.documentElement;
+      root.style.setProperty('--bg-color', theme.bg);
+      root.style.setProperty('--text-color', theme.textColor);
+      root.style.setProperty('--header-color', theme.headerColor);
+      root.style.setProperty('--badge-bg', theme.badgeBg);
+      root.style.setProperty('--badge-border', theme.badgeBorder);
+      root.style.setProperty('--badge-text', theme.badgeText);
+      root.style.setProperty('--surah-banner-bg', theme.surahBannerBg);
+      root.style.setProperty('--surah-title-color', theme.surahTitleColor);
+      root.style.setProperty('--surah-frame-filter', theme.surahFrameFilter);
+      root.style.setProperty('--ctrl-btn-bg', theme.ctrlBtnBg);
+      root.style.setProperty('--ctrl-btn-color', theme.ctrlBtnColor);
+      root.style.setProperty('--ctrl-btn-border', theme.ctrlBtnBorder);
+    };
 
     const loadedFonts = new Set();
     const loadingFonts = new Map();
@@ -1201,7 +1408,7 @@ ${preloadLinks}
     <Modal
       visible={isSettingsModalVisible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={() => setIsSettingsModalVisible(false)}
     >
       <Pressable
@@ -1211,46 +1418,141 @@ ${preloadLinks}
         <View
           style={[
             styles.modalCard,
-            {
-              backgroundColor: isDark ? '#1e2621' : '#ffffff',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-              paddingBottom: Math.max(insets.bottom, 16) + 16,
-            },
+            { paddingBottom: Math.max(insets.bottom, 16) + 14 },
           ]}
           onStartShouldSetResponder={() => true}
         >
           <View style={styles.modalDragHandle} />
+
+          {/* Header Row */}
           <View style={styles.modalHeaderRow}>
-            <Text style={[styles.modalTitle, { color: isDark ? '#ffffff' : '#1e293b' }]}>
-              سورة {currentMeta.surahName} • صفحة {currentPage}
-            </Text>
             <TouchableOpacity
               onPress={() => setIsSettingsModalVisible(false)}
-              style={styles.modalCloseBtn}
+              style={styles.modalRoundCloseBtn}
+              activeOpacity={0.7}
             >
-              <Ionicons name="close" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
+              <Ionicons name="close" size={20} color="#cbd5e1" />
+            </TouchableOpacity>
+
+            <Text style={styles.modalSheetTitle}>
+              إعدادات القراءة
+            </Text>
+
+            <View style={{ width: 36 }} />
+          </View>
+
+          {/* Section 1: خلفية القراءة */}
+          <Text style={styles.modalSectionLabel}>
+            خلفية القراءة
+          </Text>
+
+          <View style={styles.themeCardsRow}>
+            {MUSHAF_THEME_LIST.map((t) => {
+              const isSelected = selectedThemeId === t.id;
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[
+                    styles.themeCard,
+                    { backgroundColor: t.previewBg },
+                    isSelected && styles.themeCardSelected,
+                  ]}
+                  onPress={() => handleSelectTheme(t.id)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.themeCardLetter, { color: t.previewLetterColor }]}>
+                    ع
+                  </Text>
+                  <Text style={[styles.themeCardName, { color: t.previewTextColor }]}>
+                    {t.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Section 2: خيارات التمرير */}
+          <Text style={styles.modalSectionLabel}>
+            خيارات التمرير
+          </Text>
+
+          <View style={styles.scrollOptionsRow}>
+            <TouchableOpacity
+              style={[
+                styles.scrollOptionPill,
+                scrollMode === 'auto' ? styles.scrollOptionPillActive : styles.scrollOptionPillInactive,
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setScrollMode('auto');
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="arrow-down-outline"
+                size={18}
+                color={scrollMode === 'auto' ? '#ffffff' : '#94a3b8'}
+              />
+              <Text
+                style={[
+                  styles.scrollOptionText,
+                  { color: scrollMode === 'auto' ? '#ffffff' : '#94a3b8' },
+                ]}
+              >
+                تمرير تلقائي
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.scrollOptionPill,
+                scrollMode === 'horizontal' ? styles.scrollOptionPillActive : styles.scrollOptionPillInactive,
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setScrollMode('horizontal');
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="book-outline"
+                size={18}
+                color={scrollMode === 'horizontal' ? '#ffffff' : '#94a3b8'}
+              />
+              <Text
+                style={[
+                  styles.scrollOptionText,
+                  { color: scrollMode === 'horizontal' ? '#ffffff' : '#94a3b8' },
+                ]}
+              >
+                تمرير أفقي
+              </Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.modalInfoRow}>
-            <Text style={[styles.modalInfoText, { color: isDark ? '#cbd5e1' : '#475569' }]}>
-              الجزء {currentMeta.juz} • الحزب {currentMeta.hizb}
-            </Text>
-          </View>
-
+          {/* Audio Player Shortcut */}
           <TouchableOpacity
-            style={[
-              styles.modalActionBtn,
-              { backgroundColor: isDark ? '#2d3b32' : '#f1f5f9' },
-            ]}
+            style={styles.modalAudioBtn}
             onPress={() => {
               setIsSettingsModalVisible(false);
               audioPlayer.openPlayerModal();
             }}
+            activeOpacity={0.8}
           >
-            <Ionicons name="headset-outline" size={20} color={isDark ? '#4ade80' : '#059669'} />
-            <Text style={[styles.modalActionBtnText, { color: isDark ? '#ffffff' : '#1e293b' }]}>
+            <Ionicons name="headset-outline" size={18} color="#34d399" />
+            <Text style={styles.modalAudioBtnText}>
               مشغل التلاوة الصوتية
+            </Text>
+          </TouchableOpacity>
+
+          {/* Apply Button */}
+          <TouchableOpacity
+            style={styles.applyBtn}
+            onPress={handleApplyTheme}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.applyBtnText}>
+              تطبيق
             </Text>
           </TouchableOpacity>
         </View>
@@ -1261,14 +1563,14 @@ ${preloadLinks}
   // On Web / non-mobile (browser / emulator preview), render standard native iframe to avoid "WebView not supported" error
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
     return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#222825' : '#fcfbfa' }]}>
+      <View style={[styles.container, { backgroundColor: currentTheme.bg }]}>
         {React.createElement('iframe', {
           srcDoc: htmlContent,
           style: {
             width: '100%',
             height: '100%',
             border: 'none',
-            backgroundColor: isDark ? '#222825' : '#fcfbfa',
+            backgroundColor: currentTheme.bg,
           },
           title: 'Mushaf V2',
         })}
@@ -1279,10 +1581,10 @@ ${preloadLinks}
 
   // On Native Mobile (iOS / Android), render high performance React Native WebView
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#222825' : '#fcfbfa' }]}>
+    <View style={[styles.container, { backgroundColor: currentTheme.bg }]}>
       <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#222825' : '#fcfbfa'}
+        barStyle={currentTheme.isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={currentTheme.bg}
         translucent
       />
       <WebView
@@ -1310,63 +1612,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  floatingBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  closeBtn: {
-    position: 'absolute',
-    left: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    zIndex: 100,
-  },
-  searchBtn: {
-    position: 'absolute',
-    left: 20,
-    zIndex: 100,
-  },
-  bottomRightGroup: {
-    position: 'absolute',
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    zIndex: 100,
-  },
-  aaBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
   modalCard: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#1b231e',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     borderBottomWidth: 0,
     paddingHorizontal: 20,
     paddingTop: 12,
   },
   modalDragHandle: {
-    width: 36,
+    width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(148, 163, 184, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignSelf: 'center',
     marginBottom: 16,
   },
@@ -1374,31 +1639,128 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  modalTitle: {
+  modalRoundCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#273229',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSheetTitle: {
     fontSize: 17,
     fontWeight: '700',
+    color: '#ffffff',
+    fontFamily: 'Cairo',
   },
-  modalCloseBtn: {
-    padding: 6,
+  modalSectionLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#ffffff',
+    textAlign: 'right',
+    marginTop: 16,
+    marginBottom: 12,
+    fontFamily: 'Cairo',
   },
-  modalInfoRow: {
-    marginBottom: 20,
+  themeCardsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
   },
-  modalInfoText: {
-    fontSize: 14,
+  themeCard: {
+    flex: 1,
+    height: 98,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  modalActionBtn: {
+  themeCardSelected: {
+    borderWidth: 2,
+    borderColor: '#34d399',
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  themeCardLetter: {
+    fontSize: 32,
+    fontWeight: '700',
+    lineHeight: 38,
+  },
+  themeCardName: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Cairo',
+  },
+  scrollOptionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  scrollOptionPill: {
+    flex: 1,
+    height: 44,
+    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  scrollOptionPillActive: {
+    backgroundColor: '#27332a',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+  },
+  scrollOptionPillInactive: {
+    backgroundColor: '#202821',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  scrollOptionText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    fontFamily: 'Cairo',
+  },
+  modalAudioBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 14,
+    backgroundColor: '#243026',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginTop: 16,
   },
-  modalActionBtnText: {
-    fontSize: 15,
+  modalAudioBtnText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#ffffff',
+    fontFamily: 'Cairo',
+  },
+  applyBtn: {
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#0d6b4a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+    shadowColor: '#0d6b4a',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  applyBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+    fontFamily: 'Cairo',
   },
 });
