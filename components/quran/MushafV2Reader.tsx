@@ -39,6 +39,7 @@ export interface MushafThemeConfig {
   badgeBg: string;
   badgeBorder: string;
   badgeText: string;
+  ayahNumberColor: string;
   surahBannerBg: string;
   surahTitleColor: string;
   surahFrameFilter: string;
@@ -58,9 +59,10 @@ export const MUSHAF_THEMES: Record<MushafThemeId, MushafThemeConfig> = {
     bg: '#ffffff',
     textColor: '#111827',
     headerColor: '#64748b',
-    badgeBg: 'rgba(0, 0, 0, 0.05)',
-    badgeBorder: 'rgba(0, 0, 0, 0.12)',
-    badgeText: '#334155',
+    badgeBg: 'rgba(92, 153, 131, 0.12)',
+    badgeBorder: 'rgba(92, 153, 131, 0.35)',
+    badgeText: '#2b5f4c',
+    ayahNumberColor: '#5c9983',
     surahBannerBg: 'rgba(16, 185, 129, 0.08)',
     surahTitleColor: '#065f46',
     surahFrameFilter: 'invert(1) brightness(0.25) sepia(1) hue-rotate(110deg) saturate(3);',
@@ -78,9 +80,10 @@ export const MUSHAF_THEMES: Record<MushafThemeId, MushafThemeConfig> = {
     bg: '#222825',
     textColor: '#ffffff',
     headerColor: '#94a3b8',
-    badgeBg: 'rgba(42, 60, 50, 0.7)',
-    badgeBorder: 'rgba(84, 120, 98, 0.6)',
-    badgeText: '#f1f5f9',
+    badgeBg: 'rgba(120, 146, 112, 0.22)',
+    badgeBorder: 'rgba(120, 146, 112, 0.55)',
+    badgeText: '#ffffff',
+    ayahNumberColor: '#789270',
     surahBannerBg: 'rgba(38, 64, 48, 0.45)',
     surahTitleColor: '#ffffff',
     surahFrameFilter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.45)) sepia(1) hue-rotate(85deg) saturate(2.8) brightness(0.95);',
@@ -98,9 +101,10 @@ export const MUSHAF_THEMES: Record<MushafThemeId, MushafThemeConfig> = {
     bg: '#dff1ec',
     textColor: '#10241e',
     headerColor: '#44665b',
-    badgeBg: 'rgba(16, 36, 30, 0.07)',
-    badgeBorder: 'rgba(16, 36, 30, 0.15)',
-    badgeText: '#1b3b30',
+    badgeBg: 'rgba(82, 153, 130, 0.16)',
+    badgeBorder: 'rgba(82, 153, 130, 0.40)',
+    badgeText: '#103d30',
+    ayahNumberColor: '#529982',
     surahBannerBg: 'rgba(13, 148, 136, 0.10)',
     surahTitleColor: '#0f766e',
     surahFrameFilter: 'invert(1) brightness(0.25) sepia(1) hue-rotate(130deg) saturate(3);',
@@ -118,9 +122,10 @@ export const MUSHAF_THEMES: Record<MushafThemeId, MushafThemeConfig> = {
     bg: '#edf5ed',
     textColor: '#152618',
     headerColor: '#47664c',
-    badgeBg: 'rgba(21, 38, 24, 0.07)',
-    badgeBorder: 'rgba(21, 38, 24, 0.15)',
-    badgeText: '#203824',
+    badgeBg: 'rgba(92, 148, 114, 0.16)',
+    badgeBorder: 'rgba(92, 148, 114, 0.40)',
+    badgeText: '#15381e',
+    ayahNumberColor: '#5c9472',
     surahBannerBg: 'rgba(16, 185, 129, 0.09)',
     surahTitleColor: '#047857',
     surahFrameFilter: 'invert(1) brightness(0.25) sepia(1) hue-rotate(90deg) saturate(3);',
@@ -380,6 +385,7 @@ ${preloadLinks}
     --badge-bg: ${currentTheme.badgeBg};
     --badge-border: ${currentTheme.badgeBorder};
     --badge-text: ${currentTheme.badgeText};
+    --ayah-number-color: ${currentTheme.ayahNumberColor};
     --surah-banner-bg: ${currentTheme.surahBannerBg};
     --surah-title-color: ${currentTheme.surahTitleColor};
     --surah-frame-filter: ${currentTheme.surahFrameFilter};
@@ -592,6 +598,13 @@ ${preloadLinks}
   .standard-word-glyph {
     font-size: clamp(20px, min(5.6vw, 3.2vh), 26px);
     color: var(--text-color);
+    display: inline-block;
+    transition: color 0.2s ease;
+  }
+
+  /* Verse Number Rosette Marker (Accent colored according to theme) */
+  .ayah-glyph {
+    color: var(--ayah-number-color) !important;
     display: inline-block;
     transition: color 0.2s ease;
   }
@@ -830,6 +843,7 @@ ${preloadLinks}
       root.style.setProperty('--badge-bg', theme.badgeBg);
       root.style.setProperty('--badge-border', theme.badgeBorder);
       root.style.setProperty('--badge-text', theme.badgeText);
+      root.style.setProperty('--ayah-number-color', theme.ayahNumberColor);
       root.style.setProperty('--surah-banner-bg', theme.surahBannerBg);
       root.style.setProperty('--surah-title-color', theme.surahTitleColor);
       root.style.setProperty('--surah-frame-filter', theme.surahFrameFilter);
@@ -930,7 +944,9 @@ ${preloadLinks}
         const words = data.lines[lNum] || [];
         contentHTML += '<div class="' + lineClass + '">';
         words.forEach(function(w) {
-          contentHTML += '<span class="' + glyphClass + '">' + w + '</span>';
+          const isAyah = data.ayahGlyphs && data.ayahGlyphs.indexOf(w) !== -1;
+          const cls = isAyah ? (glyphClass + ' ayah-glyph') : glyphClass;
+          contentHTML += '<span class="' + cls + '">' + w + '</span>';
         });
         contentHTML += '</div>';
       });
